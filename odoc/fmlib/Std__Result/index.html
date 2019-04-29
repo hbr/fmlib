@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Std__Result (fmlib.Std__Result)</title><link rel="stylesheet" href="../../odoc.css"/><meta charset="utf-8"/><meta name="generator" content="odoc 1.5.2"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../../highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body><div class="content"><header><nav><a href="../index.html">Up</a> – <a href="../index.html">fmlib</a> &#x00BB; Std__Result</nav><h1>Module <code>Std__Result</code></h1><p>Result: Handling results of operations which can fail</p><nav class="toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#api">API</a></li><li><a href="#monad">Monad</a></li></ul></nav></header><section><header><h2 id="overview"><a href="#overview" class="anchor"></a>Overview</h2></header><aside><p>Operations returning a result type can be used to have some <i>functional exception handling</i>.</p><p>Let's say that you have some operatios returning a result object.</p><pre><code class="ml">let op1 ...  : (int,    error) result  = ...
+let op2 ...  : (char,   error) result = ...
+let op3 ...  : (string, error) result = ...
+let op3 ...  : (t,      error) result = ...</code></pre><p>You can chain these operations by concentrating on the success case only and handling the error case at the end of the chain.</p><pre><code class="ml">match
+    let* i = op1 ...  in
+    let* c = op2 ... i ...  in
+    let* s = op3 ... i ... c ...  in
+    op4 ... i ... c ... s
+with
+| Ok x -&gt;
+    (* Handling of the success case *)
+| Error e -&gt;
+    (* Handling of the error case which might have
+       occurred in any of the steps *)</code></pre><p>A simple example:</p><pre><code class="ml">type 'a r = ('a, string) result
+
+let add (a: int r) (b: int r): int r =
+    let* x = a in
+    let* y = b in
+    Ok (x + y)
+
+let divide (a: int r) (b: int r): int r =
+    let* x = a in
+    let* y = b in
+    if y = 0 then
+        Error &quot;Division by Zero&quot;
+    else
+        Ok (x / y)
+
+assert (
+    add (Ok 1) (divide (Ok 2) (Ok 0))
+    =
+    Error &quot;Division by Zero&quot;
+)
+
+assert (
+    add (Ok 1) (divide (Ok 10) (Ok 2))
+    =
+    Ok 6
+)</code></pre></aside></section><section><header><h2 id="api"><a href="#api" class="anchor"></a>API</h2></header><dl><dt class="spec type" id="type-t"><a href="#type-t" class="anchor"></a><code><span class="keyword">type</span> <span>('a, 'e) t</span></code><code> = <span><span>(<span class="type-var">'a</span>, <span class="type-var">'e</span>)</span> Stdlib.result</span></code></dt><dd><p><code>'a</code> is the result type in case of success and <code>'e'</code> is the result type in case of failure. It is implemented by the ocaml type <code>result</code> from the ocaml standard library.</p></dd></dl><dl><dt class="spec value" id="val-return"><a href="#val-return" class="anchor"></a><code><span class="keyword">val</span> return : <span class="type-var">'a</span> <span>&#45;&gt;</span> <span><span>(<span class="type-var">'a</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span></code></dt><dd><p><code>return a</code> is the same as <code>Ok a</code>.</p></dd></dl><dl><dt class="spec value" id="val-(&gt;&gt;=)"><a href="#val-(&gt;&gt;=)" class="anchor"></a><code><span class="keyword">val</span> (&gt;&gt;=) : <span><span>(<span class="type-var">'a</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span> <span>&#45;&gt;</span> <span>(<span class="type-var">'a</span> <span>&#45;&gt;</span> <span><span>(<span class="type-var">'b</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span>)</span> <span>&#45;&gt;</span> <span><span>(<span class="type-var">'b</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span></code></dt><dd><p><code>m &gt;&gt;= f</code></p><p>maps success result <code>m</code> to <code>f a</code>. In case of an error result <code>f</code> is not called and the error remains.</p></dd></dl><dl><dt class="spec value" id="val-let*"><a href="#val-let*" class="anchor"></a><code><span class="keyword">val</span> let* : <span><span>(<span class="type-var">'a</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span> <span>&#45;&gt;</span> <span>(<span class="type-var">'a</span> <span>&#45;&gt;</span> <span><span>(<span class="type-var">'b</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span>)</span> <span>&#45;&gt;</span> <span><span>(<span class="type-var">'b</span>, <span class="type-var">'e</span>)</span> <a href="index.html#type-t">t</a></span></code></dt><dd><p><code>let* a = m in f a</code> is the same as <code>m &gt;&gt;= f</code></p></dd></dl></section><section><header><h2 id="monad"><a href="#monad" class="anchor"></a>Monad</h2></header><dl><dt class="spec module" id="module-Monad"><a href="#module-Monad" class="anchor"></a><code><span class="keyword">module</span> <a href="Monad/index.html">Monad</a> : <span class="keyword">functor</span> (<a href="Monad/argument-1-E/index.html">E</a> : <a href="../Std/Interfaces/index.html#module-type-ANY">Std.Interfaces.ANY</a>) <span>&#45;&gt;</span> <span class="keyword">sig</span> ... <span class="keyword">end</span></code></dt><dd><p>The result type encapsulated in a module which satisfies the monadic interface.</p></dd></dl></section></div></body></html>
