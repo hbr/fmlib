@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>index (fmlib_js.index)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="../index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; fmlib_js</nav><header class="odoc-preamble"><h2 id="javascript-wrapper-library"><a href="#javascript-wrapper-library" class="anchor"></a>Javascript Wrapper Library</h2><p><code>Fmlib_js</code> is a library to generate javascript code from ocaml code. The library uses <code>js_of_ocaml</code> to do the actual javascript generation.</p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#api">API</a></li><li><a href="#basics">Basics</a></li><li><a href="#how-to-use-fmlib_js">How to use <code>Fmlib_js</code></a></li><li><a href="#a-single-page-web-application">A Single Page Web Application</a></li></ul></nav></div><div class="odoc-content"><h3 id="api"><a href="#api" class="anchor"></a>API</h3><p>Entry point: <a href="Fmlib_js/index.html"><code>Fmlib_js</code></a></p><h3 id="basics"><a href="#basics" class="anchor"></a>Basics</h3><p><code>Fmlib_js</code> is</p><ul><li>Thin: It just wraps javascript functions. So you only pay what you ask for.</li></ul><ul><li>Typesafe: If it compiles there are no type errors at runtime. The library handles all unsafe operations which are possible in <code>js_of_ocaml</code> in a type safe manner.</li></ul><ul><li>Minimalistic: It provides the most important primitives only.</li></ul><ul><li>not object oriented: It avoids wrapping javascript objects in ocaml objects.</li></ul><p>The types in <code>Fmlib_js</code> are opaque i.e. you have <code>Document.t</code>, <code>Node.t</code> and <code>Value.t</code> to represent a browser window document, a node in the dom tree and a javascript value and in the module only functions to access the objects. Therefore the ocaml compiler can give you precise error messages.</p><p>This design decision is based on the fact that classes and objects (i.e. the object oriented features of ocaml) are rarely used and many ocaml programmers (like the author of <code>Fmlib_js</code>) are not very familiar with the object oriented part of ocaml. Many ocaml programmers write and use modules and functions within the modules. Therefore <code>Fmlib_js</code> uses only this part of the ocaml language.</p><p>The library is minimalistic and it is assumed that the programmer writes his own convenience functions to combine the primitives in a way appropriate for his application.</p><p>For data exchange between ocaml and javascript we have the module <a href="Fmlib_js/Base/Value/index.html"><code>Fmlib_js.Base.Value</code></a> to generate arbitrary javascript values and <a href="Fmlib_js/Base/Decode/index.html"><code>Fmlib_js.Base.Decode</code></a> to decode javascript values into ocaml values. All conversions are type safe. If you successfully decode a javascript value into an ocaml value of a certain type, it is guaranteed that the ocaml value has the type.</p><p>The module <a href="Fmlib_js/Base/Main/index.html"><code>Fmlib_js.Base.Main</code></a> provides functionality to interface with the global environment of javascript.</p><p>With the module <a href="Fmlib_js/Dom/index.html"><code>Fmlib_js.Dom</code></a> it is possible to access the complete dom tree in a browser window.</p><p>It is assumed the programmer of an ocaml application to be compiled to javascript wants to stay mainly in the domain of ocaml and has some limited functionality to interface with javascript.</p><p><code>Fmlib_js</code> is not purely functional in the sense that it avoids mutation. Since it is just a thin wrapper around javascript functions and javascript functions have mutability, the thin wrapper has mutability as well.</p><p>It is the goal to provide additional functionality based on <code>Fmlib_js</code> which allows to write purely declarative web and node applications. <code>Fmlib_js</code> provide the basic functionality to interface with javascript.</p><p>Currently only browser functionality is sufficiently covered. Future releases of <code>Fmlib_js</code> will cover node functionality as well like file system access, starting of child processes, building web servers etc.</p><h3 id="how-to-use-fmlib_js"><a href="#how-to-use-fmlib_js" class="anchor"></a>How to use <code>Fmlib_js</code></h3><p>Install the library via opam by</p><pre class="language-ocaml"><code>    opam install fmlib_js</code></pre><p>Let's assume you have a file `my_app.ml` using the library <code>Fmlib_js</code>. A typical dune file looks like</p><pre class="language-ocaml"><code>    (executable
+        (name my_app)
+        (modes js)
+        (libraries fmlib_js)
+    )</code></pre><p>Having that, the command</p><pre class="language-ocaml"><code>    dune build ./my_app.bc.js</code></pre><p>issued from the directory of <code>my_app.ml</code> compiles your application into the build directory of your dune project (usually <code>_build/default/path/to/my_app/my_app.bc.js</code>).</p><p>If you want all unused functions removed from the generated javascript file, you can issue the command</p><pre class="language-ocaml"><code>    dune build --profile release ./my_app.bc.js</code></pre><p>Compiling with the release profile reduces the size of the generated javascript file dramatically.</p><p>In many cases it is convenient to have the compiled javascript file in the source directory of <code>my_app.ml</code> with the name <code>my_app.js</code>. This can be achieved by adding the following rule to the dune file</p><pre class="language-ocaml"><code>    (rule
+        (targets my_app.js)
+        (deps    my_app.bc.js)
+        (mode (promote (until-clean)))
+        (action (copy %{deps} %{targets}))
+    )</code></pre><p>If the application is a browser application you can write a simple html file <code>my_app.html</code> with the content</p><pre class="language-ocaml"><code>    &lt;html&gt;
+        &lt;head&gt;
+            &lt;script type=&quot;text/javascript&quot; src=&quot;my_app.js&quot;&gt;&lt;/script&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+            &lt;script&gt;
+                ... optional start command ...
+            &lt;/script&gt;
+        &lt;/body&gt;
+    &lt;/html&gt;</code></pre><p>and load the html file into the browser.</p><p>An optional start command is necessary, if the application has been designed to be started by a start command. If the application starts itself automatically by registering an event listener on the <code>load</code> event of the browser window, then there is no need for a start command.</p><p>In many cases an explicit start command is convenient to send to the application some initialization data.</p><h3 id="a-single-page-web-application"><a href="#a-single-page-web-application" class="anchor"></a>A Single Page Web Application</h3><p>In order to demonstrate the basic functionality of the library we write a very rudimentary single page application. A single page application has the feature that it has access to the browser history and pushing the forward or the backward button does not issue a page load. The application just displays different pages depending on the local part of the url.</p><p>Our example single page application should have the layout</p><pre class="language-ocaml"><code>
+    Page 1          (* Headline for the selected page *)
+
+    goto page 1     (* Button to change the page on click *)
+    goto page 2
+    goto page 3
+</code></pre><p>By clicking on one of the buttons, the application shall change the headline to indicate the new page and pushing a new entry to the browser history such that each visited page has an own entry in the browser history.</p><p>Furthermore the application shall be notified when the user navigates forward or backward and display the corresponding page without triggering a reload of the application.</p><p>As a first step in the file <code>my_app.ml</code> we open the library and specifically the dom access modules.</p><pre class="language-ocaml"><code>    open Fmlib_js
+    open Dom</code></pre><p>We need a headline and a clickable element for each choice. Therefore we write a function which let us create an element containing a text node.</p><pre class="language-ocaml"><code>    let text_element (tag: string) (text: string) (document: Document.t)
+        : Element.t
+        =
+        let el   = Document.create_element   tag  document in
+        let txt  = Document.create_text_node text document in
+        Node.append txt (Element.node el);
+            (* append 'txt' node to the children of 'el' *)
+        el</code></pre><p>Html elements are nodes. But in the library an element has type <code>Element.t</code> and a dom node has type <code>Node.t</code>. The function <code>Element.node</code> views an element as a node. See <a href="Fmlib_js/Dom/Element/index.html"><code>Fmlib_js.Dom.Element</code></a> and <a href="Fmlib_js/Dom/Node/index.html"><code>Fmlib_js.Dom.Node</code></a> for details.</p><p>In order to change the page in our simple application we just have to replace the headline by a new headline. The whole page is a div which contains the header and a navigation element. The <code>Node</code> module has functions to retrieve the first child and to replace a node by another node.</p><pre class="language-ocaml"><code>    let change (h: Element.t) (page: Element.t): unit =
+        let open Element in
+        let page = Element.node page
+        and h    = Element.node h
+        in
+        match Node.first page with
+        | None -&gt;
+            assert false (* Illegal call *)
+        | Some old_header -&gt;
+            Node.replace h old_header page</code></pre><p>We design our page element in a way that it always has a first child. Therefore we can ignore the illegal case that there is no first child.</p><p>Next comes the main function which generates the whole application. First we make some important data accessible.</p><pre class="language-ocaml"><code>    let make _: unit =
+        let window  = Window.get ()
+        in
+        let doc      = Window.document window
+        and history  = Window.history  window
+        and location = Window.location window
+        in
+        let open Document in
+        let open Element in
+        ...</code></pre><p>Then we create the elements of the page.</p><pre class="language-ocaml"><code>        let page = create_element &quot;div&quot; doc in
+        let nav  = create_element &quot;nav&quot; doc in
+        let el1  = text_element &quot;div&quot; &quot;go to page1&quot; doc
+        and el2  = text_element &quot;div&quot; &quot;go to page2&quot; doc
+        and el3  = text_element &quot;div&quot; &quot;go to page3&quot; doc
+        and h1   = text_element &quot;h1&quot;  &quot;Page1&quot; doc
+        and h2   = text_element &quot;h1&quot;  &quot;Page2&quot; doc
+        and h3   = text_element &quot;h1&quot;  &quot;Page3&quot; doc
+        in</code></pre><p>We use the fragment <code>#page2</code> in the url to indicate that we are on page 2. The initial hash is</p><pre class="language-ocaml"><code>        let hash = Location.hash location in</code></pre><p>Based on the hash we can find the correct header to display</p><pre class="language-ocaml"><code>        let find_header (hash: string): Element.t =
+            match hash with
+            | &quot;#page1&quot; -&gt; h1
+            | &quot;#page2&quot; -&gt; h2
+            | &quot;#page3&quot; -&gt; h3
+            | _ -&gt; h1
+        in</code></pre><p>The default case is page 1.</p><p>Every <i>go to page</i> needs a click handler to start a page change. We write a generic function to add a click handler.</p><pre class="language-ocaml"><code>        let add_click (hash: string) (h: Element.t) (el: Element.t): unit =
+            Event_target.add
+                &quot;click&quot;
+                (fun _ -&gt;
+                     change h page;
+                     History.push_state Base.Value.null &quot;&quot; hash history
+                )
+                (Node.event_target (node el))
+        in</code></pre><p>The click handler changes the header of the page to a new header <code>h</code> and pushes the new relative url <code>hash</code> to the browser history. The click handler is added to the element <code>el</code>.</p><p>Now we can wire the nodes and install the click handlers by</p><pre class="language-ocaml"><code>        Node.append (node el1) (node nav);
+        Node.append (node el2) (node nav);
+        Node.append (node el3) (node nav);
+        Node.append (node (find_header hash))  (node page);
+        Node.append (node nav)  (node page);
+        Node.append (node page) (node (Document.body doc));
+        add_click &quot;#page1&quot; h1 el1;
+        add_click &quot;#page2&quot; h2 el2;
+        add_click &quot;#page3&quot; h3 el3;</code></pre><p>In order to be able to react to clicks on the forward and backward button of the browser we need an event handler for the event type <code>popstate</code> of the browser window which does the corresponding page change.</p><pre class="language-ocaml"><code>        Event_target.add
+            &quot;popstate&quot;
+            (fun _ -&gt;
+                change
+                    (Location.hash location |&gt; find_header)
+                    page
+            )
+            (Window.event_target window)</code></pre><p>This completes the main function <code>make</code>.</p><p>The function <code>make</code> must not be executed before the html of the application is loaded into the browser. Reason: Before the loading the body of the document is not available and therefore the main function which accesses the body will crash.</p><p>There are three methods to call <code>make</code> after the page load.</p><p>The first method is to install an event listener for the load event on the browser window.</p><pre class="language-ocaml"><code>    let _ =
+        Event_target.add
+            &quot;load&quot;
+            make
+            Window.(event_target (get ()))</code></pre><p>The second method is to make a start command available to the surrounding javascript by</p><pre class="language-ocaml"><code>    let _ =
+        let open Base in
+        Main.make_global
+            &quot;start_application&quot;
+            Value.(function1 (fun _ -&gt; make (); undefined))</code></pre><p>and start the application in the html file</p><pre class="language-ocaml"><code>    &lt;html&gt;
+        &lt;head&gt;
+            &lt;script type=&quot;text/javascript&quot; src=&quot;my_app.js&quot;&gt;&lt;/script&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+            &lt;script&gt;
+                start_application ()
+            &lt;/script&gt;
+        &lt;/body&gt;
+    &lt;/html&gt;</code></pre><p>The third and simplest method is to call <code>make</code> directly within the application</p><pre class="language-ocaml"><code>    let _ = make ()</code></pre><p>and include the application code at the end of the body</p><pre class="language-ocaml"><code>    &lt;html&gt;
+        &lt;body&gt;
+            &lt;script type=&quot;text/javascript&quot; src=&quot;my_app.js&quot;&gt;&lt;/script&gt;
+        &lt;/body&gt;
+    &lt;/html&gt;</code></pre><p>Summary: With a few lines of code we have created a single page application.</p></div></body></html>
