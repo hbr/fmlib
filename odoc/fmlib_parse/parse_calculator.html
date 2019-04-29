@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>parse_calculator (fmlib_parse.parse_calculator)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_parse</a> &#x00BB; parse_calculator</nav><header class="odoc-preamble"><h1 id="calculator-example"><a href="#calculator-example" class="anchor"></a>Calculator Example</h1><p><a href="parse.html" title="parse">Up</a></p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#features">Features</a></li><li><a href="#operators">Operators</a></li><li><a href="#character-parser">Character Parser</a></li><li><a href="#operators-and-numbers">Operators and Numbers</a></li><li><a href="#parentheses">Parentheses</a></li><li><a href="#associating-operators">Associating Operators</a></li><li><a href="#performing-the-operations">Performing the Operations</a></li><li><a href="#expression-combinator-and-parser">Expression Combinator and Parser</a></li><li><a href="#some-unit-tests">Some Unit Tests</a></li></ul></nav></div><div class="odoc-content"><h2 id="features"><a href="#features" class="anchor"></a>Features</h2><p>In the following example we want to write a parser which parses and evaluates numeric expressions of the form</p><pre class="language-ocaml"><code>    1 + 2 * 3
+
+    (1 + 2) * 3
+
+    1 + - 2 * 3
+
+    1 + 2 ^ - 3</code></pre><p>We have one unary operator <code>-</code> and the binary operators <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and <code>^</code> and assume the usual precedence rules and associativity rules for arithmetic expressions.</p><p>All numbers are integer numbers.</p><p>Division by zero and negative exponents shall be flagged as errors.</p><p>Blanks and newlines shall be ignored.</p><h2 id="operators"><a href="#operators" class="anchor"></a>Operators</h2><p>We want to assign to each operator a precedence and an associativity.</p><pre class="language-ocaml"><code>    type assoc =
+        | Left
+        | Right
+
+
+    type info = int * assoc</code></pre><p>We find the information of the operators with the help of a map</p><pre class="language-ocaml"><code>    module Map:
+    sig
+        val find: char -&gt; info
+    end
+    =
+    struct
+        include Map.Make (Char)
+
+        let add_left (c: char) (i: int) (m: 'info t): 'info t =
+            add c (i, Left) m
+
+        let add_right (c: char) (i: int) (m: 'info t): 'info t =
+            add c (i, Right) m
+
+        let map: 'info t =
+            empty
+            |&gt; add_left  '+' 0
+            |&gt; add_left  '-' 0
+            |&gt; add_left  '*' 1
+            |&gt; add_left  '/' 1
+            |&gt; add_right '^' 2
+
+        let find (c: char): info =
+            match find_opt c map with
+            | None -&gt;
+                assert false (* illegal call *)
+            | Some i -&gt;
+                i
+    end</code></pre><h2 id="character-parser"><a href="#character-parser" class="anchor"></a>Character Parser</h2><p>We write the parser as a lexerless parser i.e. we use a character parser which uses characters as tokens.</p><pre class="language-ocaml"><code>    module Semantic =
+    struct
+        type t = Position.range * string
+    end
+
+    module CP = Character.Make (Unit) (Int) (String)
+
+    open CP
+
+    type operator = Position.range * char
+    type operand  = Position.range * int</code></pre><p>No state is needed, our final construct is an integer (the value of the expression) and semantic error messages are located strings.</p><p>Since there is no lexer, it is necessary to recognize and remove whitespace.</p><pre class="language-ocaml"><code>
+    let whitespace: int t =
+        char ' ' &lt;/&gt; char '\n'
+        |&gt; skip_zero_or_more
+        |&gt; no_expectations      (* expected whitespace shall never appear in
+                                   sytax error messages. *)
+
+
+    let lexeme (p: 'a t): 'a t =
+        let* a = p in
+        let* _ = whitespace in
+        return a</code></pre><p>Sequences of zero or more blanks and newlines are treated as whitespace. A lexeme is any construct followed by optional whitespace. The <code>lexeme</code> combinator is convenient. It allows us to write a combinator <code>p</code> without considering whitespace. Then <code>lexeme p</code> parses the construct described by <code>p</code> and removes the whitespace which after the construct.</p><h2 id="operators-and-numbers"><a href="#operators-and-numbers" class="anchor"></a>Operators and Numbers</h2><pre class="language-ocaml"><code>
+    let unary_operator: operator t =
+        lexeme (char '-' |&gt; located)
+
+
+    let binary_operator: operator t =
+        let op_chars = &quot;+-*/^&quot;
+        in
+        one_of_chars op_chars &quot;binary operator&quot;
+        |&gt;
+        located
+        |&gt;
+        lexeme
+
+
+    let number: operand t =
+        one_or_more_fold_left
+            (fun d -&gt; return d)
+            (fun v d -&gt; 10 * v + d |&gt; return)
+            digit
+        |&gt;
+        located
+        |&gt;
+        no_expectations
+        &lt;?&gt;
+        &quot;number&quot;        (* expecting a number *)
+        |&gt;
+        lexeme</code></pre><h2 id="parentheses"><a href="#parentheses" class="anchor"></a>Parentheses</h2><pre class="language-ocaml"><code>
+    let lpar: char t =
+        lexeme (
+            map (fun _ -&gt; ')') (char '(')
+            &lt;/&gt;
+            map (fun _ -&gt; ']') (char '[')
+        )
+        &lt;?&gt;
+        &quot;opening parenthesis '(' or '['&quot;
+
+
+    let rpar (c: char): char t =
+        lexeme (char c)</code></pre><p><code>lpar</code> recognizes a left parenthesis. '(' and '[' are allowed as opening parenthesis. The combinator <code>left</code> returns the expected closing parenthesis.</p><p><code>rpar</code> recognizes the closing parenthesis. It is given the expected closing parenthesis.</p><h2 id="associating-operators"><a href="#associating-operators" class="anchor"></a>Associating Operators</h2><p>If the parser finds an expression of the form <code>unop1 e1 op2 e2</code> it has to decide if <code>op1</code> binds stronger than <code>op2</code> and parse it like <code>(unop1 e1) op2 e2</code>.</p><p>The same applies to the binary expression <code>e1 op1 e2 op2 e3</code>. If <code>op1</code> binds stronger than <code>op2</code> then the parser has to parse it like <code>(e1 op1 e2) op2 e3</code>.</p><p>We use the precedence and associativity information of the operators to write the decision procedure.</p><pre class="language-ocaml"><code>    let is_left ((_,c1): operator) ((_,c2): operator): bool t =
+        (* Does the left operator 'c1' bind stronger than 'c2'? *)
+        let (p1, a1) = Map.find c1
+        and (p2, _ ) = Map.find c2
+        in
+        return (
+            p1 &gt; p2
+            ||
+            (
+                p1 = p2
+                &amp;&amp;
+                a1 = Left
+            )
+        )</code></pre><h2 id="performing-the-operations"><a href="#performing-the-operations" class="anchor"></a>Performing the Operations</h2><p>To perform a unary operation (which in our case is just the unary minus) we write the combinator</p><pre class="language-ocaml"><code>    let make_unary
+            (((p1,_), u): operator)
+            (((_,p2), a): operand)
+        : operand t
+        =
+        assert (u = '-');
+        return ((p1, p2), (-1) * a)</code></pre><p>For the binary operations we need a function to do the exponentiation.</p><pre class="language-ocaml"><code>    let power (a: int) (b: int): int =
+        assert (b &lt;&gt; 0);
+        let rec pow b res =
+            if b = 0 then
+                res
+            else
+                pow (b - 1) (a * res)
+        in
+        pow b 1</code></pre><p>Division and exponentiation can fail. The correct semantic action is described by the following combinator.</p><pre class="language-ocaml"><code>    let make_binary
+            (((p1,_), a): operand)
+            ((_, o): operator)
+            (((pb,p2), b): operand)
+        : operand t
+        =
+        match o with
+        | '+' -&gt;
+            return ((p1,p2), a + b)
+        | '-' -&gt;
+            return ((p1,p2), a - b)
+        | '*' -&gt;
+            return ((p1,p2), a * b)
+        | '/' -&gt;
+            if b = 0 then
+                fail ((pb, p2), &quot;Division by zero&quot;)
+            else
+                return ((p1,p2), a / b)
+        | '^' -&gt;
+            if b &lt; 0 then
+                fail ((pb, p2), &quot;Negative exponent&quot;)
+            else
+                return ((p1,p2), power a b)
+        | _ -&gt;
+            assert false (* cannot happen *)</code></pre><h2 id="expression-combinator-and-parser"><a href="#expression-combinator-and-parser" class="anchor"></a>Expression Combinator and Parser</h2><p>With the help of the library function <a href="Fmlib_parse/Interfaces/module-type-COMBINATOR/index.html#val-operator_expression" title="Fmlib_parse.Interfaces.COMBINATOR.operator_expression"><code>operator_expression</code></a> and <a href="Fmlib_parse/Interfaces/module-type-COMBINATOR/index.html#val-parenthesized" title="Fmlib_parse.Interfaces.COMBINATOR.parenthesized"><code>parenthesized</code></a> a combinator which parses an arbitrarily deep expression can be written easily.</p><pre class="language-ocaml"><code>    let rec expr (): operand t =
+        let primary (): operand t =
+            parenthesized
+                (fun _ a _ -&gt; return a)
+                lpar
+                expr
+                rpar
+            &lt;/&gt;
+            number
+        in
+        operator_expression
+            (primary ())
+            (Some unary_operator)
+            binary_operator
+            is_left
+            make_unary
+            make_binary</code></pre><p>An expression is an operator expression where the primary expression is either a parenthesized expression or a number.</p><p>All used combinators remove whitespace after each construct. There remains to remove initial whitespace. The final parser is constructed by</p><pre class="language-ocaml"><code>    let parse: Parser.t =
+        make () (let* _ = whitespace in expr () |&gt; map snd)</code></pre><h2 id="some-unit-tests"><a href="#some-unit-tests" class="anchor"></a>Some Unit Tests</h2><p>Some unit tests show that the parser works as expected.</p><pre class="language-ocaml"><code>    let%test _ =
+        let open Parser in
+        let p = run_on_string &quot; 1 +,2 + 2 &quot; parse
+        in
+        has_failed_syntax p
+        &amp;&amp;
+        column p = 4</code></pre><pre class="language-ocaml"><code>    let%test _ =
+        let open Parser in
+        let p = run_on_string &quot;[1 + 2 ) + 2 &quot; parse
+        in
+        has_failed_syntax p
+        &amp;&amp;
+        column p = 7</code></pre><pre class="language-ocaml"><code>    let%test _ =
+        let p = Parser.run_on_string &quot;1 - 2 - 3&quot; parse in
+        Parser.(
+            has_succeeded p
+            &amp;&amp;
+            final p = -4
+        )</code></pre><pre class="language-ocaml"><code>    let%test _ =
+        let p = Parser.run_on_string &quot; 1 + 2 ^ 3&quot; parse in
+        Parser.(
+            has_succeeded p
+            &amp;&amp;
+            final p = 9
+        )</code></pre><pre class="language-ocaml"><code>let%test _ =
+    let p = Parser.run_on_string &quot;1 + - 2 * 3&quot; parse in
+    Parser.(
+        has_succeeded p
+        &amp;&amp;
+        final p = -5
+    )</code></pre><pre class="language-ocaml"><code>    let%test _ =
+        let open Parser in
+        let p = run_on_string &quot;1 + 2 ^  - 3&quot; parse (* semantic error *)
+        in
+        has_failed_semantic p
+        &amp;&amp;
+        failed_semantic p = &quot;Negative exponent&quot;</code></pre><pre class="language-ocaml"><code>    let%test _ =
+        let open Parser in
+        let p = run_on_string &quot;1 + 2 ^  (3 / 0) &quot; parse (* semantic error *)
+        in
+        has_failed_semantic p
+        &amp;&amp;
+        failed_semantic p = &quot;Division by zero&quot;</code></pre><p><a href="parse.html" title="parse">Up</a></p></div></body></html>

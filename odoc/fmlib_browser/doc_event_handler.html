@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>doc_event_handler (fmlib_browser.doc_event_handler)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_browser</a> &#x00BB; doc_event_handler</nav><header class="odoc-preamble"><h1 id="event-handler"><a href="#event-handler" class="anchor"></a>Event Handler</h1><p><a href="doc_getting_started.html" title="doc_getting_started">Getting started</a> <a href="doc.html" title="doc">Up</a></p><p>The code in a browser application is event driven. Each pressing of a key, moving of the mouse etc. generates a javascript event and the browser checks if there is an event handler installed and call the event handling function with the event. This architecture is quite universal and flexible.</p><p>In the library <a href="Fmlib_browser/index.html"><code>Fmlib_browser</code></a> each event of interest has to be decoded into a message (whose type is user defined) and the message together with the state (also user defined) is passed to the user defined update function to compute the new state and new commands.</p><p>In order to write customized event handlers we need decoders to decode information available in the javascript world into a message. The module <a href="Fmlib_browser/Attribute/index.html" title="Fmlib_browser.Attribute">Attribute</a> has a function <code>handler</code> with the signature</p><pre class="language-ocaml"><code>    val handler:
+        string                      (* event type e.g. &quot;mouseenter&quot;    *)
+        -&gt; Event_flag.stop          (* stop propagation flag           *)
+        -&gt; Event_flag.prevent       (* prevent default action flag     *)
+        -&gt; 'm Decoder.t             (* decode the event into a message *)
+        -&gt; 'm Attribute.t</code></pre><p>An event handler is added on a html element of the virtual dom if the html element has a handler attribute.</p><p>A simple handler to get notified on mouse clicks looks like</p><pre class="language-ocaml"><code>    let on_click (m: 'msg): 'msg Attribute.t =
+        let open Attribute in
+        handler
+            &quot;click&quot;
+            Event_flag.no_stop
+            Event_flag.no_prevent
+            Decoder.(return m)</code></pre><p>A decoder which returns on each mouseclick the tag name of the clicked element:</p><pre class="language-ocaml"><code>    let on_click_tagname: string Attribute.t =
+        let open Attribute in
+        handler
+            &quot;click&quot;
+            Event_flag.no_stop
+            Event_flag.no_prevent
+            Decoder.(field &quot;target&quot; (field &quot;tagName&quot; string))</code></pre><p><a href="doc_getting_started.html" title="doc_getting_started">Getting started</a> <a href="doc.html" title="doc">Up</a></p></header><div class="odoc-content"></div></body></html>
