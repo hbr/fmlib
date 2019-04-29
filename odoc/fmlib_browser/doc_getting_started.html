@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>doc_getting_started (fmlib_browser.doc_getting_started)</title><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta charset="utf-8"/><meta name="generator" content="odoc 2.2.1"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="index.html">fmlib_browser</a> &#x00BB; doc_getting_started</nav><header class="odoc-preamble"><h1 id="getting-started"><a href="#getting-started" class="anchor"></a>Getting Started</h1><p><a href="doc_overview.html">Overview</a> <a href="doc.html">Up</a> <a href="doc_event_handler.html">Event Handler</a></p></header><nav class="odoc-toc"><ul><li><a href="#installation">Installation</a></li><li><a href="#write-the-application">Write the application</a></li><li><a href="#compile-the-application-via-dune">Compile the application via dune</a></li><li><a href="#html-file">Html file</a></li><li><a href="#a-digital-clock">A digital clock</a></li></ul></nav><div class="odoc-content"><h2 id="installation"><a href="#installation" class="anchor"></a>Installation</h2><p>The library <a href="Fmlib_browser/index.html"><code>Fmlib_browser</code></a> is best installed via opam issuing the command</p><pre>    opam install fmlib_browser</pre><h2 id="write-the-application"><a href="#write-the-application" class="anchor"></a>Write the application</h2><p>In this section we write first a very simple application with a counter value and two buttons to decrease and increase the counter value. Here is the ocaml source file which implements the application.</p><pre class="language-ocaml"><code>(* file: counter.ml *)
+open Fmlib_browser
+
+(* The type of the state is [int]. Therefore no type declaration is
+   necessary for the state. *)
+
+let type msg =
+    | Decrement
+    | Increment
+
+let view (counter: int): msg Html.t =
+    let open Html in
+    let open Attribute in
+    div []
+        [ button
+            [color &quot;blue&quot;; on_click Decrement]
+            [text &quot;-&quot;]
+        ; span
+            [background_color &quot;silver&quot;; font_size &quot;20px&quot;]
+            [text (string_of_int counter)]
+        ; button
+            [color &quot;blue&quot;; on_click Increment]
+            [text &quot;+&quot;]
+        ]
+
+let update (counter: int): msg -&gt; int = function
+    | Decrement -&gt;
+        counter - 1
+    | Increment -&gt;
+        counter + 1
+
+let _ =
+    sandbox         (* very simple applications are sandbox applications *)
+        0           (* initial state *)
+        view        (* view function *)
+        update      (* update function *)</code></pre><h2 id="compile-the-application-via-dune"><a href="#compile-the-application-via-dune" class="anchor"></a>Compile the application via dune</h2><p>The application in the file <code>webapp.ml</code> has to be compiled to javascript. This is done with the help of <code>js_of_ocaml</code>. The following dune file can be used:</p><pre>    (executable
+      (name counter)
+      (modes js)                    ; Activate compilation to javascript
+      (libraries fmlib_browser)     ; Use the library
+    )
+
+    (rule
+        (targets counter.js)         ; Generate the file 'counter.js'
+        (deps    counter.bc.js)
+        (mode   (promote (until-clean)))
+        (action (copy counter.bc.js counter.js))
+    )</pre><p>The application is compiled via one of the commands</p><pre>    dune build ./counter.js
+
+    dune build --profile release ./counter.js</pre><p>The first one generates the file <code>counter.js</code> with a lot of diagnostic information. The second one generates a much smaller file <code>counter.js</code> with no diagnostic information.</p><h2 id="html-file"><a href="#html-file" class="anchor"></a>Html file</h2><p>Furthermore we need a html file.</p><pre>    &lt;!-- file: index.html --&gt;
+    &lt;!DOCTYPE html&gt;
+    &lt;html&gt;
+        &lt;head&gt;
+            &lt;script type=&quot;text/javascript&quot; src=&quot;counter.js&quot;&gt;
+            &lt;/script&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+        &lt;/body&gt;
+    &lt;/html&gt;</pre><p>The sandbox application installs itself as an event listener for the <code>onload</code> event and creates and updates the dom directly below the <code>body</code> element of the html document. Everything in the html file below the body element will be overwritten.</p><p>Now you have the files <code>webapp.js</code> and <code>index.html</code> in your source directory. By loading <code>index.html</code> into the browser (either from a webserver or from disk), the browser loads the application <code>webapp.js</code> and fires the <code>onload</code> event which starts the application.</p><h2 id="a-digital-clock"><a href="#a-digital-clock" class="anchor"></a>A digital clock</h2><p>In order to demonstrate commands and subscriptions with a simple example we write an application displaying a digital clock. We want the webpage to look like</p><pre>    10:15:37</pre><p>to represent the time of 10 o'clock and 15 minutes and 37 seconds. The current time has to be updated each second.</p><p>The state of the application contains the posix time and the current time zone.</p><pre class="language-ocaml"><code>(* file: clock.ml *)
+
+open Fmlib_browser
+
+type state = {
+    time: Time.t;
+    zone: Time.Zone.t;
+}</code></pre><p>The application has to be informed about the current time and time zone and has to receive a notification each second to update the time. The following message type contains the needed information.</p><pre class="language-ocaml"><code>type msg =
+    | Time of Time.t            (* message for the current time   *)
+    | Zone of Time.Zone.t       (* message for the current time zone *)</code></pre><p>We use a minimal view function to render the current time in a browser window.</p><pre class="language-ocaml"><code>let view (state: state): msg Html.t * string =
+    let open Html in
+    h2
+        []
+        [text (
+            Printf.sprintf &quot;%02d:%02d:%02d&quot;
+                (Time.hour   state.zone state.time)
+                (Time.minute state.zone state.time)
+                (Time.second state.zone state.time))
+        ]
+    ,
+    &quot;Digital clock&quot;</code></pre><p>For a full blown application the view function returns the virtual dom and the title of the page.</p><p>The update function is quite straightforward.</p><pre class="language-ocaml"><code>let update (state: state): msg -&gt; state * msg Command.t =
+function
+    | Time time -&gt;
+        {state with time}, Command.none
+    | Zone zone -&gt;
+        {state with zone}, Command.none</code></pre><p>We need a subscription function to get each second a notification of the new time.</p><pre class="language-ocaml"><code>let subscription (_: state): msg Subscription.t =
+    Subscription.every 1000 (fun time -&gt; Time time)</code></pre><p>We need a message <code>Time time</code> each second independently from the system state. The time for repeating timers is expressed in milliseconds.</p><p>In order to start the application we need an initial state and an initial command.</p><pre class="language-ocaml"><code>initial_state: state =
+    {time = Time.zero; zone = Time.Zone.utc}
+
+initial_command: msg Command =
+    Command.batch [
+         Command.perform Task.(map (fun time -&gt; Time time) now)
+         ;
+         Command.perform Task.(map (fun zone -&gt; Zone zone) time_zone)
+    ]</code></pre><p>The task <code>now</code> returns the current posix time and the task <code>time_zone</code> returns the current time zone. However the application needs messages which can be fed into the update function. Therefore the results have to be mapped to messages. Unfortunately ocaml does not allow constructors to be used like functions, therefore two small anonymous function are needed to do the mapping.</p><p>Initially we set the time to zero and the time zone to utc. This is evidently not correct. Therefore we immediately start commands which get the current time and the current time zone.</p><p>The application is started by</p><pre class="language-ocaml"><code>let _ =
+    basic_application
+        initial_state
+        initial_command
+        view
+        subscription
+        update</code></pre><p>The corresponding dune and html files are the same as for the counter example.</p></div></body></html>
