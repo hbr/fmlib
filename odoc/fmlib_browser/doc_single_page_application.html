@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>doc_single_page_application (fmlib_browser.doc_single_page_application)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_browser</a> &#x00BB; doc_single_page_application</nav><header class="odoc-preamble"><h1 id="writing-a-single-page-application"><a href="#writing-a-single-page-application" class="anchor"></a>Writing a single-page application</h1><p><a href="doc_getting_started.html" title="doc_getting_started">Getting Started</a> <a href="doc.html" title="doc">Up</a> <a href="doc_detailed_overview.html" title="doc_detailed_overview">A More Detailed Overview</a></p><p>}</p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#single-page-applications">Single-page applications</a><ul><li><a href="#motivation">Motivation</a></li><li><a href="#basic-mechanism">Basic Mechanism</a></li><li><a href="#using-the-browser-history">Using the Browser History</a></li></ul></li><li><a href="#example">Example</a><ul><li><a href="#counter-and-digital-clock">Counter and Digital Clock</a></li><li><a href="#defining-the-pages">Defining the pages</a></li><li><a href="#messages-and-state">Messages and State</a></li><li><a href="#view">View</a></li><li><a href="#update">Update</a></li><li><a href="#subscriptions">Subscriptions</a></li><li><a href="#glueing-it-all-together">Glueing it all together</a></li><li><a href="#instantiating-the-application-from-html">Instantiating the application from HTML</a></li></ul></li></ul></nav></div><div class="odoc-content"><h2 id="single-page-applications"><a href="#single-page-applications" class="anchor"></a>Single-page applications</h2><h3 id="motivation"><a href="#motivation" class="anchor"></a>Motivation</h3><p>On classical websites, changing to a different page means that a new HTML document is requested from the server. This is called a page load and can cause a noticeable delay and flickering as the new document is rendering.</p><p>E.g. for online banking there might be several pages on the server</p><pre>    https://mybank.com/accounts/login.html
+    https://mybank.com/accounts/main.html
+    https://mybank.com/accounts/transfer.html
+    https://mybank.com/accounts/order.html
+    https://mybank.com/accounts/postbox.html
+    ...</pre><p>After the login sequence a main page is displayed which provides e.g. the financial status of your account. Next you might click on a link to make a money transfer to another account. Or might click on a link to buy some assets in your portfolio etc. From each specific page there is usually a link to the main page.</p><p>A clickable link on the different pages has the form</p><pre>    &lt;a href=transfer.html&gt;Money transfer&lt;/a&gt;</pre><p>Usually relative links are used to request specific page of the account management. The browser resolves the relative link to the absolute link</p><pre>    https://mybank.com/accounts/transfer.html</pre><p>Each different activity on the account requires a separate page load. For the web browser all pages are completely independent. The web server has to manage state and session data which have to be transferred back and forth on each page load.</p><p>In single-page applications, there is only a single page load (hence the name): the inital one. Instead of downloading one HTML document per page, the frontend code is responsible for implementing a &quot;virtual page&quot; concept. When changing pages, a virtual DOM algorithm replaces only parts of the DOM which can speed up rendering and reduce flickering. Furthermore the browser can manage all state data.</p><h3 id="basic-mechanism"><a href="#basic-mechanism" class="anchor"></a>Basic Mechanism</h3><p>In single page applications the default action of a link (i.e. load a new page into the browser) is suppressed. All clicks on anchors are intercepted. A click on an anchor element is fed into a function <code>on_url_request</code> (see <a href="Fmlib_browser/index.html#val-application"><code>Fmlib_browser.application</code></a>) which gets the resolved (i.e. absolute) url, analyzes it and generates a message which is fed into the update function of the application.</p><p>The update function decides what to do. If the update function ignores the message, then nothing happens. Usually the update function gets with the message enough information to decide if the clicked link belongs to the application or requires a page load. If the link does not point to the application then the update function can isssue a command to trigger a page load. If the link belongs to the application the update function usually issues a command to push the new url into the browser history.</p><p>The command <a href="Fmlib_browser/Command/index.html#val-push_url" title="Fmlib_browser.Command.push_url"><code>push_url</code></a> enters the new url to the browser history and generates an event which is fed into a function <code>on_url_change</code> (see <a href="Fmlib_browser/index.html#val-application"><code>Fmlib_browser.application</code></a>). This function gets the new url, analyzes it and generates a message which is fed into the update function. By receiving this message the application switches to the new page.</p><p>Alternatively the command <a href="Fmlib_browser/Command/index.html#val-push_url" title="Fmlib_browser.Command.push_url"><code>replace_url</code></a> can be used to replace the current entry in the browser history with the new url. Then the new url generates via <code>on_url_change</code> a message which is fed into the update function and trigger the switching to the new page.</p><p>Switching to an external page by triggering a page load is a one step process. The link is clicked, it goes through the <code>on_url_request</code> function and then the page load is triggered.</p><p>Switching to an internal page is a two stage process. The link is clicked, it goes through the <code>on_url_request</code> and generates a <code>push_url</code> or <code>replace_url</code> command. This generates an event where the new url is fed into the <code>on_url_change</code> function which generates a message to change to the new virtual page.</p><p>Summary:</p><ol><li>User clicks on an anchor element with an href attribute</li><li>Resolved url generates via <code>on_url_request</code> a message which is fed into the update function</li><li><p>Update function decides what to do:</p><ul><li>Load an external page</li><li>Generate an new entry in the browser history via <a href="Fmlib_browser/Command/index.html#val-push_url" title="Fmlib_browser.Command.push_url"><code>push_url</code></a> or replace the current entry in the browser history via <a href="Fmlib_browser/Command/index.html#val-push_url" title="Fmlib_browser.Command.push_url"><code>replace_url</code></a></li></ul></li><li>In case a new url is pushed into the browser history or the current url in the browser history is replaced: The new url generates via <code>on_url_change</code> a message which is fed into the update function.</li><li>The update function changes the state such that it represents the new url</li></ol><h3 id="using-the-browser-history"><a href="#using-the-browser-history" class="anchor"></a>Using the Browser History</h3><p>A switch to a different internal page of the application creates a new entry into the browser history. The user might press the back button (maybe several times) or the forward button. As long as the url in the corresponding entry of the browser history belongs to the single page application, the browser does not trigger a page load. It just creates an event which is fed into the <code>on_url_change</code> function which creates a message which is then fed into the update function.</p><p>I.e. moving through the browser history of the single page application by pressing the forward or backward button of the browser is a one stage process. The button is clicked, the new url is fed into the <code>on_url_change</code> function to generate a message which is sent to the update function. The update function switches to the new internal page.</p><p>The user can move through the browser history by pressing the back or forward button of the browser. Alternatively moving through the browser history can be triggered by the commands <a href="Fmlib_browser/Command/index.html#val-back"><code>Fmlib_browser.Command.back</code></a> and <a href="Fmlib_browser/Command/index.html#val-forward"><code>Fmlib_browser.Command.forward</code></a>.</p><p>It is an important decision whether to switch to a new virtual page via the <code>push_url</code> or the <code>replace_url</code> command. The <code>push_url</code> command enables the user to switch arbitrarily between the virtual pages of the single page application by pressing the back and forward button of the browser. If the <code>replace_url</code> command is used, no new entry is entered into the browser history. Therefore the user can use only the interfaces of the single page application to switch between the virtual pages. Usually the <code>push_url</code> commands is used to switch between relatively independent virtual pages of the single page application. If the virtual pages are tightly coupled like e.g. in a banking application the command <code>replace_url</code> might be the better choice.</p><p>Summary:</p><ol><li>The user presses the back or forward button or the command <code>Command.back</code> or <code>Command.forward</code> is issued.</li><li>The new url generates via the <code>on_url_change</code> a message which is fed into the update function.</li><li>The update function switches to a state representing the new url.</li></ol><h2 id="example"><a href="#example" class="anchor"></a>Example</h2><h3 id="counter-and-digital-clock"><a href="#counter-and-digital-clock" class="anchor"></a>Counter and Digital Clock</h3><p>In order to demonstrate the implementation of a single page application we merge the counter and the digital clock applications shown in the chapter <a href="doc_getting_started.html" title="doc_getting_started">Getting Started</a> into a single page application.</p><p>A single page application with more subapplications can be found at <a href="https://github.com/hbr/fmlib/tree/master/src/examples/browser">https://github.com/hbr/fmlib/tree/master/src/examples/browser</a> with the files <code>single_page.ml</code>, <code>single_page_counter.ml</code>, ...</p><p>The counter page and the digital clock page are completely independent, therefore we use the command <code>push_url</code> to switch between the virtual pages and the user can arbitrarily push the back and forward button of the browser.</p><p>We assume that the single page application is on a webserver at</p><pre>    /fmlib/webapp</pre><p>i.e. on the webserver there are the files</p><pre>    /fmlib/webapp/single_page.html
+    /fmlib/webapp/single_page.js</pre><p>i.e. the single page application is loaded by letting the browser load the url</p><pre>    https:/hbr.github.io/fmlib/webapp/single_page.html</pre><p>with a single load (i.e. it loads the html file and the javascript file).</p><h3 id="defining-the-pages"><a href="#defining-the-pages" class="anchor"></a>Defining the pages</h3><p>Our example has 3 virtual pages:</p><ol><li>A home page offering a menu to switch between the pages.</li><li>A page representing the counter.</li><li>A page representing the digital clock.</li></ol><p>In this simple example it makes sense to run the different pages in parallel i.e. the clock application maintains its state and gets each second an update of the current time even if it is not the current page and the counter page maintains its state even if it is not the current page.</p><p>In a more complex single page application the structure might be completely different.</p><p>It is convenient to put the logic of each page into an ocaml module. Each module in our example satisfies the signature</p><pre class="language-ocaml"><code>    module type PAGE =
+    sig
+        type msg
+        type state
+        val init:   state * msg Command.t
+        val view:   state -&gt; msg Html.t * string (* Virtual dom and
+                                                    a title string *)
+        val update: state -&gt; msg -&gt; state * msg Command.t
+        val subscriptions: state -&gt; msg Subscription.t
+    end</code></pre><p>First we define the home page which has no internal logic and just displays a menu to switch the counter or the digital clock.</p><pre class="language-ocaml"><code>    module Home_page =
+    struct
+        type msg = |        (* The home page does not receive messages. *)
+        type state = unit   (* No interesting state. *)
+        let init: state * msg Command.t = (), Command.none
+        let view (_: state): 'a Html.t =
+            (* There are no messages, therefore ['a Html.t] is possible. *)
+            let open Html in
+            let open Attribute in
+            ( ul [] [
+                    li [] [href &quot;counter&quot;];
+                    li [] [href &quot;digital clock&quot;];
+              ]
+            )
+        let update (): msg -&gt; state * msg Command.t =
+            function
+            | _ -&gt; .       (* No messages, therefore no call to the update
+                              function possible. *)
+        let subscriptions (_: state): msg Subscription.t =
+            assert false (* Illegal call *)
+    end</code></pre><p>The modules <code>Counter_page</code> and <code>Digital_clock_page</code> can be defined easily by using the implementations shown in the chapter <a href="doc_getting_started.html" title="doc_getting_started">Getting Started</a>.</p><pre class="language-ocaml"><code>    module Counter_page =
+    struct
+        type msg = Increment | Decrement
+        type state = {counter: int}
+        let init: state * msg Command.t = {counter = 0}, Command.none
+        let view (s: state): msg Html.t  =
+            ...
+        let update = ...
+        let subscriptions = fun _ _ = assert false (* Illegal call *)
+    end
+
+    module Clock_page =
+    struct
+        type msg = | Got_time of Time.t | Got_time_zone of Time.Zone.t
+        type state = {time: Time.t; zone: Time.Zone.t}
+
+        let init = ...
+        let view = ...
+        let subscription = ...
+    end</code></pre><h3 id="messages-and-state"><a href="#messages-and-state" class="anchor"></a>Messages and State</h3><p>In the single page application we need global messages and a global state and an indicator for the current page.</p><pre class="language-ocaml"><code>    type msg =
+        | Clicked_link of Navigation.url_request
+        | Changed_url of Url.t
+        | Got_counter_msg of Counter_page.msg
+        | Got_clock_msg   of Clock_page.msg
+
+    type page = Home | Counter | Clock (* The current page *)
+
+    type state = {
+        key: msg Navigation.key; (* The navigation key is needed
+                                    for [push_url] *)
+        counter: Counter_page.state;
+        clock:   Clock_page.state;
+        page:    page;
+    }
+
+    (* Ocaml does not allow to use constructors as functions, therefore the
+       following functions are convenient. *)
+
+    let counter_msg m = Got_counter_msg m
+    let clock_msg m   = Got_clock_msg   m</code></pre><p>Note that the states of the counter page and the clock page are present in the global state even if they are not the current pages. No state of the home page is needed in this simple example, because the state of the home page is trivial.</p><h3 id="view"><a href="#view" class="anchor"></a>View</h3><p>We present all virtual pages in a common format</p><pre>    Home button                             link to documentation
+
+    Headline for the virtual page
+
+    Virtual page</pre><p>The function <code>view_frame</code> displays a specific page in a common format.</p><pre class="language-ocaml"><code>    let view_page
+        (page: msg Html.t) (headline: string)
+        : msg Html.t * string
+        =
+        let open Html in
+        let open Attribute in
+        div [] [
+            nav [margin &quot;20px&quot;] [
+                a [href &quot;single_page.html&quot;] [text &quot;Home&quot;];
+                a [href &quot;... link to documentation ...&quot;;
+                   style &quot;float&quot; &quot;right&quot;]
+                  [text &quot;documentation&quot;]
+            ];
+            div [margin &quot;20px&quot;;
+                 border_style &quot;solid&quot;;
+                 padding &quot;0px 20px 20px 20px&quot;]
+                [ h2 [] [text headline];
+                  page
+                ]
+        ]</code></pre><p>We get the virtual dom of the pages by calling the <code>view</code> function of the corresponding page. In order to get a virtual dom for the single page app the virtual dom of the specific page (except the home pages which has no messages) has to be mapped to a part of the virtual dom of the whole app.</p><pre class="language-ocaml"><code>    let page_html (state: state): msg Html.t * string =
+        match state.page with
+        | Home -&gt;
+            Home_page.view (), (* trivial state, no mapping needed *)
+            &quot;Home&quot;
+        | Counter -&gt;
+            Counter_page.view state.counter |&gt; Html.map counter_msg,
+            &quot;Counter&quot;
+        | Clock -&gt;
+            Clock_page.view state.clock |&gt; Html.map clock_msg,
+            &quot;Clock&quot;</code></pre><p>With these functions it is easy to write the view function for the single page application.</p><pre class="language-ocaml"><code>    let view (state: state): msg Html.t * string =
+            let page, title = page_html state
+            in
+            view_page page title, title</code></pre><h3 id="update"><a href="#update" class="anchor"></a>Update</h3><p>In order to route to the correct virtual page we need a function which parses the internal url and returns the correct page.</p><pre class="language-ocaml"><code>
+    let route (url: Url.t): page =
+        (* Find the new page by parsing the internal url. *)
+        let open Url.Parser in
+        match
+            parse
+                ( s &quot;fmlib&quot; &lt;/&gt;
+                  s &quot;webapp&quot; &lt;/&gt;
+                  one_of [
+                    map Home    (s &quot;single_page.html&quot;)
+                    map Counter (s &quot;counter&quot;);
+                    map Clock   (s &quot;clock&quot;);
+                  ])
+                url
+        with
+        | None -&gt;
+            assert false (* Cannot happen, one path must match. *)
+        | Some page -&gt;
+            page</code></pre><p><code>route</code> uses the functions <code>one_of</code>, <code>map</code> and <code>s</code> from the <a href="Fmlib_browser/Url/Parser/index.html" title="Fmlib_browser.Url.Parser">Url.Parser</a> module. Each of these functions returns a path parser (for parsing the <code>path</code> of a <code>Url.t</code>):</p><ul><li><code>s &quot;fmlib&quot;</code> tries to consume the path segment &quot;fmlib&quot;</li><li><code>s &quot;webapp&quot;</code> tries to consume the path segment &quot;webapp&quot;</li><li><code>s &quot;counter&quot;</code> tries to consume the path segment &quot;counter&quot;</li><li><code>map Counter p</code> produces the value <code>Counter</code> of type <code>page</code> if the parser <code>p</code> is successful</li><li><code>one_of</code> combines multiple path parsers and yields the result of the first successful one</li></ul><p>This kind of parsing is based on <a href="https://people.cs.nott.ac.uk/pszgmh/monparsing.pdf">monadic parser combinators</a> and might seem very unfamiliar to developers who are new to functional programming. For now it is sufficient to understand, that it allows us to combine several &quot;sub-parsers&quot;, each parsing a specific route, into a bigger parser. This parser is then passed to <code>Url.Parser.parse</code>, which either returns <code>Some page</code> or <code>None</code>.</p><p>With the help of the <code>route</code> function it is easy to write the update function. Note that an <a href="Fmlib_browser/Navigation/index.html#type-url_request" title="Fmlib_browser.Navigation.url_request">url request</a> is external only if it has a different origin than the web application, but a url on the same origin might point to a different application. Therefore we have to analyze an internal url as well.</p><p>A message arriving for a specific page is forwarded to the correct module with the appropriate mapping of the messages.</p><pre class="language-ocaml"><code>    let update (state: state): msg -&gt; state * msg Command.t =
+        function
+        | Clicked_link (External e) -&gt;
+            state, Command.load e
+
+        | Clicked_link (Internal i) -&gt;
+            let url = Url.to_string i
+            in
+            state,
+            if String.starts_with ~prefix:&quot;/fmlib_webapp&quot; i.path then
+                Command.push_url state.key url
+            else
+                (* Link to the documentation might be on the same server *)
+                Command.load url *)
+
+        | Changed_url url -&gt;
+            {state with page = route url},
+            Command.none
+
+        | Got_counter_msg msg -&gt;
+            let counter, cmd = Counter_page.update state.counter msg in
+            {state with counter}, Command.map counter_msg cmd
+
+        | Got_clock_msg msg -&gt;
+            let counter, cmd = Clock_page.update state.clock msg in
+            {state with clock}, Command.map clock_msg cmd
+</code></pre><h3 id="subscriptions"><a href="#subscriptions" class="anchor"></a>Subscriptions</h3><p>Only the digital clock page has subscriptions to timer events.</p><pre class="language-ocaml"><code>    let subscriptions (state: state): msg Command.t =
+        Single_page.subscriptions state.clock
+        |&gt; Command.map clock_msg</code></pre><h3 id="glueing-it-all-together"><a href="#glueing-it-all-together" class="anchor"></a>Glueing it all together</h3><p>The goal is to call <a href="Fmlib_browser/index.html#val-application" title="Fmlib_browser.application">application</a> which produces the most fully-featured kind of application of this library:</p><pre class="language-ocaml"><code>    let _ =
+        application
+            &quot;single_page_app&quot;
+            init
+            view
+            subscriptions
+            update
+            (fun req -&gt; Clicked_link req) (* on_url_request *)
+            (fun url -&gt; Changed_url url) (* on_url_change *)</code></pre><p>The first argument is an application identifier which allows referencing the application from Javascript. The last two arguments are for URL management:</p><ul><li><code>on_url_request</code> is called when the user clicks a link. It takes a <a href="Fmlib_browser/Navigation/index.html#type-url_request" title="Fmlib_browser.Navigation.url_request">url_request</a> and produces a message called <code>Clicked_link</code></li><li><code>on_url_change</code> is called when the URL in the browser's address bar has actually changed. It takes a <code>Url.t</code> and produces a message called <code>Changed_url</code></li></ul><p>See module <a href="Fmlib_browser/Navigation/index.html" title="Fmlib_browser.Navigation">Navigation</a> for more information about URL management.</p><h3 id="instantiating-the-application-from-html"><a href="#instantiating-the-application-from-html" class="anchor"></a>Instantiating the application from HTML</h3><p>Compilation works the same as in the <a href="doc_getting_started.html" title="doc_getting_started">previous example</a> but the instantiation from HTML works slightly differently:</p><pre class="language-html"><code>    &lt;!DOCTYPE html&gt;
+    &lt;html&gt;
+        &lt;head&gt;
+            &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+            &lt;script type=&quot;text/javascript&quot; src=&quot;main.js&quot;&gt;
+            &lt;/script&gt;
+            &lt;script&gt;
+                single_page_app.init ({
+                    data: null,
+                    onMessage: () =&gt; {},
+                })
+            &lt;/script&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+        &lt;/body&gt;
+    &lt;/html&gt;</code></pre><p>We call <code>init</code> on the <code>single_page_app</code> subject. This function takes a dictionary with two fields:</p><ul><li><code>data</code> allows allows passing data to our application from Javascript</li><li><code>onMessage</code> allows sending messages from our application to Javascript</li></ul><p>Here, we simply pass <code>null</code> and an empty function.</p><p>Note, that to run this example, we need a webserver, that serves this HTML document. Simply storing it into an <code>index.html</code> file and open it in the browser will not work, because that gives us a <code>file</code> URL, but only <code>http</code> or <code>https</code> URLs are supported by this library.</p><p>We can run <code>python3 -m http.server</code> or write a webserver in OCaml (see <code>examples/browser/single_page_backend.ml</code> for an example).</p><p><a href="doc_getting_started.html" title="doc_getting_started">Getting Started</a> <a href="doc.html" title="doc">Up</a> <a href="doc_detailed_overview.html" title="doc_detailed_overview">A More Detailed Overview</a></p><p>}</p></div></body></html>

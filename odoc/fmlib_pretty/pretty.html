@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>pretty (fmlib_pretty.pretty)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_pretty</a> &#x00BB; pretty</nav><header class="odoc-preamble"><h1 id="pretty-printing-overview"><a href="#pretty-printing-overview" class="anchor"></a>Pretty Printing Overview</h1><p><a href="index.html" title="index">Up</a> <a href="Fmlib_pretty/Pretty/index.html" title="Fmlib_pretty.Pretty">API</a></p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#basics">Basics</a></li><li><a href="#term-printing">Term Printing</a></li><li><a href="#character-stream">Character Stream</a></li><li><a href="#formatted-paragraphs">Formatted Paragraphs</a></li><li><a href="#generate-documents">Generate Documents</a></li></ul></nav></div><div class="odoc-content"><h2 id="basics"><a href="#basics" class="anchor"></a>Basics</h2><p>The pretty printer allows to print nicely formatted ascii text. The user generates a document with break hints. The primitives to generate documents are</p><ul><li><code>empty</code> Empty document.</li><li><code>text str</code> Document which contains the string <code>str</code>. <code>str</code> should not contain newlines in order not to interfere with the formatter.</li><li><code>break str</code> Break hint with alternative text <code>str</code>.</li><li><code>doc2 &lt;+&gt; doc2</code> Concatenation of the documents <code>doc1</code> and <code>doc2</code></li><li><code>nest indent doc</code> Indented document.</li><li><code>group doc</code> Treat all top level break hints of <code>doc</code> consistently i.e. either print all break hints with their alternative text or as a newline. If a group is flattened (i.e. break hints printed with their alternative text) when all inner groups are flattened as well.</li></ul><p>With these primitives a surprisingly rich set of formattings can be made.</p><p>The user generates documents not only by using the primitives. There are a lot of convenience functions to make document generation easy.</p><p>Document creation is done lazily. Only very few resources are consumed in producing a document. The work starts with the layout function. The <a href="Fmlib_pretty/Pretty/index.html#val-layout"><code>Fmlib_pretty.Pretty.layout</code></a> function does the layout and never processes more than one line.</p><p>The layout generates a stream of characters. Lines are formatted only if the characters of the line are pulled out of the stream.</p><p>If you just create a document and layout it but you never use the stream, then no work is done.</p><h2 id="term-printing"><a href="#term-printing" class="anchor"></a>Term Printing</h2><p>The usage of the pretty printer is best explained by an example. Suppose we want to print the function application <code>f a b (g c d) e</code> where the function names and arguments might have different length. We create a <i>document</i> which represents the structure by</p><pre class="language-ocaml"><code>let doc =
+    group (
+        text &quot;f&quot; &lt;+&gt; space &lt;+&gt;
+        nest
+            2
+            (stack_or_pack
+                &quot; &quot;
+                [text &quot;a&quot;;
+                 text &quot;b&quot;;
+                 group (
+                     text &quot;(g&quot; &lt;+&gt; space &lt;+&gt;
+                     nest
+                        2
+                        (stack_or_pack &quot; &quot; [text &quot;c&quot;; text &quot;d&quot;])
+                     &lt;+&gt; text &quot;)&quot;);
+                 text &quot;e&quot;])
+    )</code></pre><p>where <code>text &quot;blabla&quot;</code> is a document with some unbreakable text, <code>&lt;+&gt;</code> concatenates two documents, <code>space</code> is a break hint whose alternative text is a blank, <code>stack_or_pack atxt [...]</code> stacks a list of documents separated by a break hint with the alternative text <code>atxt</code>.</p><p>The command</p><pre class="language-ocaml"><code>let stream = layout 5 doc </code></pre><p>creates a stream of characters (i.e. an element of type <a href="Fmlib_pretty/Pretty/Stream/index.html#type-t"><code>Fmlib_pretty.Pretty.Stream.t</code></a>) which is nicely formatted using a desired line width of 5 characters.</p><p>Character streams of type <a href="Fmlib_pretty/Pretty/Stream/index.html#type-t"><code>Fmlib_pretty.Pretty.Stream.t</code></a> can be read character by character (see <a href="Fmlib_pretty/Pretty/Stream/index.html"><code>Fmlib_pretty.Pretty.Stream</code></a>) or written to an ouput channel by <a href="Fmlib_pretty/Pretty/index.html#val-write_to_channel"><code>Fmlib_pretty.Pretty.write_to_channel</code></a> or converted to a plain string by <a href="Fmlib_pretty/Pretty/index.html#val-to_string"><code>Fmlib_pretty.Pretty.to_string</code></a>.</p><p>Since 5 characters are not enough to put any of the subterms completely on a line, the output is</p><pre class="language-ocaml"><code>123456789012345
+f
+  a
+  b
+  (g
+    c
+    d)
+  d</code></pre><p>i.e. each break hint is printed as a newline.</p><p>If we give the pretty printer a line width of 10, it could pack the application <code>g c d</code> on a line and print</p><pre class="language-ocaml"><code>123456789012345
+f
+  a
+  b
+  (g c d)
+  d</code></pre><p>If the pretty printer has enough line width e.g. a line width of 15, it can put the whole expression on a line.</p><pre class="language-ocaml"><code>123456789012345
+f a b (g c d) d</code></pre><p>By using <code>stack_or_pack</code> we instructed the pretty printer to either print all break hints as newlines or all break hints with their alternative texts. If we use <code>pack</code> instead of <code>stack_or_pack</code>, the pretty printer tries to pack as many arguments as possible on a line.</p><p>E.g. with a line width of 11 and using <code>pack</code> instead of <code>stack_or_pack</code> we get the output</p><pre class="language-ocaml"><code>123456789012345
+f
+  a b
+  (g c d) d</code></pre><p>With a line width of 10 and using <code>pack</code> we get</p><pre class="language-ocaml"><code>123456789012345
+f
+  a b
+  (g c d)
+  d</code></pre><p>because the pretty printer cannot pack <code>(g c d)</code> and <code>d</code> on a single line.</p><h2 id="character-stream"><a href="#character-stream" class="anchor"></a>Character Stream</h2><p>The type <a href="Fmlib_pretty/Pretty/Stream/index.html#type-t"><code>Fmlib_pretty.Pretty.Stream.t</code></a> of the pretty printer is a lazy character stream. I.e. characters are only generated if needed. The pretty printer implements the interface <a href="../fmlib_std/Fmlib_std/Interfaces/module-type-SOURCE/index.html"><code>Fmlib_std.Interfaces.SOURCE</code></a> to represent a character stream. You can ask the stream <code>has_more r</code> whether there are more characters in the stream and <code>peek r</code> to get the next character. The instruction <code>advance r</code> returns the stream <code>r</code> advanced by one character position.</p><h2 id="formatted-paragraphs"><a href="#formatted-paragraphs" class="anchor"></a>Formatted Paragraphs</h2><p>There are functions to generate formatted paragraphs with indentation.</p><pre class="language-ocaml"><code>    let words =
+        wrap_words &quot;bla bla bla bla bla bla bla&quot; &lt;+&gt; cut
+
+    let doc = paragraphs [
+        words;
+        words;
+        nest 4 words;
+        words;
+    ]
+
+    let stream = layout 16 doc</code></pre><p>The <code>stream</code> produces the following output</p><pre class="language-ocaml"><code>  12345678901234567890
+
+    bla bla bla bla
+    bla bla bla
+
+    bla bla bla bla
+    bla bla bla
+
+        bla bla bla
+        bla bla bla
+        bla
+
+    bla bla bla bla
+    bla bla bla</code></pre><h2 id="generate-documents"><a href="#generate-documents" class="anchor"></a>Generate Documents</h2><p>Clearly, it is tedious to write documents by hand. Usually you have some tree like structure and you want to generate a document from the tree structure.</p><p>Let's assume you have a tree structure like</p><pre class="language-ocaml"><code>type tree =
+    { name: string; children: tree list; }
+
+let leaf (name: string): tree =
+    {name; children = [] }
+
+let tree (name: string) (children: tree list): tree =
+    {name; children}</code></pre><p>Write a function which converts the tree structure to a document.</p><pre class="language-ocaml"><code>let doc_of_tree (tree: tree): doc =
+    let rec doc is_top tree =
+        match tree.children with
+        | [] -&gt;
+            text tree.name
+        | _ -&gt;
+            let d =
+                parent_child
+                    &quot; &quot; 2
+                    (text tree.name)
+                    (children tree.children ())
+            in
+            if is_top then
+                d
+            else
+                char '(' &lt;+&gt; d &lt;+&gt; char ')'
+    and children lst () =
+        match lst with
+        | [last] -&gt;
+            doc false last
+        | head :: tail -&gt;
+            doc false head &lt;+&gt; space
+            +|  children tail    (* Lazy concatenation!! *)
+        | [] -&gt;
+            assert false (* 'lst' is never empty *)
+    in
+    doc true tree</code></pre><p>Then the simple command</p><pre class="language-ocaml"><code>tree
+    &quot;f&quot;
+    [leaf &quot;a&quot;;
+     leaf &quot;b&quot;;
+     tree &quot;g&quot; [leaf &quot;c&quot;; leaf &quot;d&quot;];
+     leaf &quot;e&quot;]
+|&gt; layout 10</code></pre><p>generates the character stream</p><pre class="language-ocaml"><code>123456789012345
+f
+  a
+  b
+  (g c d)
+  e</code></pre><p>Note the usage of the lazy concatentation operator <code>+|</code> in the recursive part of the function handling the children. This makes sure that even if the tree structure is very big, the iteration over it is done only on demand. I.e. recursive calls are made only if the corresponding characters are needed when processing the character stream.</p><p><a href="index.html" title="index">Up</a> <a href="Fmlib_pretty/Pretty/index.html" title="Fmlib_pretty.Pretty">API</a></p></div></body></html>

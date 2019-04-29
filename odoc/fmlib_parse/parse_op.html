@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>parse_op (fmlib_parse.parse_op)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_parse</a> &#x00BB; parse_op</nav><header class="odoc-preamble"><h1 id="parsing-of-operator-expressions"><a href="#parsing-of-operator-expressions" class="anchor"></a>Parsing of Operator Expressions</h1><p><a href="parse.html" title="parse">Up</a></p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#goal">Goal</a></li><li><a href="#analysis-of-the-problem">Analysis of the Problem</a></li><li><a href="#the-solution">The Solution</a></li></ul></nav></div><div class="odoc-content"><h2 id="overview"><a href="#overview" class="anchor"></a>Overview</h2><p>Operator expressions usually have operators with precedence and associativity. Therefore it is quite natural to omit parentheses in many cases.</p><pre class="language-ocaml"><code>  (* expression                             interpreted as           *)
+     a + b + c                              (a + b) + c
+
+     a * b + c                              (a * b) + c
+
+     a + b * c                              a + (b * c)
+
+     a ^ b ^ c                              a ^ (b ^ c)</code></pre><p>This is possible because addition (<code>+</code>) and multiplication (<code>*</code>) are left associative, exponentiation (<code>^</code>) is right associative, exponentiation binds stronger than multiplication and multiplication binds stronger than addition.</p><p>In order to set the implicit paretheses correctly we have to decide if we see two operators <code>o1</code> and <code>o2</code> in an expression like <code>e o1 e1 o2 e2</code> if the right operator <code>o2</code> binds stronger than the left operator <code>o1</code>.</p><p>Such a boolean function <code>right_stronger o1 o2</code> can be used as well to make the correct decisions on associativity. E.g. <code>right_stronger '+' '+'</code> is false, because addition is left associative as opposed to <code>right_stronger '^' '^'</code> is true, because exponentiation is right associative.</p><p>In the following we show how operator expressions with binary operators can be parsed with the help of <code>Fmlib_parse</code>.</p><p>For more complex operator expressions having unary operators or mixfix operators a similar approach (although more complex) is usually possible.</p><h2 id="prerequisites"><a href="#prerequisites" class="anchor"></a>Prerequisites</h2><p>We have the types</p><pre class="language-ocaml"><code>  type exp  (* represents an expression *)
+  type op   (* represents an operator *)</code></pre><p>the functions</p><pre class="language-ocaml"><code>  let right_stronger (o1: op) (o2: op): bool =
+    (* Does in an expression of the form [e1 o1 e2 o2 e3] the operator [o2] bind
+       stronger than the operator [o1]? If yes, the expression has to be parsed
+       as [e1 o1 (e2 o2 e3)]. Otherwise it has to be parsed as
+       [(e1 o1 e2) o2 e3].
+    *)
+    ...
+
+  let binary (e1: exp) (o: op) (e2: exp): exp =
+    (* construct the binary expression [e1 o e2]. *)
+    ...</code></pre><p>and the combinators</p><pre class="language-ocaml"><code>  let primary (): exp t =
+    (* Parse a primary expression. Usually a number, an identifier, a function
+       call, a parenthesized expression. *)
+    ...
+
+  let operator: op t =
+    (* Parse an operator. *)
+    ...</code></pre><h2 id="goal"><a href="#goal" class="anchor"></a>Goal</h2><p>We want to write a combinator of the form</p><pre class="language-ocaml"><code>   let operator_expression (): exp t =
+     (* Parse an operator expression of the form [e o e o ... o e] where the
+        precedence and the associativity of the operators are interpreted
+        correctly. An operator expression of the form [e] is an allowed corner
+        case.
+    *)</code></pre><p>If explicitly parenthesized expressions are allowed, then we have to make <code>primary</code> and <code>operator_expression</code> mutually recursive</p><pre class="language-ocaml"><code>
+  let rec operator_expression (): exp t =
+    ...
+
+  and primary (): exp t =
+    (
+        let* _ = left_paren in
+        let* e = operator_expression () in
+        let* _ = right_paren in
+        return e
+    )
+    &lt;/&gt;
+    atomic ()  (* parse an atomic expression *)</code></pre><p>Note that <code>atomic</code> might internally call <code>operator_expression</code> as well e.g. in parsing function arguments. In that case a combinator parsing function calls has to be part of the mutually recursive functions. Remember that recursive calls have to be guarded as described in the section <a href="parse_recursion.html" title="parse_recursion">Recursion in combinators</a>. In the above case the guardedness is satisfied, because <code>left_paren</code> is guaranteed to consume input. I.e. input is consumed before the recursive call.</p><p>In the following we concentrate on how to write the combinator <code>operator_expression</code> correctly.</p><h2 id="analysis-of-the-problem"><a href="#analysis-of-the-problem" class="anchor"></a>Analysis of the Problem</h2><p>Since operator expressions can be deeply nested (parentheses, function calls etc.) we try to avoid backtracking in parsing an operator expression. Backtracking can be used in non recursive parts of the expressions. But we want to avoid backtracking over an arbitrarly long expression, because this can make our parser highly inefficient.</p><p>Therefore we try to make decisions as soon as possible and leave decisions open as long as needed without the need to backtrack.</p><p>Assume we have found on the input stream the following situation</p><pre class="language-ocaml"><code>    a * b + c . rest</code></pre><p>where <code>rest</code> represents the not yet parsed part of the input. In this case we can immediately convert <code>a * b</code> into a binary expression</p><pre class="language-ocaml"><code>    (a * b) + c . rest</code></pre><p>because multiplication binds stronger that addition. Unfortunately the same is not possible, if the stronger operator is the second one.</p><pre class="language-ocaml"><code>    a + b * c . rest</code></pre><p>In this case it is <b>not</b> possible to convert <code>b * c</code> into a binary expression because the actual situation might look like</p><pre class="language-ocaml"><code>    a + b * c . ^ d ...
+    (*          ^^^^^^^^^^^^ not yet analyzed part of the remaining input *)</code></pre><p>We have to buffer <code>a + b * c</code> and analyze the input stream for more operators until we can make a decision.</p><p>If the actual situation looks like</p><pre class="language-ocaml"><code>    a + b * c . * d ...
+    (*          ^^^^^^^^^^^^ not yet analyzed part of the remaining input *)</code></pre><p>i.e. the next operator in the input stream does not bind stronger than the last operator we can convert <code>b * c</code> into a binary expression getting</p><pre class="language-ocaml"><code>    a + (b * c) . * d ...
+    (*            ^^^^^^^^^^^^ not yet analyzed part of the remaining input *)</code></pre><p>In general we have the situation</p><pre class="language-ocaml"><code>    e o1 e1 o2 e2 ... on en . rest</code></pre><p>as long as the as in the operator pairs <code>(o_i, o_(i+1))</code> the second operator binds stronger than the first. This condition is kept as an invariant. We only push <code>o e</code> into the buffer if <code>o</code> binds stronger than all previous operators.</p><p>The following cases are interesting:</p><p>1. <code>. e rest </code>: continue in the state <code>e . rest</code>.</p><p>2. <code>e . o1 e1 rest</code>: Continue in state <code>e o1 e1 . rest</code>.</p><p>3. <code>... o1 e1 . o2 e2 rest</code> where <code>o2</code> binds stronger than <code>o1</code>: Continue in state <code> ... o1 e1 o2 e2 . rest</code>. We have to push <code>o2 e2</code> into the buffer. The invariant is kept. All right operators bind stronger than the left operators.</p><p>4. <code>... o1 e1 o2 e2 . o3 e3 rest</code> where <code>o2</code> binds stronger than <code>o3</code>: Continue in state <code> ... o1 (e1 o2 e2) . o3 e3 . rest</code>.</p><h2 id="the-solution"><a href="#the-solution" class="anchor"></a>The Solution</h2><p>The buffer can be represented by the following data structure.</p><pre class="language-ocaml"><code>    type buffer =
+        | First of exp
+        | Add   of buffer * op * exp
+            (* Invariant: In [Add (b, o, e)] the operator binds stronger than
+               all previous operators in the buffer [b].
+             *)</code></pre><p>The combinator <code>operator_expression</code> is implemented with 4 mutually recursive functions.</p><pre class="language-ocaml"><code>  let rec operator_expression () =
+        let rec start (): exp t =
+            let* e = primary () in
+            more (First e)
+
+        and more (b: buffer): exp t =
+            (* Look for more operations in the remaining input *)
+            (
+                let* o = operator () in
+                let* e = primary () in
+                next b o e
+            )
+            &lt;/&gt;
+            (* If there is no more operator input then reduce the buffer. *)
+            reduce b
+
+        and next (b: buffer) (o_new: op) (e_new: exp): exp t =
+            (* Check the next operator, expression pair. *)
+
+        and reduce: buffer -&gt; exp t =
+            (* Reduce the buffer in case that there is no more input for the
+               operator expression. *)
+        in
+        start ()</code></pre><p>Most complexity is handled in the function <code>next</code>.</p><pre class="language-ocaml"><code>    and next (b: buffer) (o_new: op) (e_new: exp): exp t =
+        (* Check the next operator, expression pair. *)
+        match b with
+        | First _ as b -&gt;
+            (* Not yet any operator present in the buffer *)
+            more (Add (b, o_new, e_new))
+
+        | Add (b1, o2, e2) as b2 -&gt;
+            (* At least one operator expression pair in the buffer. *)
+            if
+                right_stronger o2 o_new
+            then
+                more (Add (b2, o_new, e_new))
+            else begin
+                match b1 with
+                | First e1 -&gt;
+                    (* buffer: e1 o2 e2 and o2 binds stronger than o_new *)
+                    more (Add (First (binary e1 o2 e2), o_new, e_new))
+
+                | Add (b0, o1, e1) -&gt;
+                    (* buffer: ... o1 e1 o2 e2 and o2 binds stronger than
+                       o_new.
+
+                       In this case we can reduce the buffer to
+                       ... o1 (e1 o2 e2) and recheck the pair o_new e_new in
+                       this buffer.
+                    *)
+                    next (Add (b0, o1, binary e1 o2 e2)) o_new e_new
+            end</code></pre><p>If finally there is no more input for the operator expression, then the buffer is converted to an expression.</p><pre class="language-ocaml"><code>    and reduce: buffer -&gt; exp t =
+        (* Reduce the buffer in case that there is no more input for the
+           operator expression. *)
+        function
+        | First e -&gt;
+            return e
+
+        | Add (First e, o1, e1) -&gt;
+            return (binary e o1 e1)
+
+        | Add (Add (b, o1, e1), o2, e2) -&gt;
+            assert (right_stronger o1 o2);
+            reduce (Add (b, o1,  binary e1 o2 e2))</code></pre><p><a href="parse.html" title="parse">Up</a></p></div></body></html>

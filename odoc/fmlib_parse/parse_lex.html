@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>parse_lex (fmlib_parse.parse_lex)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_parse</a> &#x00BB; parse_lex</nav><header class="odoc-preamble"><h1 id="separation-of-parsing-and-lexing"><a href="#separation-of-parsing-and-lexing" class="anchor"></a>Separation of Parsing and Lexing</h1><p><a href="parse.html" title="parse">Up</a></p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#overview">Overview</a></li><li><a href="#how-to-write-a-lexer">How to write a lexer</a></li><li><a href="#how-to-write-a-parser">How to write a parser</a></li><li><a href="#how-to-wire-the-lexer-and-the-parser">How to wire the lexer and the parser</a></li></ul></nav></div><div class="odoc-content"><h2 id="overview"><a href="#overview" class="anchor"></a>Overview</h2><p>In many cases it is appropriate to separate parsing and lexing. A lexer breaks up the input stream into tokens like identifiers, parentheses, numbers, strings etc. Furthermore usually the lexer strips off whitespace. The parser handles the grammar of the language by using the tokens as primitives.</p><p>This approach has several advantages:</p><ul><li>For a real language the complexity of parsing a source file is separated into two managable sized parts.</li></ul><ul><li>Handling whitespace in the parser makes the parser unnecessarily complex.</li></ul><ul><li>As soon as a language has identifiers and keywords where the keywords look syntactically like identifiers, a parser handling characters directly requires a lot of backtracking which makes the parser inefficient. A lexer can recognize identifiers and after successful recognition of an identifier it checks by using an efficient lookup table if the identifier is a keyword.</li></ul><p>However many combinator libraries do not offer the possibility to split up the parsing task into a lexer and a parser. `Fmlib_parse` supports the splitting up of lexing and parsing with a lot of functionality.</p><h2 id="how-to-write-a-lexer"><a href="#how-to-write-a-lexer" class="anchor"></a>How to write a lexer</h2><p>A lexer analyzes the input stream consisting of characters in the following way:</p><pre>    WS Token WS Token WS .... WS EOS</pre><p>where <code>WS</code> is a possibly empty sequence of whitespace like blanks, tabs, newlines, comments etc. <code>Token</code> is a lexically correct token. <code>EOS</code> represents the end of the input stream.</p><p>Since the lexer has to succeed immediately after recognizing a syntactically correct token it is not a normal parser which succeeds only after having seen the end of input. Therefore a lexer is a partial parser. After having successfully recognized a token the lexer must be restartable to recognize the next token or to recognize the end of input.</p><p>The easiest way to write a lexer with the help of <code>Fmlib_parse</code> is to use <a href="Fmlib_parse/Character/index.html"><code>Fmlib_parse.Character</code></a> by doing the following steps:</p><ul><li><p>Define a module <code>Token</code> and <code>Token_plus</code> of the following form:</p><pre class="language-ocaml"><code>  module Token = struct
+      type t =
+          T1 of ...
+          T2 of ...
+          ...
+          End (* end of input *)
+      ...
+  end
+
+  module Token_plus = struct
+      type t = Position.range * Token
+  end</code></pre></li></ul><ul><li><p>Write a module which satisfies the interface <a href="Fmlib_parse/Interfaces/module-type-LEXER/index.html"><code>Fmlib_parse.Interfaces.LEXER</code></a>.</p><pre class="language-ocaml"><code>  module Lexer =
+  struct
+      module C =
+      struct
+          include
+              Character.Make
+                  (Unit)              (* Trivial user state *)
+                  (Token_plus)
+                  (Fmlib_std.Void)    (* No semantic error possible *)
+
+          let ws: _ t =
+              ... (* combinator recognizing optional but arbitrarily long
+                     whitespace *)
+              Basic.skip_zero_or_more
+                  (...)
+
+          let tok: Token.t t =
+              ... (* Combinator recognizing tokens. *)
+
+
+          let final: Token_plus.t t =
+              C.lexer ws eos tok
+      end
+
+      (* Public Functions *)
+
+      include C.Parser
+
+      let start: t =
+          (* Recognize the first token *)
+          C.make_partial Position.start () C.final
+
+      let restart (lex: t): t =
+          (* Recognize subsequent tokens *)
+          assert (has_succeeded lex);
+          assert (not (has_consumed_end lex));
+
+          C.make_partial (position lex) () C.final
+          |&gt;
+          transfer_lookahead lex
+  end</code></pre></li></ul><ul><li><p>Note that the function <a href="Fmlib_parse/Character/Make/index.html#val-lexer"><code>Fmlib_parse.Character.Make.lexer</code></a> has the following definition</p><pre class="language-ocaml"><code>  let lexer
+          (ws: _ t) (eos: Token.t) (tok: Token.t t)
+      : Token_plus.t
+      =
+      let* _ = ws
+      in
+      located (
+          tok
+          &lt;/&gt;
+          expect_end eos
+      )</code></pre><p>It first strips off whitespace and then it expects either a token or the end of input. The token or the end of input is returned with the corresponding position information. This functionality is usually expected from a lexer. However you can write your own combinator if you want to have a different behaviour. When you write your own function, be careful where to put <a href="Fmlib_parse/Character/Make/index.html#val-expect_end"><code>Fmlib_parse.Character.Make.expect_end</code></a>.</p></li></ul><p>Look into <a href="https://github.com/hbr/fmlib/blob/master/src/parse/test_json.ml">https://github.com/hbr/fmlib/blob/master/src/parse/test_json.ml</a> to see an example with a simple json parser on how it works.</p><h2 id="how-to-write-a-parser"><a href="#how-to-write-a-parser" class="anchor"></a>How to write a parser</h2><ul><li>Write a module <code>State</code> where <code>State.t</code> represents the state of your parser. If you don't need a state, then use <code>Unit</code>.</li></ul><ul><li>Write a module <code>Semantic</code> where <code>Semantic.t</code> it the type of semantic errors. If your parser issues only syntax errors, then use <code>Fmlib_std.Void</code>.</li></ul><ul><li>Write a module <code>Final</code> where <code>Final.t</code> represents the structure you want to parse.</li></ul><ul><li><p>Finally write the module representing the parser using <a href="Fmlib_parse/Token_parser/index.html"><code>Fmlib_parse.Token_parser</code></a> which uses <code>Token.t</code> as the primitive tokens. Look into the same example as above.</p><pre class="language-ocaml"><code>    module Parser =
+    struct
+        module C =
+        struct
+            include
+                Token_parser.Make
+                    (State)
+                    (Token)
+                    (Final)
+                    (Semantic)
+
+            ...
+
+            let final: Final.t t =
+                ...
+        end
+
+        (* Public Functions *)
+
+        include C.Parser
+
+        let token_parser: t =
+            make State.start final
+    end
+</code></pre></li></ul><h2 id="how-to-wire-the-lexer-and-the-parser"><a href="#how-to-wire-the-lexer-and-the-parser" class="anchor"></a>How to wire the lexer and the parser</h2><p>The final parse looks like</p><pre class="language-ocaml"><code>    module Parse_lex =
+    struct
+        include
+            Parse_with_lexer
+                (State)
+                (Token)
+                (Final)
+                (Semantic)
+                (Lexer)
+                (Parser)
+
+        let start: t =
+            make Lexer.start Parser.token_parser
+    end</code></pre><p>using <a href="Fmlib_parse/Parse_with_lexer/index.html"><code>Fmlib_parse.Parse_with_lexer</code></a> to generate the final parser which scans a stream of characters breaks the input up into tokens by using the lexer and analyzes the grammar by using the token parser. See same example as above.</p><p><a href="parse.html" title="parse">Up</a></p></div></body></html>

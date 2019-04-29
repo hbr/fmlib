@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>parse_recursion (fmlib_parse.parse_recursion)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_parse</a> &#x00BB; parse_recursion</nav><header class="odoc-preamble"><h1 id="recursion-in-combinators"><a href="#recursion-in-combinators" class="anchor"></a>Recursion in Combinators</h1><p><a href="parse.html" title="parse">Up</a> <a href="Fmlib_parse/index.html" title="Fmlib_parse">API</a></p><p>Grammars are usually recursive. Combinators have to be recursive as well in order to reflect the recursiveness of grammars properly.</p><p>Combinator parsers implement <em>parsing expression grammars</em> and not <em>context free grammars</em>. The main differences of parsing expression grammars to context free grammars are:</p><ul><li>Choice is biased (if the first alternative succeeds, then other alternatives are not tried).</li></ul><ul><li>Left recursion is not allowed.</li></ul><p>Users are usually happy about the biased choice because this avoids a lot of ambiguity which can happen in context free grammars.</p><p>However it is easy to fall into the trap of left recursion which leads to an infinite recursion when implemented with combinator parsing.</p><p>This section describes the basic rule which avoids left recursion:</p><p><em>Never call a combinator recursively when the recursive call is not guarded</em>.</p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#guarded-recursion">Guarded Recursion</a></li><li><a href="#repetition-example">Repetition Example</a></li><li><a href="#mutual-recursion">Mutual Recursion</a></li></ul></nav></div><div class="odoc-content"><h2 id="guarded-recursion"><a href="#guarded-recursion" class="anchor"></a>Guarded Recursion</h2><p>What does guarded recursion mean?</p><p>Suppose you want to write a recursive combinator <code>crec</code> which you want to call recursively in the body. Then the combinator has to have the structure</p><pre class="language-ocaml"><code>    let rec crec arg1 arg2 ...
+        =
+        let* a = p in   (* 'p' has to consume at least one token in case
+                            of success. *)
+        crec ...        (* guarded recursive call *)</code></pre><p>The same applies to mutually recursive functions. At any position of a recursive call, the call has to be guarded. I.e. before starting a new recursion loop at least one token has to be consumed.</p><p>Since <code>let*</code> and <code>(&gt;&gt;=)</code> are the same operators just with different syntactic sugar, the following code is valid as well.</p><pre class="language-ocaml"><code>    let rec crec arg1 arg2 ...
+        =
+        p &gt;&gt;= (fun a -&gt; crec ...)</code></pre><p>The parser described by the combinator <code>p</code> has to consume at least one token. In case of success it returns some <code>a</code>. With that result the function <code>fun a -&gt; crec ...</code> is called. Therefore the recursive call does not happen before at least one token has been consumed.</p><h2 id="repetition-example"><a href="#repetition-example" class="anchor"></a>Repetition Example</h2><p>All parsers in the library have combinators which parse sequences of zero or more and sequences of one or more items. We implement here a constructor to parse zero or more items of type <code>'a</code> returned by a combinator <code>p</code> as a list of <code>'a</code>s.</p><pre class="language-ocaml"><code>    zero_or_more (p: 'a t): 'a list t =
+        let rec many lst =
+            (
+                let* a = p  (* 'p' has to consume at least one token *)
+                in
+                many (a :: lst) (* guarded recursive call *)
+            )
+            &lt;/&gt;
+            return (List.rev lst)
+        in
+        many []</code></pre><p>Here the combinator <code>many</code> starts by parsing one item by using the combinator <code>p</code>.</p><p>In case of success it adds the item in front of the list does the same again.</p><p>In case of failure there are no more items in the input stream and therefore the combinator returns the list. It has to reverse the list because the later items have been pushed to the front of the list.</p><p>The above code reflects the grammar rule</p><pre>    sequence ::=
+        empty
+        |
+        item sequence</pre><p>which avoids left recursion.</p><h2 id="mutual-recursion"><a href="#mutual-recursion" class="anchor"></a>Mutual Recursion</h2><p>In mutually recursive functions the guard condition is the same. Before closing a recursion loop at least one token has to be consumed. The following code describes schematically a valid mutual recursion where the guard condition is satisfied.</p><pre class="language-ocaml"><code>    let rec crec1 ... =
+        ( ... )
+        &lt;/&gt;
+        crec2 ...               (* unguarded call; ok *)
+
+    and crec2 ... =
+        crec3 ...               (* unguarded call; ok *)
+        &lt;/&gt;
+        (
+            let* b = q ...      (* guard consuming tokens *)
+            let* c = crec2 ...  (* guarded recursive call *)
+            ...
+        )
+
+    and crec3 ... =
+        let* a = p ...          (* guard consuming tokens *)
+        let* b = crec1 ...      (* guarded recursive call   *)</code></pre><p><a href="parse.html" title="parse">Up</a> <a href="Fmlib_parse/index.html" title="Fmlib_parse">API</a></p></div></body></html>

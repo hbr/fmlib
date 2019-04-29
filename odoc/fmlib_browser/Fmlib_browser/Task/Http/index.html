@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Http (fmlib_browser.Fmlib_browser.Task.Http)</title><meta charset="utf-8"/><link rel="stylesheet" href="../../../../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../../../../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="../index.html">Up</a> – <a href="../../../../index.html">Index</a> &#x00BB; <a href="../../../index.html">fmlib_browser</a> &#x00BB; <a href="../../index.html">Fmlib_browser</a> &#x00BB; <a href="../index.html">Task</a> &#x00BB; Http</nav><header class="odoc-preamble"><h1>Module <code><span>Task.Http</span></code></h1></header><div class="odoc-content"><div class="odoc-spec"><div class="spec type anchored" id="type-error"><a href="#type-error" class="anchor"></a><code><span><span class="keyword">type</span> error</span><span> = </span><span>[ </span></code><ol><li id="type-error.Status" class="def variant constructor anchored"><a href="#type-error.Status" class="anchor"></a><code><span>| </span><span>`Status <span class="keyword">of</span> int</span></code><div class="def-doc"><span class="comment-delim">(*</span><ul><li>0: no internet, server not found, timeout, ...</li><li>401: bad request</li><li>403: forbidden</li><li>404: page not found</li><li>...</li></ul><span class="comment-delim">*)</span></div></li><li id="type-error.No_json" class="def variant constructor anchored"><a href="#type-error.No_json" class="anchor"></a><code><span>| </span><span>`No_json</span></code><div class="def-doc"><span class="comment-delim">(*</span><p>Resource is not a valid json file</p><span class="comment-delim">*)</span></div></li><li id="type-error.Decode" class="def variant constructor anchored"><a href="#type-error.Decode" class="anchor"></a><code><span>| </span><span>`Decode</span></code><div class="def-doc"><span class="comment-delim">(*</span><p>Resource is a valid json file, but the decoder could not decode the corresponding javascript object.</p><span class="comment-delim">*)</span></div></li></ol><code><span> ]</span></code></div></div><div class="odoc-spec"><div class="spec module anchored" id="module-Body"><a href="#module-Body" class="anchor"></a><code><span><span class="keyword">module</span> <a href="Body/index.html">Body</a></span><span> : <span class="keyword">sig</span> ... <span class="keyword">end</span></span></code></div></div><div class="odoc-spec"><div class="spec module anchored" id="module-Expect"><a href="#module-Expect" class="anchor"></a><code><span><span class="keyword">module</span> <a href="Expect/index.html">Expect</a></span><span> : <span class="keyword">sig</span> ... <span class="keyword">end</span></span></code></div></div><div class="odoc-spec"><div class="spec value anchored" id="val-request"><a href="#val-request" class="anchor"></a><code><span><span class="keyword">val</span> request : 
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span><span><span>(string * string)</span> list</span> <span class="arrow">&#45;&gt;</span></span>
+  <span><a href="Body/index.html#type-t">Body.t</a> <span class="arrow">&#45;&gt;</span></span>
+  <span><span><span class="type-var">'a</span> <a href="Expect/index.html#type-t">Expect.t</a></span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span>(<span class="type-var">'a</span>, <a href="#type-error">error</a>)</span> <a href="../index.html#type-t">t</a></span></span></code></div><div class="spec-doc"><p><code>request method url headers body expect</code></p><p>Make an http <code>method</code> request to <code>url</code> with <code>headers</code> and <code>body</code>. <code>expect</code> specifies the expected response format.</p><p>This is the most general http request function. See also the more specific functions <code>text</code> and <code>json</code>.</p><p>Example:</p><pre class="language-ocaml"><code>    let user = Value.(record [| (&quot;username&quot;, string &quot;Bob&quot;) |]) in
+    request &quot;PUT&quot; &quot;/users&quot; [] (Body.json user) (Expect.string)
+    |&gt; Command.attempt (fun result -&gt;
+        match result with
+        | Ok _ -&gt;
+            GotUserCreated
+        | Error _ -&gt;
+            GotError &quot;failed to create user&quot;)</code></pre></div></div><div class="odoc-spec"><div class="spec value anchored" id="val-text"><a href="#val-text" class="anchor"></a><code><span><span class="keyword">val</span> text : 
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span><span><span>(string * string)</span> list</span> <span class="arrow">&#45;&gt;</span></span>
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span><span>(string, <a href="#type-error">error</a>)</span> <a href="../index.html#type-t">t</a></span></span></code></div><div class="spec-doc"><p><code>text method url headers body</code></p><p>Make an http <code>method</code> request to <code>url</code> with <code>headers</code> and a string as the <code>body</code>. Expect a string as the response.</p><p>Method is one of <code>GET, POST, DELETE, ... </code>.</p><p>The headers and the body can be empty. The <code>Content-Type</code> header is automatically set to <code>text/plain</code>.</p><p>Example:</p><pre class="language-ocaml"><code>    text &quot;PUT&quot; &quot;/users&quot; [] &quot;Bob&quot;
+    |&gt; Command.attempt (fun result -&gt;
+        match result with
+        | Ok _ -&gt;
+            GotUserCreated
+        | Error _ -&gt;
+            GotError &quot;failed to create user&quot;)</code></pre></div></div><div class="odoc-spec"><div class="spec value anchored" id="val-json"><a href="#val-json" class="anchor"></a><code><span><span class="keyword">val</span> json : 
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span>string <span class="arrow">&#45;&gt;</span></span>
+  <span><span><span>(string * string)</span> list</span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span><a href="../../Value/index.html#type-t">Value.t</a> option</span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span><span class="type-var">'a</span> <a href="../../Decoder/index.html#type-t">Decoder.t</a></span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span>(<span class="type-var">'a</span>, <a href="#type-error">error</a>)</span> <a href="../index.html#type-t">t</a></span></span></code></div><div class="spec-doc"><p><code>json method url headers body decoder</code></p><p>Make an http <code>method</code> request to <code>url</code> with <code>headers</code> and an optional json value as the <code>body</code>. Expect a json value as the response which will be decoded by <code>decoder</code>.</p><p>The <code>headers</code> can be empty. The <code>Content-Type</code> header is automatically set to <code>application/json</code> if <code>body</code> is not <code>None</code>.</p><p>Example:</p><pre class="language-ocaml"><code>    let decoder = Decoder.array Decoder.string in
+    json &quot;GET&quot; &quot;/users&quot; [] None decoder
+    |&gt; Command.attempt (fun result -&gt;
+        match result with
+        | Ok usernames -&gt; (* the usernames were successfully decoded
+                             into a string array *)
+            GotUsers (Array.to_list usernames)
+        | Error _ -&gt;
+            GotError &quot;failed to obtain users&quot;)</code></pre></div></div></div></body></html>

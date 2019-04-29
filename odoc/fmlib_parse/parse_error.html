@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>parse_error (fmlib_parse.parse_error)</title><meta charset="utf-8"/><link rel="stylesheet" href="../odoc.support/odoc.css"/><meta name="generator" content="odoc 3.1.0"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="index.html">Up</a> – <a href="../index.html">Index</a> &#x00BB; <a href="index.html">fmlib_parse</a> &#x00BB; parse_error</nav><header class="odoc-preamble"><h1 id="error-messages"><a href="#error-messages" class="anchor"></a>Error Messages</h1><p><a href="parse.html" title="parse">Up</a></p></header><div class="odoc-tocs"><nav class="odoc-toc odoc-local-toc"><ul><li><a href="#basics">Basics</a></li><li><a href="#syntax-errors">Syntax Errors</a><ul><li><a href="#available-error-information">Available Error Information</a></li><li><a href="#improved-syntax-errors">Improved Syntax Errors</a></li></ul></li><li><a href="#semantic-errors">Semantic Errors</a></li></ul></nav></div><div class="odoc-content"><h2 id="basics"><a href="#basics" class="anchor"></a>Basics</h2><p>The parsers in <a href="Fmlib_parse/index.html"><code>Fmlib_parse</code></a> support the generation of user friendly error messages. There are 2 types of errors:</p><ul><li>Syntax errors: Something unexpecting appeared in the input stream. The parser has a list of expectations. In the generic parser <a href="Fmlib_parse/Generic/Make/index.html"><code>Fmlib_parse.Generic.Make</code></a> the type of syntactic expectation is customizable. In the other parsers an expectation is described by a string and an optional indentation expectation (see chapter <a href="parse_indentation.html" title="parse_indentation">Indentation Sensitivity</a> for more information on indentation expectations).</li></ul><ul><li>Semantic errors: The parser has been able to successfully parse some construct but failed to perform the corresponding semantic action. Semantic errors are not issued by the library. Semantic errors are always issued by the user by invoking <code>fail error</code> where <code>error</code> is the user specific error message.</li></ul><h2 id="syntax-errors"><a href="#syntax-errors" class="anchor"></a>Syntax Errors</h2><h3 id="available-error-information"><a href="#available-error-information" class="anchor"></a>Available Error Information</h3><p>Why is there a list of expectations in case of a syntax error? Because of alternatives like <code>p &lt;/&gt; q &lt;/&gt; r</code>. If this construct fails syntactically because all three combinators have failed without consuming any token, then the expectations of all three combinators are in the list of syntax expectations.</p><p>Remember that alternatives are tried only if a combiator fails without consuming tokens (this can be enforced by backtracking). If in <code>p &lt;/&gt; q &lt;/&gt; r</code> the combinator <code>p</code> fails by consuming tokens, then the alternatives are not even tried. However <code>p</code> has failed because it encountered something unexpected after successfully consuming some tokens. At that specific state it has some expectations which are reported as errors.</p><p>In order to generate syntax error messages the following functions are available in a parser:</p><ul><li><code>has_failed_syntax parse</code>: Has the parser <code>parse</code> failed because it detected something unexpected in the input stream.</li></ul><ul><li><code>position parse</code>: The position (line number and column number) where the parser <code>parse</code> has finished parsing (either successfully or because of a failure). In case of a syntax error the position points exactly to the start of the unexpected token in the input stream. This function is not available in the generic parser, because the generic parser does not know of any positions.</li></ul><ul><li><code>lookaheads parse</code>: A pair consisting of the unconsumed lookahead tokens of the parser <code>parse</code> and a flag which indicates if the end of input has been reached after the lookahead tokens. If there are no unconsumed lookahead tokens and the end stream has been reached, then the end of input has been unexpected.</li></ul><ul><li><p><code>failed_expectations parse</code>: The list of failed expectations of the parser <code>parse</code>. In case of the generic parser the failed expectations are a list of user specific expectations. For the character and token parser each expectation in the list of failed expectations is a pair consisting of</p><ul><li>a string describing the failed expectation</li><li>an optional indentation expectation (see <a href="Fmlib_parse/Indent/index.html"><code>Fmlib_parse.Indent</code></a>) if the current position does not satisfy the indentation specification</li></ul></li></ul><p>With these functions it is possible to write quite informative error messages.</p><p>Let us look at some syntax errors in the <a href="parse_calculator.html" title="parse_calculator">calculator</a> example.</p><pre class="language-ocaml"><code>
+    012345678901234567890
+
+    1 + ,2 + 2</code></pre><p>There is an unexpected comma in line 0 at column 4. The first lookahead token is <code>','</code>.</p><p>At the position of the comma, the parser would expect one of the following:</p><ul><li>An additional whitespace character, either blank or newline.</li></ul><ul><li>A unary minus.</li></ul><ul><li>An opening parenthesis, either <code>'('</code> or <code>'['</code></li></ul><ul><li>A digit starting the next number.</li></ul><p>With the available information it is possible to generate an error message like:</p><pre>    0 | 1 + ,2 + 2
+            ^
+    I have found an unexpected ','. I was expecting one of
+    - ' '
+    - '\n'
+    - '-'
+    - '('
+    - '['
+    - digit</pre><h3 id="improved-syntax-errors"><a href="#improved-syntax-errors" class="anchor"></a>Improved Syntax Errors</h3><p>The error message in the previous section is already quite readable. However it can be improved by giving the user more relevant information.</p><p>It is quite useless to inform the user about expected whitespace. Whitespace can occur nearly everywhere. This does not give any information. In the library there is a generic combinator <code>no_expectations</code> to wrap combinators like the whitespace combinator.</p><p>If we use</p><pre class="language-ocaml"><code>    let whitespace: int t =
+        char ' ' &lt;/&gt; char '\n'
+        |&gt; skip_zero_or_more
+        |&gt; no_expectations</code></pre><p>as the whitespace combinator then we get rid of the useless information about expected whitespace characters.</p><p>We can do better with the expected parentheses. It is more instructive to the user to tell him that an opening parenthesis has been expected than telling each parenthesis as a separated expectation.</p><p>By using</p><pre class="language-ocaml"><code>    let lpar: char t =
+        lexeme (
+            map (fun _ -&gt; ')') (char '(')
+            &lt;/&gt;
+            map (fun _ -&gt; ']') (char '[')
+        )
+        &lt;?&gt;
+        &quot;opening parenthesis '(' or '['&quot;</code></pre><p>we give to the user a more instructive error message. The operator <code>&lt;?&gt;</code> let us collapse several failed alternatives into a more abstract expectation. With <code>p &lt;/&gt; q &lt;/&gt; r &lt;?&gt; &quot;message&quot;</code> we bundle the 3 expectations into one expectation.</p><p>We can use <code>&lt;?&gt;</code> to improve the error message above furthermore. It is better to report about an expected number than reporting an expected digit. We can achieve this by</p><pre class="language-ocaml"><code>    let number: int t =
+        one_or_more
+            (fun d -&gt; d)
+            (fun v d -&gt; 10 * v + d)
+            digit
+        |&gt;
+        no_expectations
+        &lt;?&gt;
+        &quot;number&quot;
+        |&gt;
+        lexeme</code></pre><p>Here we have added the <code>no_expectations</code> combinator in order to not report the expectation of one more digit in case that there have been already sufficient digits to form a number.</p><p>With all these improvements we are able to generate the following error message:</p><pre>    0 | 1 + ,2 + 2
+            ^
+    I have found an unexpected ','. I was expecting one of
+    - '-'
+    - opening parenthesis '(' or '['
+    - number</pre><p>Maybe it would be even better to report <code>unary '-'</code> instead of <code>'-'</code>.</p><h2 id="semantic-errors"><a href="#semantic-errors" class="anchor"></a>Semantic Errors</h2><p>Semantic errors are triggered by the user by calling <code>fail error</code> where <code>error</code> is the semantic error message. In the <a href="parse_calculator.html" title="parse_calculator">calculator example</a> we have triggered an error message when <em>division by zero</em> or a <em>negative exponent</em> occurred.</p><p>The position returned by <code>position parse</code> is not very interesting. The parser has already found a syntactically valid construct. Therefore the position points beyond the end of the construct. In order to form an informative error message we want to have the start position and the end position of the construct which failed semantically.</p><p>In the <a href="Fmlib_parse/Character/Make/index.html" title="Fmlib_parse.Character.Make">character parser</a> there is a combinator <code>located</code>. If we wrap the combinator <code>p</code> in <code>located p</code> then we get the result of <code>p</code> with the start and end position.</p><p>The <code>located</code> combinator is useful only for constructs which do not have trailing whitespace. We are usually interested in the position range of the construct without the whitespace.</p><p>In the <a href="parse_calculator.html" title="parse_calculator">calculator example</a> of the previous chapter the recommended wrapping of operators and numbers is the following:</p><pre class="language-ocaml"><code>    type operator = Position.range * char
+    type operand  = Position.range * int
+
+    let unary_operator: operator t =
+        lexeme (char '-' |&gt; located)
+
+    let binary_operator: operator t =
+        let op_chars = &quot;+-*/^&quot;
+        in
+        one_of_chars op_chars &quot;binary operator&quot;
+        |&gt;
+        located
+        |&gt;
+        lexeme
+
+    let number: operand t =
+        one_or_more
+            (fun d -&gt; d)
+            (fun v d -&gt; 10 * v + d)
+            digit
+        |&gt;
+        located
+        |&gt;
+        no_expectations
+        &lt;?&gt;
+        &quot;number&quot;
+        |&gt;
+        lexeme</code></pre><p>Note that the <code>located</code> combinator is called before removing the whitespace (i.e. calling <code>lexeme</code>).</p><p>With this modification we get all operators and the numbers with the additional range information.</p><p>The combinator <code>make_binary</code> has to be modified to use this information correctly in the success cases and in the case of a semantic failure.</p><pre class="language-ocaml"><code>    let make_binary
+            (((p1, _), a): operand)
+            ((_, o): operator)
+            (((pb1, p2), b): operand)
+        : operand t
+        =
+        match o with
+        | '+' -&gt;
+            return ((p1, p2), a + b)
+        ...
+        | '/' -&gt;
+            if b = 0 then
+                fail ((pb1, p2), &quot;Zero divisor&quot;)
+            else
+                return ((p1, p2), a / b)
+        | '^' -&gt;
+            if b &lt; 0 then
+                fail ((pb1, p2), &quot;Negative exponent&quot;)
+            else
+                return ((p1, p2), power a b)
+        ...</code></pre><p>In this case the type of the semantic error has to be described by the module</p><pre class="language-ocaml"><code>    module Semantic =
+    struct
+        type t = Position.range * string
+    end</code></pre><p>and not by the module <code>String</code>.</p><p>Suppose we feed the calculator parser with the following input</p><pre class="language-ocaml"><code>    1 + 2 / (4 - 4)</code></pre><p>The parser fails semantically because division by zero is not allowed. With the available error information we can generate the following error message:</p><pre>
+    0 | 1 + 2 / (4 - 4)
+                 ^^^^^
+
+    I have encountered a
+
+        Zero divisor
+
+    which is not allowed.</pre><p>In the token parser there is no <code>located</code> combinator. There is no need, because the tokens already contain the range information.</p><p><a href="parse.html" title="parse">Up</a></p></div></body></html>
