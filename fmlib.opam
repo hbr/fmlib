@@ -1,0 +1,54 @@
+opam-version: "2.0"
+
+name: "fmlib"
+
+synopsis: "Functional monadic library"
+
+description: """
+
+Library which is completely functional and monadic. It features
+
+- Monadic parsing functions with combinators suitable for indentation sensitive
+  parsing.
+
+- Pretty printing functions.
+
+- Wrapper for io functions with a native implementation and a nodejs
+  implementation. A program written with fmlib's io functions works out of the
+  box natively and on nodejs. The latter one enables you to deploy your program
+  to users which don't like to install the ocaml compiler suit just to use your
+  program.
+
+- Functions to implement web applications in Elm style i.e. purely functional
+  with a virtual dom.
+
+"""
+
+maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
+
+authors: [
+    "Helmut Brandl <helmut.brandl@gmx.net>"
+    ]
+
+license: "BSD-3"
+
+dev-repo: "git+https://github.com/hbr/fmlib.git"
+
+bug-reports: "http://github.com/hbr/fmlib"
+
+
+build: [
+    ["dune" "build" "@install" "-p" name "-j" jobs "@install" "@doc" {with-doc}]
+]
+
+
+depends: [
+    "ocaml" {>= "4.08.0"}
+    "ocamlfind" {build}
+    "dune" {build}
+    # "odoc" {with-doc}
+    "odoc" {build}
+    "ppx_inline_test" {build}
+    "js_of_ocaml"
+    "js_of_ocaml-ppx"
+]

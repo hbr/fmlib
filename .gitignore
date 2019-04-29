@@ -1,0 +1,9 @@
+_build/
+*~
+.emacs*
+\#*
+.\#*
+*.install
+.merlin
+gh-pages/
+

@@ -1,0 +1,8 @@
+(library
+    (libraries unix)
+    (inline_tests)
+    (preprocess (pps ppx_inline_test))
+    (public_name fmlib)
+    (name fmlib))
+
+(documentation (package fmlib))

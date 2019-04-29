@@ -1,0 +1,7 @@
+{0 Fmlib}
+
+Functional monadic library for combinator parsing, pretty printing, io either
+natively or with node and web applications.
+
+For more information on each module consult the entrypoint module
+{!module: Fmlib}.
