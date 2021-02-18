@@ -1,0 +1,6 @@
+(library
+    (inline_tests)
+    (preprocess (pps ppx_inline_test))
+    (modules_without_implementation std)
+    (public_name fmlib.std)
+    (name std))

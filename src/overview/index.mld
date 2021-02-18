@@ -1,7 +1,7 @@
 {0 Fmlib}
 
-Functional monadic library for combinator parsing, pretty printing, io either
-natively or with node and web applications.
+Functional monadic library:
 
-For more information on each module consult the entrypoint module
-{!module: Fmlib}.
+- {!module: Std} Standard Data Types
+
+- {!module: Pretty} Pretty Printing

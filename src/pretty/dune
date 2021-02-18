@@ -1,0 +1,8 @@
+(library
+    (public_name fmlib.pretty)
+    (name pretty)
+    (libraries std)
+    (inline_tests)
+    (preprocess (pps ppx_inline_test))
+    (modules_without_implementation pretty)
+)

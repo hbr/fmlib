@@ -1,9 +1,5 @@
 _build/
-*~
-.emacs*
-\#*
-.\#*
-*.install
+fmlib.install
+*.swp
 .merlin
 gh-pages/
-
