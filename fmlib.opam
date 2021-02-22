@@ -22,15 +22,15 @@ authors: [
 
 license: "BSD-3"
 
-homepage: "https://hbr.github.io/fmlib"
+homepage: "https://hbr.github.io/fmlib/odoc"
 
 dev-repo: "git+https://github.com/hbr/fmlib.git"
 
-bug-reports: "http://github.com/hbr/fmlib"
+bug-reports: "https://github.com/hbr/fmlib"
 
 
 build: [
-    ["dune" "subst"] {pinned}       # ??
+    ["dune" "subst"] {pinned}
     ["dune" "build" "@install" "-p" name "-j" jobs "@install" "@doc" {with-doc}]
 ]
 
