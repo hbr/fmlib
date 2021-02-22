@@ -22,6 +22,8 @@ authors: [
 
 license: "BSD-3"
 
+homepage: "https://hbr.github.io/fmlib"
+
 dev-repo: "git+https://github.com/hbr/fmlib.git"
 
 bug-reports: "http://github.com/hbr/fmlib"
