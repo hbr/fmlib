@@ -1,9 +1,32 @@
 {0 Fmlib}
 
-Functional monadic library:
+{1 Components}
 
-- {!module: Std} Standard Data Types
+- {!module: Fmlib_std} Standard Data Types
 
-- {!module: Pretty} Pretty Printing
+- {!module: Fmlib_pretty} Pretty Printing
 
-- {!module: Parse}  Parsing
+- {!module: Fmlib_parse}  Parsing
+
+
+All libraries of {e Fmlib} are prefixed by [Fmlib_] to avoid nameclashes with
+any other used libraries.
+
+
+
+
+{1 Design Philosophy}
+
+All components of {e Fmlib} work independently of any input/output methods i.e.
+they can be used in any environment.
+
+The printers do not actually print. They generate a lazy stream of characters
+which can be output on any medium.
+
+The parsers do not actually read from input. They work in push mode. You can
+choose your input method and you push the characters into the parser.
+
+The library is {e functional} in the sense that it avoids mutation or uses
+mutation only locally to improve performance. Exception handling is avoided as
+well. The module {!module: Fmlib_std.Result} can be used to achieve the same
+effect as exception handling.
