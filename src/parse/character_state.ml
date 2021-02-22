@@ -3,7 +3,7 @@
    It encapsulates the current position, the indentation and the user state.
 *)
 
-open Std.Interfaces
+open Fmlib_std.Interfaces
 
 
 module Make (User: ANY) =

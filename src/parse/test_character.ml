@@ -1,4 +1,4 @@
-open Std
+open Fmlib_std
 
 module CP = Character.Make (Unit) (Char)   (Unit)
 module SP = Character.Make (Unit) (String) (Unit)
@@ -252,9 +252,6 @@ let%test _ =
             "abcdef"
             (make_parser Position.start () p)
     in
-    Printf.printf "failed expectations %d\n"
-        (List.length
-             (Parser.failed_expectations p));
     Parser.has_failed_syntax p
     &&
     Parser.column p = 3

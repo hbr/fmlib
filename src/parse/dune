@@ -1,7 +1,7 @@
 (library
-    (public_name fmlib.parse)
-    (name parse)
-    (libraries std pretty)
+    (public_name fmlib.fmlib_parse)
+    (name fmlib_parse)
+    (libraries fmlib_std fmlib_pretty)
     (modules_without_implementation parse)
     (inline_tests)
     (preprocess (pps ppx_inline_test))

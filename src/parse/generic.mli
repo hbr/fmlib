@@ -1,7 +1,7 @@
 (** A Generic Parser where all parameters are customizable. *)
 
 
-open Std.Interfaces
+open Fmlib_std.Interfaces
 
 
 module Make

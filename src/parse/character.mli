@@ -2,7 +2,7 @@
     characters i.e. the token type is [char].
 *)
 
-open Std.Interfaces
+open Fmlib_std.Interfaces
 
 module Make (State: ANY) (Final: ANY) (Semantic: ANY):
 sig

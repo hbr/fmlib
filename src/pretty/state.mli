@@ -1,3 +1,5 @@
+open Fmlib_std
+
 module Text:
 sig
     type t
@@ -27,8 +29,8 @@ sig
     type t = chunk
     val break_text: t -> string
     val line: t -> Line.t
-    val texts: t -> Text.t Std.Deque.t
-    val groups: t -> group Std.Deque.t
+    val texts: t -> Text.t Deque.t
+    val groups: t -> group Deque.t
 end
 
 
@@ -37,8 +39,8 @@ module Group:
 sig
     type t = group
     val length: t -> int
-    val complete_groups: t -> t Std.Deque.t
-    val chunks: t -> Chunk.t Std.Deque.t
+    val complete_groups: t -> t Deque.t
+    val chunks: t -> Chunk.t Deque.t
 end
 
 
