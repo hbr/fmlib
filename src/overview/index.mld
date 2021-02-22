@@ -5,3 +5,5 @@ Functional monadic library:
 - {!module: Std} Standard Data Types
 
 - {!module: Pretty} Pretty Printing
+
+- {!module: Parse}  Parsing

@@ -1,0 +1,8 @@
+(library
+    (public_name fmlib.parse)
+    (name parse)
+    (libraries std pretty)
+    (modules_without_implementation parse)
+    (inline_tests)
+    (preprocess (pps ppx_inline_test))
+)
