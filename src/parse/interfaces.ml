@@ -1,5 +1,23 @@
 module type PARSER =
 sig
+    type token
+    type state
+    type final
+    type expect
+    type semantic
+    type t
+    val needs_more: t -> bool
+    val has_ended: t -> bool
+    val put: token -> t -> t
+    val put_end: t -> t
+    val has_succeeded: t -> bool
+    val has_failed_syntax: t -> bool
+    val has_failed_semantic: t -> bool
+    val final: t -> final
+    val failed_expectations: t -> expect list
+    val failed_semantic: t -> semantic
+    val state: t -> state
+    val lookaheads: t -> token array * bool
 end
 
 

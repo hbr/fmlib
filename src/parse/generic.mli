@@ -32,23 +32,11 @@ sig
     module Parser:
     sig
         include Interfaces.PARSER
-        type t
-        val needs_more: t -> bool
-        val has_ended:  t -> bool
-
-        val put: Token.t -> t -> t
-        val put_end: t -> t
-
-        val has_succeeded:       t -> bool
-        val has_failed_syntax:   t -> bool
-        val has_failed_semantic: t -> bool
-
-        val final: t -> Final.t
-        val failed_expectations: t -> Expect.t list
-        val failed_semantic:     t -> Semantic.t
-
-        val state:      t -> State.t
-        val lookaheads: t -> Token.t array * bool
+            with type token    = Token.t
+             and type final    = Final.t
+             and type expect   = Expect.t
+             and type semantic = Semantic.t
+             and type state    = State.t
     end
 
 

@@ -266,7 +266,7 @@ Indentation Sensitivity
 ------------------------------------------------------------
 *)
 
-module Indent_sensitive (Final: Std.Interfaces.ANY) =
+module Indent_sensitive (Final: Fmlib_std.Interfaces.ANY) =
 struct
     module Basic = Character.Make (Unit) (Final) (Unit)
 

@@ -4,5 +4,5 @@
     (libraries fmlib_std)
     (inline_tests)
     (preprocess (pps ppx_inline_test))
-    (modules_without_implementation pretty)
+    (modules_without_implementation fmlib_pretty)
 )

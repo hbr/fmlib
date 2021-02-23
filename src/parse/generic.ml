@@ -21,6 +21,12 @@ struct
 
     module Parser =
     struct
+        type token    = Token.t
+        type final    = Final.t
+        type expect   = Expect.t
+        type semantic = Semantic.t
+        type state    = State.t
+
         type t =
             | More  of B.t * (B.t -> t)
             | Done of B.t * Final.t option

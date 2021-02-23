@@ -35,22 +35,44 @@ struct
 
     module Parser =
     struct
-        include Parser
+        module P = Basic.Parser
+
+        type token    = Token.t
+        type final    = Final.t
+        type state    = User.t
+        type expect   = string * Indent.violation option
+        type semantic = Semantic.t
+
+        type t = P.t
+
+        let needs_more          = P.needs_more
+        let has_ended           = P.has_ended
+        let has_succeeded       = P.has_succeeded
+        let has_failed_syntax   = P.has_failed_syntax
+        let has_failed_semantic = P.has_failed_semantic
+        let final               = P.final
+        let failed_expectations = P.failed_expectations
+        let failed_semantic     = P.failed_semantic
+        let lookaheads          = P.lookaheads
+
+        let put                 = P.put
+        let put_end             = P.put_end
+
 
         let position (p: t): Position.t =
-            Parser.state p |> State.position
+            P.state p |> State.position
 
 
         let line (p: t): int =
-            Parser.state p |> State.line
+            P.state p |> State.line
 
 
         let column (p: t): int =
-            Parser.state p |> State.column
+            P.state p |> State.column
 
 
         let state (p: t): User.t =
-            Parser.state p |> State.user
+            P.state p |> State.user
 
         let run_on_string (str: string) (p: t): t =
             let len = String.length str

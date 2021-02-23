@@ -28,6 +28,99 @@ sig
        an array of unprocessed lookahead token and the second part is a flag
        indicating if the endtoken has been received via [put_end].
     *)
+
+    type token
+    (** Token type. *)
+
+
+    type state
+    (** User state. *)
+
+
+    type final
+    (** Type of the final object constructed in case of success. *)
+
+
+    type expect
+    (** Type of a failed expectation. *)
+
+
+    type semantic
+    (** Type a semantic error. *)
+
+
+    type t
+    (** Type of the final parser. *)
+
+
+    val needs_more: t -> bool
+    (** [needs_more p] Does the parser [p] need more token? *)
+
+
+    val has_ended: t -> bool
+    (** [has_ended p] Has the parser [p] ended parsing and either succeeded or
+        failed?
+
+        [has_ended p] is the same as [not (needs_more p)]
+    *)
+
+
+    val put: token -> t -> t
+    (** [put token p] Push [token] into the parser [p].
+
+        Even if the parser has ended, more token can be pushed into the parser.
+        The parser stores the token as lookahead token.
+    *)
+
+
+    val put_end: t -> t
+    (** [put_end p] Push and end token into the parser [p]. *)
+
+
+    val has_succeeded: t -> bool
+    (** [has_succeeded p] Has the parser [p] succeeded? *)
+
+    val has_failed_syntax: t -> bool
+    (** [has_failed_syntax p] Has the parser [p] failed with a syntax error? *)
+
+    val has_failed_semantic: t -> bool
+    (** [has_failed_semantic p] Has the parser [p] failed with a semantic error?
+    *)
+
+
+    val final: t -> final
+    (** [final p] The final object constructed by the parser [p] in case of
+        success.
+
+        Precondition: [has_succeeded p]
+    *)
+
+
+    val failed_expectations: t -> expect list
+    (** [failed_expectations p] The failed expectations due to a syntax error.
+
+        Precondition: [has_failed_syntax p]
+    *)
+
+
+    val failed_semantic: t -> semantic
+    (** [failed_semantic p] The failed semantic error.
+
+        Precondition: [has_failed_semantic p]
+    *)
+
+    val state: t -> state
+    (** [state p] The user state of the parser [p].
+
+        Can be called at any time.
+    *)
+
+    val lookaheads: t -> token array * bool
+    (** [lookaheads p] The lookahead token and and end flag of the parser [p].
+
+        The end flag indicates, if the end token has already been received via
+        [put_end p].
+    *)
 end
 
 

@@ -18,29 +18,35 @@ sig
     module Parser:
     sig
         include Interfaces.PARSER
-        type t
-        val needs_more: t -> bool
-        val has_ended:  t -> bool
+            with type token    = char
+             and type final    = Final.t
+             and type expect   = string * Indent.violation option
+             and type semantic = Semantic.t
+             and type state    = State.t
 
-        val has_succeeded:       t -> bool
-        val has_failed_syntax:   t -> bool
-        val has_failed_semantic: t -> bool
 
         val position: t -> Position.t
+        (** [position p] The current position in the input stream.
+
+            Can be called at any time.
+        *)
+
         val line:   t -> int
+        (** [line p] The current line in the input stream.
+
+            Can be called at any time.
+        *)
+
         val column: t -> int
+        (** [column p] The current column in the input stream.
 
-        val state:      t -> State.t
-        val lookaheads: t -> char array * bool
+            Can be called at any time.
+        *)
 
-        val final: t -> Final.t
-        val failed_expectations: t -> (string * Indent.violation option) list
-        val failed_semantic:     t -> Semantic.t
 
-        val put: char -> t -> t
-        val put_end: t -> t
 
         val run_on_string: string -> t -> t
+        (** [run_on_string str p] Run the parser [p] on the string [str]. *)
     end
 
 
