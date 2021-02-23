@@ -30,7 +30,7 @@ build: [
 
 depends: [
     "ocaml" {>= "4.08.0"}
-    "dune" {>= 1.8}
+    "dune" {>= "1.8"}
     "odoc" {with-doc}
     "ppx_inline_test" {>= "v0.12.0"}
     # "js_of_ocaml"
