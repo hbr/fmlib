@@ -1,6 +1,7 @@
 open Fmlib_std
 
 module CP = Character.Make (Unit) (Char)   (Unit)
+module IP = Character.Make (Unit) (Int)    (Unit)
 module SP = Character.Make (Unit) (String) (Unit)
 
 
@@ -63,7 +64,15 @@ let%test _ =
     Parser.final p = 'b'
 
 
-
+let%test _ =
+    let open IP in
+    let p =
+        Parser.run_on_string
+            "F" (make () hex_digit) in
+    Parser.(
+        has_succeeded p
+        &&
+        final p = 15)
 
 
 

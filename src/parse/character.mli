@@ -146,6 +146,12 @@ sig
     *)
 
 
+    val range: char -> char -> char t
+    (** [range c1 c2] Parses a charager in the range between [c1] and [c2], i.e.
+        a character [c] which satisfies [c1 <= c && c <= c2].*)
+
+
+
     val char: char -> char t
     (** [char c] Parse the character [c]. *)
 
@@ -177,6 +183,21 @@ sig
     val digit: int t
     (** Parse a digit. *)
 
+
+    val hex_uppercase: int t
+    (** Equivalent to [range 'A' 'F'] and then converted to the corresponding
+        number between [10] and [15]. *)
+
+
+    val hex_lowercase: int t
+    (** Equivalent to [range 'a' 'f'] and then converted to the corresponding
+        number between [10] and [15]. *)
+
+
+
+    val hex_digit: int t
+    (** Parse a hexadecimal digit and return the corresponding number between
+        [0] and [15]. *)
 
 
     (** {1 Make the Final Parser} *)
