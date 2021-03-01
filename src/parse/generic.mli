@@ -89,8 +89,16 @@ sig
         function is used if at the expected end of input other token arrive.
 
         The generated parser expects a token stream which can be successfully
-        parsed by the combinator [p] and then it expects the end of input.
+        parsed by the combinator [p]. It can succeed only if an end token is
+        pushed to the parser.
     *)
 
+
     val make_parser: State.t -> Final.t t -> Parser.t
+    (** [make_parser state p].
+
+        Makes a parser which starts in state [state] and parses a construct
+        defined by the combinator [p]. The parser can succeed, even if no end
+        token is pushed to the parser.
+    *)
 end
