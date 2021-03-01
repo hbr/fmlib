@@ -134,30 +134,66 @@ sig
 
 
 
-    (** {1 Make the Final Parser} *)
-
-    val make: State.t -> Final.t t -> Parser.t
-
-    val make_parser: Position.t -> State.t -> Final.t t -> Parser.t
-
-
-
 
 
     (** {1 Character Combinators} *)
 
 
     val charp: (char -> bool) -> string -> char t
+    (** [charp p expect] Parse a character which satisfies the predicate [p].
+
+        In case of failure, report the failed expectation [expect].
+    *)
+
 
     val char: char -> char t
+    (** [char c] Parse the character [c]. *)
+
 
     val one_of_chars: string -> expect -> char t
+    (** [one_of_chars str expect]
+
+        Parse one of the characters in the string [str]. In case of failure,
+        report the failed expectation [expect].
+    *)
+
 
     val string: string -> string t
+    (** [string str] Parse the string [str]. *)
+
 
     val uppercase_letter: char t
+    (** Parse an uppercase letter. *)
+
+
     val lowercase_letter: char t
+    (** Parse a lowercase letter. *)
+
+
     val letter: char t
+    (** Parse a letter. *)
+
 
     val digit: int t
+    (** Parse a digit. *)
+
+
+
+    (** {1 Make the Final Parser} *)
+
+    val make: State.t -> Final.t t -> Parser.t
+    (** [make state p]
+
+        Make a parser which starts in state [state] and parses a construct
+        defined by the combinator [p]. The token stream must be ended by
+        [put_end], otherwise the parse won't succeed.
+    *)
+
+    val make_parser: Position.t -> State.t -> Final.t t -> Parser.t
+    (** [make_parser pos state p]
+
+        Make a parser which starts at position [pos] and state [state] and
+        parses a construct defined by the combinator [p]. The parser can succeed
+        even if no end token is pushed into the parser.
+    *)
 end
