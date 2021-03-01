@@ -217,6 +217,12 @@ struct
             e
 
 
+    let range (c1: char) (c2: char): char t =
+        charp
+            (fun c -> c1 <= c && c <= c2)
+            String.("character between '" ^ one c1 ^ "' and '" ^ one c2 ^ "'")
+
+
     let uppercase_letter: char t =
         charp
             (fun c -> 'A' <= c && c <= 'Z')
@@ -242,6 +248,19 @@ struct
         let* d = charp (fun c -> '0' <= c && c <= '9') "digit"
         in
         return Char.(code d - code '0')
+
+
+    let hex_lowercase: int t =
+        let* c = range 'a' 'f' in
+        return Char.(code c - code 'a' + 10)
+
+
+    let hex_uppercase: int t =
+        let* c = range 'A' 'F' in
+        return Char.(code c - code 'A' + 10)
+
+    let hex_digit: int t =
+        digit </> hex_lowercase </> hex_uppercase <?> "hex digit"
 
 
     let string (str: string): string t =
