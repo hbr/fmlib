@@ -44,9 +44,9 @@
 
    - A biased choice between expressions [e₁ / e₂ / ... ]
 
-   - Zero or more of an expression [e+]
+   - Zero or more of an expression [e*]
 
-   - One or more of an expression [e*]
+   - One or more of an expression [e+]
 
 *)
 
