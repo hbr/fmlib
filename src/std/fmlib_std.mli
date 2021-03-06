@@ -23,3 +23,5 @@ module List   = List
 module Result = Result
 
 module String = String
+
+module Void   = Void

@@ -98,6 +98,16 @@ val ( let* ): ('a,'e) t -> ('a -> ('b,'e) t) -> ('b,'e) t
 
 
 
+val map_error: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
+(** [map_error f m] Map the error in [m] via the function [f]. *)
+
+
+
+val get: ('a, Void.t) t -> 'a
+(** [get m] Get the ok content of a result object which cannot have errors. *)
+
+
+
 
 
 (** {1 Monad} *)

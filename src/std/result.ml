@@ -16,6 +16,26 @@ let ( let* ) = (>>=)
 
 
 
+
+let map_error (f: 'e -> 'f): ('a, 'e) t -> ('a, 'f) t = function
+    | Ok a ->
+        Ok a
+
+    | Error e ->
+        Error (f e)
+
+
+let get: ('a, Void.t) t -> 'a = function
+    | Ok a ->
+        a
+
+    | Error e ->
+        Void.absurd e
+
+
+
+
+
 module Monad (E: Interfaces.ANY) =
 struct
     type 'a t = ('a, E.t) result
