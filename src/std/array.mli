@@ -39,3 +39,7 @@ val push: 'a -> 'a t -> 'a t
 
 val to_list: 'a t -> 'a list
 (** [to_list arr] Convert the array [arr] to a list with the same content. *)
+
+
+val of_list: 'a list -> 'a array
+(** [of_list lst] Convert the list [lst] to an array with the same content. *)
