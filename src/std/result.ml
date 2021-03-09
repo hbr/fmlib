@@ -1,11 +1,24 @@
-type ('a,'e) t = ('a,'e) result
+type ('a, 'e) t = ('a, 'e) result
 
 
-let return (a: 'a): ('a,'e) t =
+let return (a: 'a): ('a, 'e) t =
     Ok a
 
 
-let (>>=) (m: ('a,'e) t) (f: 'a -> ('b,'e) t): ('b,'e) t =
+let fail (e: 'e): ('a, 'e) t =
+    Error e
+
+
+
+let to_option (r: ('a, _) t): 'a option =
+    match r with
+    | Ok a ->
+        Some a
+    | Error _ ->
+        None
+
+
+let (>>=) (m: ('a, 'e) t) (f: 'a -> ('b, 'e) t): ('b, 'e) t =
     match m with
     | Ok a ->
         f a
@@ -41,6 +54,10 @@ struct
     type 'a t = ('a, E.t) result
 
     let return = return
+
+    let fail = fail
+
+    let to_option = to_option
 
     let (>>=)  = (>>=)
 
