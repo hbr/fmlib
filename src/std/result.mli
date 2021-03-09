@@ -71,15 +71,24 @@
 
 (** {1 API} *)
 
-type ('a,'e) t = ('a,'e) result
-(** ['a] is the result type in case of success and ['e'] is the result type in
+type ('a,'e) t = ('a, 'e) result
+(** ['a] is the result type in case of success and ['e] is the result type in
     case of failure. It is implemented by the ocaml type [result] from the ocaml
     standard library.
 *)
 
 
-val return: 'a -> ('a,'e) t
-(** [return a] is the same as [Ok a]. *)
+val return: 'a -> ('a, 'e) t
+(** [return a] Equivalent to [Ok a]. *)
+
+
+val fail: 'e -> ('a, 'e) t
+(** [fail e] Equivalent to [Error e]. *)
+
+
+val to_option: ('a, 'e) t -> 'a option
+(** [to_option r] Map [r] to an optional element i.e. [Some a] in case of [Ok a]
+    and [None] in case of [Error _]. *)
 
 
 val (>>=): ('a,'e) t -> ('a -> ('b,'e) t) -> ('b,'e) t
@@ -121,7 +130,13 @@ sig
 
     val return: 'a -> 'a t
 
+    val fail: E.t -> 'a t
+
+    val to_option: 'a t -> 'a option
+
     val (>>=): 'a t -> ('a -> 'b t) -> 'b t
 
     val ( let* ): 'a t -> ('a -> 'b t) -> 'b t
+
+
 end

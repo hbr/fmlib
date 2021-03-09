@@ -20,6 +20,8 @@ module Int    = Int
 
 module List   = List
 
+module Option = Option
+
 module Result = Result
 
 module String = String
