@@ -29,7 +29,7 @@ val sub: 'a t -> int -> int -> 'a t
 (** [sub arr start len] The subarray of [arr] starting at [start] with lenght
     [len].
 
-    Precondition: [0 <= start <= start + len <= length arr]
+    Precondition: [0 <= start && start + len <= length arr]
 *)
 
 
