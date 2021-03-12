@@ -17,7 +17,7 @@ maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
 authors: [ "Helmut Brandl <helmut.brandl@gmx.net>" ]
 
 license: "BSD-3-Clause"
-homepage: "https://hbr.github.io/fmlib/odoc"
+homepage: "https://github.com/hbr/fmlib"
 dev-repo: "git+https://github.com/hbr/fmlib.git"
 bug-reports: "https://github.com/hbr/fmlib/issues"
 
