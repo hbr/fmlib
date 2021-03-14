@@ -1,0 +1,31 @@
+opam-version: "2.0"
+
+synopsis: "Basic javascript functions"
+
+description: ""
+
+maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
+
+authors: [ "Helmut Brandl <helmut.brandl@gmx.net>" ]
+
+license: "BSD-3-Clause"
+homepage: "https://github.com/hbr/fmlibh"
+dev-repo: "git+https://github.com/hbr/fmlib.git"
+bug-reports: "https://github.com/hbr/fmlib/issues"
+
+
+build: [
+    ["dune" "subst"] {dev}
+    ["dune" "build" "-p" name "-j" jobs "@install" "@doc" {with-doc}]
+]
+
+
+depends: [
+    "ocaml" {>= "4.08.0"}
+    "dune" {>= "1.8"}
+    "fmlib" {>= "0.1.0"}
+    "odoc" {with-doc}
+    "ppx_inline_test" {>= "v0.12.0"}
+    "js_of_ocaml"
+    "js_of_ocaml-ppx"
+]
