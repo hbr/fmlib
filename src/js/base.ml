@@ -35,6 +35,9 @@ struct
 
     let function2 (f: t -> t -> t): t =
         Js.Unsafe.inject f
+
+    let function3 (f: t -> t -> t -> t): t =
+        Js.Unsafe.inject f
 end
 
 
@@ -102,21 +105,20 @@ struct
         let* a = m in
         return (f a)
 
-
-    let option (decode: 'a t): 'a option t =
+    let null (a: 'a): 'a t =
         fun obj ->
-        let open Js in
-        match
-            Opt.to_option (some (Unsafe.coerce obj))
-        with
-        | None ->
-            Some None
-        | Some v ->
-            match decode v with
-            | None ->
-                None
-            | Some a ->
-                Some (Some a)
+        if obj == Value.null then
+            Some a
+        else
+            None
+
+
+    let undefined (a: 'a): 'a t =
+        fun obj ->
+        if obj == Value.undefined then
+            Some a
+        else
+            None
 
 
     let float: float t =
@@ -189,6 +191,13 @@ struct
             extract 0 []
         else
             None
+
+
+    let option (decode: 'a t): 'a option t =
+        map Option.return decode
+        </>
+        null None
+
 end
 
 
