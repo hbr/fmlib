@@ -216,11 +216,11 @@ struct
 
 
     let log_string (str: string): unit =
-        Js.(Unsafe.global##log (string str))
+        Js.(Unsafe.global##.console##log (string str))
 
 
     let log_value (value: Value.t): unit =
-        Js.(Unsafe.global##log value)
+        Js.(Unsafe.global##.console##log value)
 
 
     let export (obj: (string * Value.t) array): unit =
