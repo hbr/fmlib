@@ -44,12 +44,6 @@ end
 
 
 
-class type text_node =
-object
-    inherit node
-end
-
-
 
 
 class type element =
@@ -78,8 +72,9 @@ class type document =
 object
     inherit event_target
     method body:           element Js.t Js.readonly_prop
-    method createTextNode: js_string -> text_node Js.t Js.meth
+    method createTextNode: js_string -> node Js.t Js.meth
     method createElement:  js_string -> element Js.t Js.meth
+    method createDocumentFragment:  unit -> node Js.t Js.meth
 end
 
 
@@ -223,15 +218,6 @@ end
 
 
 
-module Text_node =
-struct
-    type t = text_node Js.t
-    let node (tn: t): Node.t =
-        Js.Unsafe.coerce tn
-end
-
-
-
 
 
 module Document =
@@ -245,8 +231,11 @@ struct
     let create_element (tag: string) (doc: t): Element.t =
         doc##createElement (Js.string tag)
 
-    let create_text_node (text: string) (doc: t): Text_node.t =
+    let create_text_node (text: string) (doc: t): Node.t =
         doc##createTextNode (Js.string text)
+
+    let create_document_fragment (doc: t): Node.t =
+        doc##createDocumentFragment ()
 end
 
 

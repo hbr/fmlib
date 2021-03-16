@@ -1,3 +1,30 @@
+(** The content of a browser window.
+
+
+    {v
+    Hierarchy:
+
+        Document                        Text node
+
+        Element                         Character data
+
+                        Node
+
+                        Event Target
+    v}
+
+    I.e. a document is an element which is a node which is an event target. A text
+    node is an event target as well.
+
+    Each document has a body element which is the root of the visible document.
+
+    Nodes can form a tree. I.e. each node has an optional parent, an optional
+    first child and an optional sibling. There are methods to add and remove
+    children from a node.
+*)
+
+
+
 module Style:
 sig
     type t
@@ -35,14 +62,43 @@ sig
     val event_target: t -> Event_target.t
 
     val parent: t -> t option
+    (** The optional parent of the node. *)
+
     val first:  t -> t option
+    (** The optional first child of a node. *)
+
     val next:   t -> t option
+    (** The optional next sibling of a node. *)
 
     val append: t -> t -> unit
-    (** [apppend child parent] *)
+    (** [apppend child parent] Append [child] to the end of the children of
+        [parent]
+
+        If [child] is already a child of another node, it is removed from the
+        other node. A node can be a child of only one parent node.
+    *)
 
     val remove: t -> t -> unit
-    (** [remove child parent] *)
+    (** [remove child parent] Remove [child] from [parent]
+
+        Precondition: [child] must be a child of [parent].
+
+        If you are not sure that [child] belongs to [parent], get [parent child]
+        and check (by physical equality [==]) that the computed parent and
+        [parent] are the same.
+
+        Procedure to remove all children from a node:
+        {[
+            let rec remove_children (node: t): unit =
+                match parent node with
+                | None ->
+                    ()
+                | Some child ->
+                    remove child node;
+                    remove_children node    (* tail recursion, compiled to a
+                                               javascript loop. *)
+        ]}
+    *)
 end
 
 
@@ -84,21 +140,36 @@ end
 
 
 
-module Text_node:
-sig
-    type t
-    val node: t -> Node.t
-end
-
-
-
-
 module Document:
 sig
     type t
+    (** Document type. *)
+
     val body: t -> Element.t
+    (** The body of the document. *)
+
+
     val create_element:   string -> t -> Element.t
-    val create_text_node: string -> t -> Text_node.t
+    (** [create_element tag] Create a new element with [tag]. *)
+
+    val create_text_node: string -> t -> Node.t
+    (** [create_text_node text] Create a new text node with content [text]. *)
+
+
+    val create_document_fragment: t -> Node.t
+    (** Create a new document fragment.
+
+        A document fragment is a special node with no parent. Adding children to
+        the fragment does not affect the dom i.e. does not cause reflow and
+        repaint, because the fragment is not part of the active dom.
+
+        If you call
+        {[
+            node.append(fragment)
+        ]}
+        all the children the [fragment] are appended to [node] instead of the
+        fragment, leaving an empty fragment behind.
+    *)
 end
 
 
