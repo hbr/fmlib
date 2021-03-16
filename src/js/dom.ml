@@ -56,6 +56,11 @@ class type element =
 object
     inherit node
 
+    method scrollWidth:     float Js.readonly_prop
+    method clientWidth:     float Js.readonly_prop
+    method scrollLeft:      float Js.readonly_prop
+    method scrollTop:       float Js.readonly_prop
+
     method style:           style Js.t Js.readonly_prop
     method setAttribute:    js_string -> js_string -> unit Js.meth
     method removeAttribute: js_string -> unit Js.meth
@@ -66,9 +71,13 @@ end
 
 
 
+
+
+
 class type document =
 object
     inherit event_target
+    method body:           element Js.t Js.readonly_prop
     method createTextNode: js_string -> text_node Js.t Js.meth
     method createElement:  js_string -> element Js.t Js.meth
 end
@@ -80,6 +89,7 @@ class type window =
 object
     inherit event_target
     method document: document Js.t Js.readonly_prop
+    method requestAnimationFrame: (float -> unit) -> unit Js.meth
 end
 
 
@@ -173,6 +183,18 @@ struct
     let node (element: t): Node.t =
         Js.Unsafe.coerce element
 
+    let scroll_width (element: t): float =
+        element##.scrollWidth
+
+    let client_width (element: t): float =
+        element##.clientWidth
+
+    let scroll_left (element: t): float =
+        element##.scrollLeft
+
+    let scroll_top (element: t): float =
+        element##.scrollTop
+
     let style (element: t): Style.t =
         element##.style
 
@@ -200,15 +222,25 @@ end
 
 
 
+
 module Text_node =
 struct
-    type t = node Js.t
+    type t = text_node Js.t
+    let node (tn: t): Node.t =
+        Js.Unsafe.coerce tn
 end
+
+
+
 
 
 module Document =
 struct
     type t = document Js.t
+
+
+    let body (doc: t): Element.t =
+        doc##.body
 
     let create_element (tag: string) (doc: t): Element.t =
         doc##createElement (Js.string tag)
@@ -244,4 +276,7 @@ struct
 
     let document (w: t): Document.t =
         w##.document
+
+    let on_next_animation (callback: float -> unit) (w: t): unit =
+        w##requestAnimationFrame callback
 end
