@@ -21,16 +21,11 @@
     Nodes can form a tree. I.e. each node has an optional parent, an optional
     first child and an optional sibling. There are methods to add and remove
     children from a node.
+
+    {e Note:} Use the code only within a browser window. Never in node and never
+    in a worker thread.
 *)
 
-
-
-module Style:
-sig
-    type t
-    val set: string -> string -> t -> unit
-    val remove: string -> t -> unit
-end
 
 
 module Event:
@@ -44,12 +39,26 @@ end
 
 
 
+
+
+(** A module to add and remove event listeners from an event target.
+
+    The following modules are event targets:
+
+    - Node
+    - Element
+    - Document
+    - Window
+*)
 module Event_target:
 sig
     type t
     val add:    string -> (Event.t -> unit) -> t -> unit
     val remove: string -> (Event.t -> unit) -> t -> unit
 end
+
+
+
 
 
 
@@ -105,10 +114,41 @@ end
 
 
 
+
+
+(** Inline style of a document element. *)
+module Style:
+sig
+    type t
+    val set: string -> string -> t -> unit
+    (** [set name value style] Set the property [name] to [value] in [style].
+
+        Examples:
+        {[
+            set "background-color" "red"      style
+            set "border"           "10px red" style
+        ]}
+    *)
+
+    val remove: string -> t -> unit
+    (** [remove name style] Remove the property [name] from [style]. *)
+end
+
+
+
+
+
+
+(** Element node. *)
 module Element:
 sig
     type t
+    (** Type of an element node. *)
+
     val node:  t -> Node.t
+    (** Element viewed as a node. All elements are nodes, therefore no
+        conversion is necessary. *)
+
 
     val scroll_width: t -> float
     (** Minimal width needed for the element to be shown without a scrollbar.
@@ -129,12 +169,58 @@ sig
     *)
 
     val style: t -> Style.t
+    (** Style attribute of the element. *)
+
+
     val set_attribute:    string -> string -> t -> unit
+    (** [set_attribute name value element] Set the attribute [name] to [value] on
+        [element].
+
+        Examples:
+        {[
+            set_attribute "id"    "my-node"  element
+            set_attribute "class" "my-class" element
+            set_attribute "href"  "https://github.com" element
+            set_attribute "type"  "range"    element
+            set_attribute "type"  "password" element
+            set_attribute "placeholder" "sample-text" element
+        ]}
+
+    *)
+
     val remove_attribute: string -> t -> unit
+    (** [remove_attribute name element] Remove the attribute [name] from
+        [element]. *)
+
+
     val set_property:     string -> Base.Value.t -> t -> unit
+    (** [set_property name value element] Set the property [name] to [value] in
+        [element].
+
+        The distinction between attributes and properties is subtle. Attribute
+        have always a string value and implicitely set the corresponding
+        property as well. A property can have any javascript value and does not
+        set the corresponding attribute, even if the property has a string
+        value.
+
+        Examples:
+        {[
+            set_property "value" "my-text" input_element
+        ]}
+    *)
+
+
     val delete_property:  string -> t -> unit
+    (** [delete_property name element] Delete the property [name] from
+        [element]. *)
+
+
     val focus: t -> unit
+    (** Put the element into keyboard focus. *)
+
+
     val blur:  t -> unit
+    (** Unfocus the element. *)
 end
 
 
@@ -147,6 +233,11 @@ sig
 
     val body: t -> Element.t
     (** The body of the document. *)
+
+
+    val find: string -> t -> Element.t option
+    (** [find id doc] Find the element with the id attribute [id] in the
+        document [doc]. Uses the javascript method [getElementById]. *)
 
 
     val create_element:   string -> t -> Element.t
@@ -176,13 +267,22 @@ end
 
 
 
+(** Module representing a browser window.
+
+    Use this module only in code executing within a browswer window. Don't use
+    it in node and not in a web worker either.
+*)
 module Window:
 sig
     type t
     val get: unit -> t
+    (** Get the window object. *)
+
+    val event_target: t -> Event_target.t
+    (** The window as an event target. *)
+
     val document: t -> Document.t
-    val add_listener:    string -> (Event.t -> unit) -> t -> unit
-    val remove_listener: string -> (Event.t -> unit) -> t -> unit
+    (** The document of the window. *)
 
     val on_next_animation: (float -> unit) -> t -> unit
     (** [on_next_animation callback]

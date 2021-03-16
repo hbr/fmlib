@@ -72,6 +72,7 @@ class type document =
 object
     inherit event_target
     method body:           element Js.t Js.readonly_prop
+    method getElementById: js_string -> element Js.t Js.Opt.t Js.meth
     method createTextNode: js_string -> node Js.t Js.meth
     method createElement:  js_string -> element Js.t Js.meth
     method createDocumentFragment:  unit -> node Js.t Js.meth
@@ -228,6 +229,9 @@ struct
     let body (doc: t): Element.t =
         doc##.body
 
+    let find (name: string) (doc: t): Element.t option =
+        Js.Opt.to_option (doc##getElementById (Js.string name))
+
     let create_element (tag: string) (doc: t): Element.t =
         doc##createElement (Js.string tag)
 
@@ -256,12 +260,6 @@ struct
     let event_target (w: t): Event_target.t =
         Js.Unsafe.coerce w
 
-
-    let add_listener (name: string) (handler: Event.t -> unit) (w: t): unit =
-        Event_target.add name handler (event_target w)
-
-    let remove_listener (name: string) (handler: Event.t -> unit) (w: t): unit =
-        Event_target.remove name handler (event_target w)
 
     let document (w: t): Document.t =
         w##.document
