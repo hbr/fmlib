@@ -267,6 +267,74 @@ end
 
 
 
+(** Module representing location. *)
+module Location:
+sig
+    type t
+
+    val href:     t -> string
+    val protocol: t -> string
+    val host:     t -> string
+
+    val port:     t -> string
+    (** Port number as a string. If there is no explicit port, then the empty
+        string is returned. *)
+
+    val pathname: t -> string
+    (** An initial '/' followed by the path of the url of the location (or an
+        empty string if there is no path. *)
+
+    val search:   t -> string
+
+    val hash:     t -> string
+
+
+    val assign: string -> t -> unit
+    (** [assign url window] Load the [url]. *)
+
+    val reload: t -> unit
+    (** Reload the current page. *)
+end
+
+
+
+
+(** Module representing the browser history. *)
+module History:
+sig
+    type t
+
+    val go: int -> t -> unit
+
+    val push_state: Base.Value.t -> string -> string -> t -> unit
+    (** [push_state state title url] Push a new url onto the history stack
+        without loading the page.
+
+        The title is ignored by many browsers.
+
+        The url can be relative or absolute. If its relative, it is resolved
+        relative to the current url.
+
+        Precondition: [url] must be of the same origin as the current url.
+
+        The state is included in the corresponding popstate event as [state]
+        property. The popstate event fires if the user navigates to the
+        corresponding url.
+
+        {e Note:} Neither [push_state] nor [replace_state] do trigger a popstate
+        event. A popstate event is triggered only by navigation (back, forward
+        button). At the popstate event the new location has already been set.
+    *)
+
+
+    val replace_state: Base.Value.t -> string -> string -> t -> unit
+    (** Like [push_state] but without pushing a new state onto the history. Just
+        replace the current entry in the history stack. *)
+end
+
+
+
+
 (** Module representing a browser window.
 
     Use this module only in code executing within a browswer window. Don't use
@@ -284,8 +352,16 @@ sig
     val document: t -> Document.t
     (** The document of the window. *)
 
+    val history: t -> History.t
+    (** Browser history. *)
+
+
+    val location: t -> Location.t
+    (** Location object. *)
+
+
     val on_next_animation: (float -> unit) -> t -> unit
-    (** [on_next_animation callback]
+    (** [on_next_animation callback window]
 
         The [callback] is called on the next animation frame. Usually a browser
         has 60 frames per second.
@@ -293,4 +369,5 @@ sig
         The argument received by the callback is the time in milliseconds since
         the current document has been loaded.
     *)
+
 end

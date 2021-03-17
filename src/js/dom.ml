@@ -70,7 +70,6 @@ end
 
 class type document =
 object
-    inherit event_target
     method body:           element Js.t Js.readonly_prop
     method getElementById: js_string -> element Js.t Js.Opt.t Js.meth
     method createTextNode: js_string -> node Js.t Js.meth
@@ -80,10 +79,33 @@ end
 
 
 
+class type history =
+object
+    method go: int -> unit Js.meth
+    method pushState:    Base.Value.t -> js_string -> js_string -> unit Js.meth
+    method replaceState: Base.Value.t -> js_string -> js_string -> unit Js.meth
+end
+
+
+class type location =
+object
+    method href:        js_string Js.readonly_prop
+    method protocol:    js_string Js.readonly_prop
+    method host:        js_string Js.readonly_prop
+    method port:        js_string Js.readonly_prop
+    method pathname:    js_string Js.readonly_prop
+    method search:      js_string Js.readonly_prop
+    method hash:        js_string Js.readonly_prop
+
+    method assign: js_string -> unit Js.meth
+    method reload: unit -> unit Js.meth
+end
+
 
 class type window =
 object
-    inherit event_target
+    method history:  history Js.t Js.readonly_prop
+    method location: location Js.t Js.readonly_prop
     method document: document Js.t Js.readonly_prop
     method requestAnimationFrame: (float -> unit) -> unit Js.meth
 end
@@ -244,7 +266,71 @@ end
 
 
 
+module History =
+struct
+    type t = history Js.t
 
+
+    let go (i: int) (history: t): unit =
+        history##go i
+
+
+    let push_state
+            (state: Value.t)
+            (title: string)
+            (url: string)
+            (history: t)
+        : unit =
+        let open Js in
+        history##pushState state (string title) (string url)
+
+
+    let replace_state
+            (state: Value.t)
+            (title: string)
+            (url: string)
+            (history: t)
+        : unit =
+        let open Js in
+        history##replaceState state (string title) (string url)
+end
+
+
+
+
+
+module Location =
+struct
+    type t = location Js.t
+
+    let href (location: t): string =
+        Js.to_string location##.href
+
+    let protocol (location: t): string =
+        Js.to_string location##.protocol
+
+    let host (location: t): string =
+        Js.to_string location##.host
+
+    let port (location: t): string =
+        Js.to_string location##.port
+
+    let pathname (location: t): string =
+        Js.to_string location##.pathname
+
+    let search (location: t): string =
+        Js.to_string location##.search
+
+    let hash (location: t): string =
+        Js.to_string location##.hash
+
+    let assign (url: string) (location: t): unit =
+        location##assign (Js.string url)
+
+
+    let reload (location: t): unit =
+        location##reload ()
+end
 
 
 
@@ -263,6 +349,15 @@ struct
 
     let document (w: t): Document.t =
         w##.document
+
+
+    let history (w: t): History.t =
+        w##.history
+
+
+    let location (w: t): Location.t =
+        w##.location
+
 
     let on_next_animation (callback: float -> unit) (w: t): unit =
         w##requestAnimationFrame callback
