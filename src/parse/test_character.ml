@@ -468,7 +468,7 @@ let%test _ =
     let p =
         string_of_base64
         |> make ()
-        |> Parser.run_on_string "cGxlYXN1cmUu"
+        |> Parser.run_on_string "c\n\rGxlY  XN1cmUu"
     in
     Parser.has_succeeded p
     &&

@@ -294,15 +294,23 @@ struct
 
 
     let base64_char: int t =
-        map (fun c -> Char.code c - Char.code 'A') uppercase_letter
-        </>
-        map (fun c -> Char.code c - Char.code 'a' + 26) lowercase_letter
-        </>
-        map (fun i -> i + 52) digit
-        </>
-        map (fun _ -> 62) (char '+')
-        </>
-        map (fun _ -> 63) (char '/')
+        let* i =
+            map (fun c -> Char.code c - Char.code 'A') uppercase_letter
+            </>
+            map (fun c -> Char.code c - Char.code 'a' + 26) lowercase_letter
+            </>
+            map (fun i -> i + 52) digit
+            </>
+            map (fun _ -> 62) (char '+')
+            </>
+            map (fun _ -> 63) (char '/')
+            <?>
+            "base64 character [A-Za-z0-9+/]"
+        in
+        let* _ = skip_zero_or_more (char ' ' </> char '\n' </> char '\r')
+        in
+        return i
+
 
 
     let base64_group: int array t =
