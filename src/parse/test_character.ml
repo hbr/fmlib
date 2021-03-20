@@ -421,3 +421,66 @@ let%test _ =
     Parser.column p = 5
     &&
     Parser.failed_expectations p = ["'c'", Some (Align 4)]
+
+
+
+
+(*
+Base64 decoding
+------------------------------------------------------------
+*)
+
+let%test _ =
+    let open SP in
+    let p =
+        base64 Fun.id (fun grp s -> s ^ grp)
+        |> make ()
+        |> Parser.run_on_string "TQ======"
+    in
+    Parser.has_succeeded p
+    &&
+    Parser.final p = "M"
+
+let%test _ =
+    let open SP in
+    let p =
+        string_of_base64
+        |> make ()
+        |> Parser.run_on_string "TWE====="
+    in
+    Parser.has_succeeded p
+    &&
+    Parser.final p = "Ma"
+
+let%test _ =
+    let open SP in
+    let p =
+        string_of_base64
+        |> make ()
+        |> Parser.run_on_string "TWFu"
+    in
+    Parser.has_succeeded p
+    &&
+    Parser.final p = "Man"
+
+let%test _ =
+    let open SP in
+    let p =
+        string_of_base64
+        |> make ()
+        |> Parser.run_on_string "cGxlYXN1cmUu"
+    in
+    Parser.has_succeeded p
+    &&
+    Parser.final p = "pleasure."
+
+let%test _ =
+    let open SP in
+    let p =
+        string_of_base64
+        |> make ()
+        |> Parser.run_on_string "c3VyZS4="
+    in
+    Parser.has_succeeded p
+    &&
+    Parser.final p = "sure."

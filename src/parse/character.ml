@@ -2,6 +2,9 @@ open Fmlib_std
 open Interfaces
 
 
+
+
+
 module Make
          (User:        ANY)
          (Final:       ANY)
@@ -263,6 +266,67 @@ struct
         digit </> hex_lowercase </> hex_uppercase <?> "hex digit"
 
 
+    let counted
+            (min: int)
+            (max: int)
+            (start: 'r)
+            (next: int -> 'item -> 'r -> 'r)
+            (p: 'item t)
+        : 'r t
+        =
+        assert (0 <= min);
+        assert (min <= max);
+        let rec many i r =
+            if i = max then
+                return r
+            else
+                let pp =
+                    let* a = p in
+                    many (i + 1) (next (i + 1) a r)
+                in
+                if min <= i then
+                    pp </> return r
+                else
+                    pp
+        in
+        many 0 start
+
+
+
+    let base64_char: int t =
+        map (fun c -> Char.code c - Char.code 'A') uppercase_letter
+        </>
+        map (fun c -> Char.code c - Char.code 'a' + 26) lowercase_letter
+        </>
+        map (fun i -> i + 52) digit
+        </>
+        map (fun _ -> 62) (char '+')
+        </>
+        map (fun _ -> 63) (char '/')
+
+
+    let base64_group: int array t =
+        counted 2 4 [||] (fun _ -> Array.push) base64_char
+
+
+    let base64 (start: string -> 'r) (next: string -> 'r -> 'r): 'r t =
+        let _,_ = start, next in
+        let start0 arr =
+            Base64.decode arr |> start
+        and next0  arr r =
+            next (Base64.decode arr) r
+        in
+        let* r = one_or_more start0 next0 base64_group in
+        let* _ = skip_zero_or_more (char '=') in
+        return r
+
+
+
+    let string_of_base64: string t =
+        base64 Fun.id (fun group str -> str ^ group)
+
+
+
     let string (str: string): string t =
         let len = String.length str in
         let rec parse i =
@@ -279,26 +343,6 @@ struct
         let p c = String.has (fun d -> c = d)  0 str
         in
         charp p e
-
-
-(*
-
-    let word
-          (start: char -> bool)
-          (inner: char -> bool)
-          (e: Expect_msg.t)
-        : string t
-      =
-      let rec rest arr =
-        (expect inner e >>= fun c ->
-         rest (Sequence.push c arr))
-        <|> return arr
-      in
-      expect start e >>= fun c ->
-      map Sequence.to_string (rest (Sequence.singleton c))
-
-*)
-
 
 
 

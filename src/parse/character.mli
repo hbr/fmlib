@@ -200,6 +200,25 @@ sig
         [0] and [15]. *)
 
 
+    val base64: (string -> 'r) -> (string -> 'r -> 'r) -> 'r t
+    (** [base64 start next] Parse a base64 encoding into an object of type ['r].
+
+
+        A base64 encoding is a sequence of zero or more base64 characters
+        (A-Za-z0-9+/) grouped into sequences of 4 characters and optionally
+        padded with the character [=]. Each group of 2-4 base64 characters are
+        decoded into a string of 1-3 bytes.
+
+        [start] gets the first 1-3 bytes and [next] gets all subsequent 1-3
+        bytes until the end of the encoding is reached.
+    *)
+
+
+    val string_of_base64: string t
+    (** Parse a base64 encoding and decode it into a string. *)
+
+
+
     (** {1 Make the Final Parser} *)
 
     val make: State.t -> Final.t t -> Parser.t
