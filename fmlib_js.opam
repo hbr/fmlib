@@ -1,15 +1,12 @@
 opam-version: "2.0"
 
-synopsis: "Functional monadic library"
+synopsis: "Library for easy compilation from ocaml to javascript"
 
 description: """
 
-Library which is completely functional and monadic. It features
+At thin and easy to use library which implements wrappers around js_of_ocaml to
+write javascript applications for the browser or for nodejs in ocaml.
 
-- Monadic parsing functions with combinators suitable for indentation sensitive
-  parsing.
-
-- Pretty printing functions.
 """
 
 maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
@@ -33,4 +30,7 @@ depends: [
     "dune" {>= "1.10"}
     "odoc" {with-doc}
     "ppx_inline_test" {>= "v0.12.0"}
+    "js_of_ocaml" {>= "3.8.0"}
+    "js_of_ocaml-ppx" {>= "3.8.0"}
+    "fmlib" {=version}
 ]

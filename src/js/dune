@@ -1,0 +1,17 @@
+(library
+    (name        fmlib_js)
+    (public_name fmlib_js)
+    (libraries
+        js_of_ocaml
+        fmlib_std
+    )
+    (modules_without_implementation fmlib_js)
+    (preprocess
+        (pps js_of_ocaml-ppx)
+    )
+)
+
+(documentation
+    (package fmlib_js)
+    (mld_files index)
+)

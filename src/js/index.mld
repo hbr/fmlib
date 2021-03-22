@@ -1,0 +1,392 @@
+{1 Javascript Wrapper Library}
+
+[Fmlib_js] is a library to generate javascript code from ocaml code. The library
+uses [js_of_ocaml] to do the actual javascript generation.
+
+
+
+{2 API}
+
+Entry point: {!module: Fmlib_js}
+
+
+
+
+{2 Basics}
+
+[Fmlib_js] is
+
+- Thin: It just wraps javascript functions. So you only pay what you ask for.
+
+- Typesafe: If it compiles there are no type errors at runtime. The library
+  handles all unsafe operations which are possible in [js_of_ocaml] in a type
+  safe manner.
+
+- Minimalistic: It provides the most important primitives only.
+
+- not object oriented: It avoids wrapping javascript objects in ocaml objects.
+
+The types in [Fmlib_js] are opaque i.e. you have [Document.t], [Node.t] and
+[Value.t] to represent a browser window document, a node in the dom tree and a
+javascript value and in the module only functions to access the objects.
+Therefore the ocaml compiler can give you precise error messages.
+
+This design decision is based on the fact that classes and objects (i.e. the
+object oriented features of ocaml) are rarely used and many ocaml programmers
+(like the author of [Fmlib_js]) are not very familiar with the object oriented
+part of ocaml. Many ocaml programmers write and use modules and functions within
+the modules. Therefore [Fmlib_js] uses only this part of the ocaml language.
+
+The library is minimalistic and it is assumed that the programmer writes his own
+convenience functions to combine the primitives in a way appropriate for his
+application.
+
+For data exchange between ocaml and javascript we have the module {!module:
+Fmlib_js.Base.Value} to generate arbitrary javascript values and {!module:
+Fmlib_js.Base.Decode} to decode javascript values into ocaml values. All
+conversions are type safe. If you successfully decode a javascript value into an
+ocaml value of a certain type, it is guaranteed that the ocaml value has the
+type.
+
+The module {!module: Fmlib_js.Base.Main} provides functionality to interface
+with the global environment of javascript.
+
+With the module {!module: Fmlib_js.Dom} it is possible to access the complete
+dom tree in a browser window.
+
+
+It is assumed the programmer of an ocaml application to be compiled to
+javascript wants to stay mainly in the domain of ocaml and has some limited
+functionality to interface with javascript.
+
+
+[Fmlib_js] is not purely functional in the sense that it avoids mutation. Since
+it is just a thin wrapper around javascript functions and javascript functions
+have mutability, the thin wrapper has mutability as well.
+
+It is the goal to provide additional functionality based on [Fmlib_js] which
+allows to write purely declarative web and node applications. [Fmlib_js] provide
+the basic functionality to interface with javascript.
+
+Currently only browser functionality is sufficiently covered. Future releases of
+[Fmlib_js] will cover node functionality as well like file system access,
+starting of child processes, building web servers etc.
+
+
+
+{2 How to use [Fmlib_js]}
+
+
+Install the library via opam by
+{[
+    opam install fmlib_js
+]}
+
+Let's assume you have a file `my_app.ml` using the library [Fmlib_js]. A typical
+dune file looks like
+{[
+    (executable
+        (name my_app)
+        (modes js)
+        (libraries fmlib_js)
+    )
+]}
+
+Having that, the command
+{[
+    dune build ./my_app.bc.js
+]}
+issued from the directory of [my_app.ml] compiles your application into the
+build directory of your dune project (usually
+[_build/default/path/to/my_app/my_app.bc.js]).
+
+
+If you want all unused functions removed from the generated javascript file, you
+can issue the command
+{[
+    dune build --profile release ./my_app.bc.js
+]}
+Compiling with the release profile reduces the size of the generated javascript
+file dramatically.
+
+
+
+In many cases it is convenient to have the compiled javascript file in the source
+directory of [my_app.ml] with the name [my_app.js]. This can be achieved by
+adding the following rule to the dune file
+{[
+    (rule
+        (targets my_app.js)
+        (deps    my_app.bc.js)
+        (mode (promote (until-clean)))
+        (action (copy %{deps} %{targets}))
+    )
+]}
+
+If the application is a browser application you can write a simple html file
+[my_app.html] with the content
+{[
+    <html>
+        <head>
+            <script type="text/javascript" src="my_app.js"></script>
+        </head>
+        <body>
+            <script>
+                ... optional start command ...
+            </script>
+        </body>
+    </html>
+]}
+and load the html file into the browser.
+
+An optional start command is necessary, if the application has been designed to
+be start by a start command. If the application start itself automatically by
+registering as an event listener on the [load] event of the browser window, then
+there is no need for a start command.
+
+In many cases an explicit start command is convenient to send to the application
+some initialization data.
+
+
+
+
+
+
+{2 A Single Page Web Application}
+
+In order to demonstrate the basic functionality of the library we write a very
+rudimentary single page application. A single page application has the feature
+that it has access to the browser history and pushing the forward or the
+backward button does not issue a page load. The application just displays
+different pages depending on the local part of the url.
+
+Our example single page application should have the layout
+{[
+
+    Page 1          (* Headline for the selected page *)
+
+    goto page 1     (* Button to change the page on click *)
+    goto page 2
+    goto page 3
+
+]}
+
+By clicking on one of the buttons, the application shall change the headline to
+indicate the new page and pushing a new entry to the browser history such that
+each visited page has an own entry in the browser history.
+
+Furthermore the application shall be notified when the user navigates forward or
+backward and display the corresponding page without triggering a reload of the
+application.
+
+As a first step in the file [my_app.ml] we open the library and specifically the
+dom access modules.
+{[
+    open Fmlib_js
+    open Dom
+]}
+
+We need a headline and a clickable element for each choice. Therefore we write a
+function which let us create an element containing a text node.
+
+{[
+    let text_element (tag: string) (text: string) (document: Document.t)
+        : Element.t
+        =
+        let el   = Document.create_element   tag  document in
+        let txt  = Document.create_text_node text document in
+        Node.append txt (Element.node el);
+            (* append 'txt' node to the children of 'el' *)
+        el
+]}
+
+Html elements are nodes. But in the library an element has type [Element.t] and
+a dom node has type [Node.t]. The function [Element.node] views an element as a
+node. See {!module: Fmlib_js.Dom.Element} and {!module:  Fmlib_js.Dom.Node} for
+details.
+
+In order to change the page in our simple application we just have to replace
+the headline by a new headline. The whole page is a div which contains the
+header and a navigation element. The [Node] module has functions to retrieve the
+first child and to replace a node by another node.
+
+{[
+    let change (h: Element.t) (page: Element.t): unit =
+        let open Element in
+        let page = Element.node page
+        and h    = Element.node h
+        in
+        match Node.first page with
+        | None ->
+            assert false (* Illegal call *)
+        | Some old_header ->
+            Node.replace h old_header page
+]}
+
+We design our page element in a way that it always has a first child. Therefore
+we can ignore the illegal case that there is no first child.
+
+Next comes the main function which generates the whole application. First we
+make some important data accessible.
+
+{[
+    let make _: unit =
+        let window  = Window.get ()
+        in
+        let doc      = Window.document window
+        and history  = Window.history  window
+        and location = Window.location window
+        in
+        let open Document in
+        let open Element in
+        ...
+]}
+
+Then we create the elements of the page.
+
+{[
+        let page = create_element "div" doc in
+        let nav  = create_element "nav" doc in
+        let el1  = text_element "div" "go to page1" doc
+        and el2  = text_element "div" "go to page2" doc
+        and el3  = text_element "div" "go to page3" doc
+        and h1   = text_element "h1"  "Page1" doc
+        and h2   = text_element "h1"  "Page2" doc
+        and h3   = text_element "h1"  "Page3" doc
+        in
+]}
+
+We use the fragment [#page2] in the url to indicate that we are on page 2. The
+initial hash is
+
+{[
+        let hash = Location.hash location in
+]}
+
+Based on the hash we can find the correct header to display
+
+{[
+        let find_header (hash: string): Element.t =
+            match hash with
+            | "#page1" -> h1
+            | "#page2" -> h2
+            | "#page3" -> h3
+            | _ -> h1
+        in
+]}
+
+The default case is page 1.
+
+Every {i go to page} needs a click handler to start a page change. We write a
+generic function to add a click handler.
+
+{[
+        let add_click (hash: string) (h: Element.t) (el: Element.t): unit =
+            Event_target.add
+                "click"
+                (fun _ ->
+                     change h page;
+                     History.push_state Base.Value.null "" hash history
+                )
+                (Node.event_target (node el))
+        in
+]}
+
+The click handler changes the header of the page to a new header [h] and pushes
+the new relative url [hash] to the browser history. The click handler is added
+to the element [el].
+
+Now we can wire the nodes and install the click handlers by
+
+{[
+        Node.append (node el1) (node nav);
+        Node.append (node el2) (node nav);
+        Node.append (node el3) (node nav);
+        Node.append (node (find_header hash))  (node page);
+        Node.append (node nav)  (node page);
+        Node.append (node page) (node (Document.body doc));
+        add_click "#page1" h1 el1;
+        add_click "#page2" h2 el2;
+        add_click "#page3" h3 el3;
+]}
+
+In order to be able to react to clicks on the forward and backward button of the
+browser we need an event handler for the event type [popstate] of the browser
+window which does the corresponding page change.
+
+{[
+        Event_target.add
+            "popstate"
+            (fun _ ->
+                change
+                    (Location.hash location |> find_header)
+                    page
+            )
+            (Window.event_target window)
+]}
+
+This completes the main function [make].
+
+The function [make] must not be executed before the html of the application is
+loaded into the browser. Reason: Before the loading the body of the document is
+not available and therefore the main function which accesses the body will
+crash.
+
+There are three methods to call [make] after the page load.
+
+The first method is to install an event listener for the load event on the
+browser window.
+
+{[
+    let _ =
+        Event_target.add
+            "load"
+            make
+            Window.(event_target (get ()))
+]}
+
+The second method is to make a start command available to the surrounding
+javascript by
+
+{[
+    let _ =
+        let open Base in
+        Main.make_global
+            "start_application"
+            Value.(function1 (fun _ -> make (); undefined))
+]}
+
+and start the application in the html file
+
+{[
+    <html>
+        <head>
+            <script type="text/javascript" src="my_app.js"></script>
+        </head>
+        <body>
+            <script>
+                start_application ()
+            </script>
+        </body>
+    </html>
+]}
+
+
+The third and simplest method is to call [make] directly withing the a
+application
+
+{[
+    let _ = make ()
+]}
+
+and include the application code at the end of the body
+
+{[
+    <html>
+        <body>
+            <script type="text/javascript" src="my_app.js"></script>
+        </body>
+    </html>
+]}
+
+Summary: With a few lines of code we have created a single page application.
