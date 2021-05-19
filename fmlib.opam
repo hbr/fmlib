@@ -4,12 +4,17 @@ synopsis: "Functional monadic library"
 
 description: """
 
-Library which is completely functional and monadic. It features
+Library supporting functional programming with managed effects. It features
 
-- Monadic parsing functions with combinators suitable for indentation sensitive
+- Fmlib_std: A lot of standard data types.
+
+- Fmlib_parse: Monadic parsing functions with combinators suitable for indentation sensitive
   parsing.
 
-- Pretty printing functions.
+- Fmlib_pretty: Pretty printing functions.
+
+- Fmlib_js: Interface to javscript via js_of_ocaml.
+
 """
 
 maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"

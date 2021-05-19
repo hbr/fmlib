@@ -9,6 +9,14 @@ programming. E.g. the module 'Option' and 'Result' support the 'let*' operator.
 The module 'Array' has a 'push' operation to append functionally elements at the
 end.
 
+Besides some wrapper around Stdlib modules it has the additional modules:
+
+- Deque: A double ended queue with efficient pushing of elements from the front
+  and the rear end and efficient popping of elements from the front end.
+
+- Btree: Finite sets and maps based on B trees. B trees have better cache
+  efficiency and locality than AVL or Redblack trees.
+
 """
 
 
@@ -33,4 +41,5 @@ depends: [
     "dune" {>= "1.10"}
     "odoc" {with-doc}
     "ppx_inline_test" {>= "v0.12.0"}
+    "fmlib" {=version}
 ]
