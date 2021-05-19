@@ -1,5 +1,5 @@
 (library
-    (public_name fmlib.fmlib_pretty)
+    (public_name fmlib_pretty)
     (name fmlib_pretty)
     (libraries fmlib_std)
     (inline_tests)

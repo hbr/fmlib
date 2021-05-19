@@ -482,18 +482,18 @@ sig
 
         {v
             <script>
-                postMessage = my_app.init (state, 'element_id' callback)
+                postMessage = my_app.init (state, 'element_id', callback)
             </script>
         v}
 
         {e Warning:} The ocaml browser application shall not be initialized
-        before the body and in particular the element are available. Therefore
+        before the body and in particular the element is available. Therefore
         it is best to initialize the application at the end of the html body.
 
 
         It is convenient to initialize the browser application with an element
-        id below which the browser application should install in the dom tree.
-        This can be used to avoid conflicting dom accesses between the
+        id below which the browser application should install itself in the dom
+        tree.  This can be used to avoid conflicting dom accesses between the
         javascript side and the ocaml browser application.
     *)
 

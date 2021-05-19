@@ -1,11 +1,16 @@
 opam-version: "2.0"
 
-synopsis: "Library for easy compilation from ocaml to javascript"
+synopsis: "Parsing with combinators and indentation sensitivity"
 
 description: """
 
-At thin and easy to use library which implements wrappers around js_of_ocaml to
-write javascript applications for the browser or for nodejs in ocaml.
+A parsing library with combinators in the style of Haskell's parsec.
+
+The parsing combinators have support for indentation sensitivity. Therefore it
+is easy to parse yaml files and indentation sensitive languages like Haskell and
+Python.
+
+Futhermore it is easy to generate user friendly error messages.
 
 """
 
@@ -30,7 +35,6 @@ depends: [
     "dune" {>= "1.10"}
     "odoc" {with-doc}
     "ppx_inline_test" {>= "v0.12.0"}
-    "js_of_ocaml" {>= "3.8.0"}
-    "js_of_ocaml-ppx" {>= "3.8.0"}
     "fmlib_std" {=version}
+    "fmlib_pretty" {=version}
 ]

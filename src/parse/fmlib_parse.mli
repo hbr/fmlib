@@ -153,10 +153,6 @@
     We want to parse a stream of characters.
 
     {[
-        module Semantic = struct
-            type t = Pretty.Print.doc
-        end
-
         module CP =
             Parse.Character.Make
                 (Unit)                  (* No state needed. *)

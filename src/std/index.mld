@@ -1,0 +1,30 @@
+{0 Standard Types}
+
+[Fmlib_std] is a library of standard types. It has a lot of thin wrappers around
+modules of ocaml's standard library like {!module: Fmlib_std.Array}, {!module:
+Fmlib_std.List} etc.  with some additional functionality and it contains some
+types which are not part of ocaml's standard library like e.g. {!module:
+Fmlib_std.Deque}, {!module: Fmlib_std.Btree}.
+
+{1 Usage}
+
+Install the library via
+{v
+    opam install fmlib_std
+v}
+
+In order to compile program named [foo] with the help of [dune] write a dune
+file like
+{v
+    (executable
+        (name foo)
+        (libraries fmlib_std ...)
+        ...
+    )
+v}
+
+
+
+{1 API}
+
+{!module: Fmlib_std}

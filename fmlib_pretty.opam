@@ -1,11 +1,10 @@
 opam-version: "2.0"
 
-synopsis: "Library for easy compilation from ocaml to javascript"
+synopsis: "Pretty printing support for tree like structures"
 
 description: """
 
-At thin and easy to use library which implements wrappers around js_of_ocaml to
-write javascript applications for the browser or for nodejs in ocaml.
+Easy to use pretty printing library.
 
 """
 
@@ -30,7 +29,5 @@ depends: [
     "dune" {>= "1.10"}
     "odoc" {with-doc}
     "ppx_inline_test" {>= "v0.12.0"}
-    "js_of_ocaml" {>= "3.8.0"}
-    "js_of_ocaml-ppx" {>= "3.8.0"}
     "fmlib_std" {=version}
 ]

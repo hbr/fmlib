@@ -1,7 +1,12 @@
 (library
-    (public_name fmlib.fmlib_std)
+    (public_name fmlib_std)
     (name fmlib_std)
     (inline_tests)
     (preprocess (pps ppx_inline_test))
     (modules_without_implementation fmlib_std)
+)
+
+(documentation
+    (package fmlib_std)
+    (mld_files index)
 )

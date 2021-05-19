@@ -180,8 +180,12 @@ sig
     (** Parse a letter. *)
 
 
+    val digit_char: char t
+    (** Parse a digit [0..9] and return it as character. *)
+
+
     val digit: int t
-    (** Parse a digit. *)
+    (** Parse a digit and return it as number. *)
 
 
     val hex_uppercase: int t

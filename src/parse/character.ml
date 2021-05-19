@@ -247,8 +247,12 @@ struct
             "letter"
 
 
+    let digit_char: char t =
+        charp (fun c -> '0' <= c && c <= '9') "digit"
+
+
     let digit: int t =
-        let* d = charp (fun c -> '0' <= c && c <= '9') "digit"
+        let* d = digit_char
         in
         return Char.(code d - code '0')
 

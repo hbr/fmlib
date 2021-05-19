@@ -1,17 +1,27 @@
 {0 Fmlib}
 
-{1 Components}
+The library [Fmlib] supports functional programming with managed effects. It has
+the following components:
 
-- {!module: Fmlib_std} Standard Data Types
 
-- {!module: Fmlib_pretty} Pretty Printing
+- {{: ../fmlib_std/index.html}[Fmlib_std]} Standard Types
 
-- {!module: Fmlib_parse}  Parsing
+- {{: ../fmlib_pretty/index.html}[Fmlib_pretty]} Pretty Printing
+
+- {{: ../fmlib_parse/index.html}[Fmlib_parse]}  Parsing
+
+- {{: ../fmlib_js/index.html}[Fmlib_js]} Interface to javascript via [js_of_ocaml]
 
 
 All libraries of {e Fmlib} are prefixed by [Fmlib_] to avoid nameclashes with
 any other used libraries.
 
+
+
+{1 Design and Implementation}
+
+The design and the implementation of some modules is described
+{{: https://fmlib_ocaml.readthedocs.io} in this document}.
 
 
 
@@ -28,5 +38,6 @@ choose your input method and you push the characters into the parser.
 
 The library is {e functional} in the sense that it avoids mutation or uses
 mutation only locally to improve performance. Exception handling is avoided as
-well. The module {!module: Fmlib_std.Result} can be used to achieve the same
+well. The module {{: ../fmlib_std/Fmlib_std/Result/index.html}
+[Fmlib_std.Result]} can be used to achieve the same
 effect as exception handling.

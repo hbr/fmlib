@@ -14,6 +14,8 @@ module Interfaces = Interfaces
 
 module Array  = Array
 
+module Btree  = Btree
+
 module Deque  = Deque
 
 module Int    = Int
