@@ -5,11 +5,11 @@ sig
 
     (**
         A parser [p] is a sink of token. As long as it signals [needs_more p]
-        more token can be pushed into the parser via [put token p] or the input
+        more token can be pushed into the parser via [put_token p] or the input
         stream can be ended via [put_end p].
 
-        If the parser does not need more token ([has_ended p] is equivalent to
-        [not (needs_more p)]), then it has either succeeded or failed.
+        [has_ended p] is equivalent to [not (needs_more p)]. [has_ended p]
+        signals that the parser has either succeeded or failed.
 
         If it has succeeded the final value is available via [final p].
 
@@ -115,10 +115,15 @@ sig
         Can be called at any time.
     *)
 
+    val has_lookahead: t -> bool
+    (** [has_lookahead p] Are there any unconsumed lookahead token in the buffer
+        or has the end token not yet been consumed? *)
+
+
     val lookaheads: t -> token array * bool
     (** [lookaheads p] The lookahead token and and end flag of the parser [p].
 
-        The end flag indicates, if the end token has already been received via
+        The end flag indicates that the end token has already been received via
         [put_end p].
     *)
 end

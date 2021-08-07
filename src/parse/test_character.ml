@@ -122,6 +122,55 @@ let%test _ =
 
 
 
+let%test _ =
+    let open Character.Make (Unit) (String) (Unit) in
+    let p =
+        Parser.run_on_string
+            "ab"
+            (make
+                ()
+                (string "abc"))
+    in
+    Parser.(
+        let la, la_end = lookaheads p in
+        column p = 2
+        &&
+        has_failed_syntax p
+        &&
+        Array.is_empty la
+        &&
+        la_end
+        &&
+        has_lookahead p
+    )
+
+
+
+let%test _ =
+    let open Character.Make (Unit) (String) (Unit) in
+    let p =
+        Parser.run_on_string
+            "ab"
+            (make
+                ()
+                (backtrack (string "abc") "abc" </> string "ab"))
+    in
+    Parser.(
+        let la, la_end = lookaheads p in
+        column p = 2
+        &&
+        has_succeeded p
+        &&
+        final p = "ab"
+        &&
+        Array.is_empty la
+        &&
+        la_end
+        &&
+        not (has_lookahead p)
+    )
+
+
 
 
 (*

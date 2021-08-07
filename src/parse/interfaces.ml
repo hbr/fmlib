@@ -17,6 +17,7 @@ sig
     val failed_expectations: t -> expect list
     val failed_semantic: t -> semantic
     val state: t -> state
+    val has_lookahead: t -> bool
     val lookaheads: t -> token array * bool
 end
 

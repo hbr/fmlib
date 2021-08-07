@@ -133,6 +133,13 @@ struct
                 B.state b
 
 
+        let has_lookahead (p: t): bool =
+            match p with
+            | More (b, _)
+            | Done (b, _) ->
+                B.has_lookahead b
+
+
         let lookaheads (p: t): Token.t array * bool =
             match p with
             | More (b, _)

@@ -35,6 +35,7 @@ struct
             (* Are we in buffering mode? I.e. are we within a backtrackable
                parser? *)
             bool;
+
         toks:
             (* Buffered token. The token from [la_ptr] to the end are lookahead
                token. *)
@@ -84,6 +85,7 @@ struct
             false
         | _ ->
             true
+
 
     let has_lookahead (b: t): bool =
         (* Are there lookahead token in the buffer? *)
@@ -176,7 +178,7 @@ struct
     let reject (e: Expect.t) (b: t): t =
         (* Reject the first lookahead token.
 
-           The token are unchanged. The failed expectation [e{ is added to the
+           The token are unchanged. The failed expectation [e] is added to the
            syntax errors.
         *)
         add_expected e b
@@ -188,6 +190,7 @@ struct
 
     let has_consumed (b: t): bool =
       b.has_consumed
+
 
     let end_new_consumer (b0: t) (b: t): t =
         {b with
@@ -264,9 +267,12 @@ struct
            treat the consumed token as lookahead token (i.e. unconsume them).
         *)
         assert (count_toks b0 <= count_toks b);
+        assert (b._end <> End_consumed);
         {b0 with
          toks =
              b.toks;
+         _end =
+             b._end;
          error =
              match e with
              | None ->

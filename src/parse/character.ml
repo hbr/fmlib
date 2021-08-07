@@ -56,6 +56,7 @@ struct
         let final               = P.final
         let failed_expectations = P.failed_expectations
         let failed_semantic     = P.failed_semantic
+        let has_lookahead       = P.has_lookahead
         let lookaheads          = P.lookaheads
 
         let put                 = P.put
