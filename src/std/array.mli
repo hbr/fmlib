@@ -129,12 +129,22 @@ val map: ('a -> 'b) -> 'a t -> 'b t
 val fold_left: ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a
 (** [fold_left f start arr]
 
+    Fold the folding function [f] with start value [start] over the array [arr].
+
     Compute
     {[
         (f (... (f (f start arr.(0)) arr.(1)) ...) arr.(n - 1)
     ]}
 
     where [n = length arr].
+*)
+
+
+val foldi_left: ('a -> int -> 'b -> 'a) -> 'a -> 'b t -> 'a
+(** [foldi_left f start arr]
+
+    Like [fold_left] with the current index as an additional argument to the
+    folding function.
 *)
 
 
@@ -168,6 +178,29 @@ val blit: 'a t -> int -> 'a t -> int -> int -> unit
 
     Copy [len] values from array [src] starting at [src_pos] to array [dst]
     starting at [dst_pos].
+*)
+
+
+val find: ('a -> bool) -> 'a t -> int option
+(** [find p arr]
+
+    Find the element satisfying the predicate [p] in the array [arr]. Return
+    [None] if no such element exists.
+*)
+
+
+val for_all: ('a -> bool) -> 'a t -> bool
+(** [for_all p arr]
+
+    Do all elements of the array [arr] satisfy the predicate [p]?
+*)
+
+
+
+val exists: ('a -> bool) -> 'a t -> bool
+(** [exists p arr]
+
+    Exists an element of the array [arr] which satisfies the predicate [p]?
 *)
 
 

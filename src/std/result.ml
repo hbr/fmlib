@@ -28,6 +28,13 @@ let (>>=) (m: ('a, 'e) t) (f: 'a -> ('b, 'e) t): ('b, 'e) t =
 let ( let* ) = (>>=)
 
 
+let map (f: 'a -> 'b): ('a, 'e) t -> ('b, 'e) t = function
+    | Ok a ->
+        Ok (f a)
+
+    | Error e ->
+        Error e
+
 
 
 let map_error (f: 'e -> 'f): ('a, 'e) t -> ('a, 'f) t = function

@@ -18,6 +18,8 @@ module Btree  = Btree
 
 module Deque  = Deque
 
+module Rb_array = Rb_array
+
 module Int    = Int
 
 module List   = List

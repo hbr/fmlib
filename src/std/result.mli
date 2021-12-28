@@ -107,6 +107,11 @@ val ( let* ): ('a,'e) t -> ('a -> ('b,'e) t) -> ('b,'e) t
 
 
 
+val map: ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
+(** [map f m] Map the result in [m] via the function [f]. *)
+
+
+
 val map_error: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 (** [map_error f m] Map the error in [m] via the function [f]. *)
 

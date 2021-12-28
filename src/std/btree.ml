@@ -751,72 +751,109 @@ struct
                 d.tree
 
 
+
+
+
+
+
+
+    (* Stream of key value pairs
+     * =========================
+     *)
+
+    type 'a entry
+        =
+        'a pairs
+        * 'a t array
+        * int
+
+    type 'a source = {
+        top:
+            'a t * int;         (* node/leaf and position within the node/leaf *)
+
+        stack: 'a entry list;
+    }
+
+
+    let has_more (source: 'a source): bool =
+        match source.top with
+        | Leaf pairs, i ->
+            i < Array.length pairs
+        | Node (pairs, _ ), i ->
+            i < Array.length pairs
+
+
+    let peek (source: 'a source): Key.t * 'a =
+        assert (has_more source);
+        match source.top with
+        | Leaf pairs, i ->
+            pairs.(i)
+        | Node (pairs, _ ), i ->
+            pairs.(i)
+
+
+
+    let rec down (tree: 'a t) (stack: 'a entry list): 'a source =
+        (* Search for the first key value pair of [tree]. *)
+        match tree with
+        | Leaf pairs ->
+            (* We are already on a leaf. The next item is the first key value
+             * pair. *)
+            {top = Leaf pairs, 0; stack}
+
+        | Node (pairs, children) ->
+            (* Search the first key value pair in the first child. Push the
+             * first key value pair of the node onto the stack. *)
+            down children.(0) ((pairs, children, 0) :: stack)
+
+
+
+    let rec up (stack: 'a entry list): 'a source =
+        (* Search the stack for a node which is positioned on a key value pair.
+         * *)
+        match stack with
+        | [] ->
+            {top = empty, 0; stack = []}
+        | (pairs, children, i) :: stack ->
+            if i < Array.length pairs then
+                {top = Node (pairs, children), i; stack}
+            else
+                up stack
+
+
+    let advance (source: 'a source): 'a source =
+        assert (has_more source);
+        match source.top with
+        | Leaf pairs, i ->
+            if i + 1 < Array.length pairs then
+                {source with top = Leaf pairs, i + 1}
+            else
+                up source.stack
+        | Node (pairs, children), i ->
+            assert (i < Array.length pairs);
+            down
+                children.(i + 1)
+                ((pairs, children, i + 1) :: source.stack)
+
+
+    let make_source (tree:  'a t): 'a source =
+        down tree []
+
+
+
+
+
+
     module Source (Value: Interfaces.ANY) = struct
         type 'a map = 'a t
+        type item   = Key.t * Value.t
 
-        type item = Key.t * Value.t
+        type t = Value.t source
 
-        type entry = Value.t pairs * Value.t map array * int
-
-        type t = {
-            top: Value.t map * int;
-            stack: entry list;
-        }
-
-
-        let has_more (source: t): bool =
-            match source.top with
-            | Leaf pairs, i ->
-                i < Array.length pairs
-            | Node (pairs, _ ), i ->
-                i < Array.length pairs
-
-
-        let peek (source: t): item =
-            assert (has_more source);
-            match source.top with
-            | Leaf pairs, i ->
-                pairs.(i)
-            | Node (pairs, _ ), i ->
-                pairs.(i)
-
-
-        let rec down (tree: Value.t map) (stack: entry list): t =
-            match tree with
-            | Leaf pairs ->
-                {top = Leaf pairs, 0; stack}
-            | Node (pairs, children) ->
-                down children.(0) ((pairs, children, 0) :: stack)
-
-
-        let rec up (stack: entry list): t =
-            match stack with
-            | [] ->
-                {top = empty, 0; stack = []}
-            | (pairs, children, i) :: stack ->
-                if i < Array.length pairs then
-                    {top = Node (pairs, children), i; stack}
-                else
-                    up stack
-
-
-        let advance (source: t): t =
-            assert (has_more source);
-            match source.top with
-            | Leaf pairs, i ->
-                if i + 1 < Array.length pairs then
-                    {source with top = Leaf pairs, i + 1}
-                else
-                    up source.stack
-            | Node (pairs, children), i ->
-                assert (i < Array.length pairs);
-                down
-                    children.(i + 1)
-                    ((pairs, children, i + 1) :: source.stack)
-
-
-        let make (tree: Value.t map): t =
-            down tree []
+        let has_more = has_more
+        let peek     = peek
+        let advance  = advance
+        let make     = make_source
     end
 end
 

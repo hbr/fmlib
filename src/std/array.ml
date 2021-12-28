@@ -26,6 +26,16 @@ let last (xs: 'a t): 't =
     get xs (len - 1)
 
 
+
+let foldi_left (f: 'a -> int -> 'b -> 'a) (start: 'a) (xs: 'b t): 'a =
+    fold_left
+        (fun (start, idx) e -> f start idx e, idx + 1)
+        (start, 0)
+        xs
+    |>
+    fst
+
+
 let push (x: 'a) (xs: 'a array): 'a array =
     let len = length xs in
     let xs_new = make (len + 1) x in
@@ -93,6 +103,20 @@ let remove_last (xs: 'a array): 'a array =
     assert (0 < len);
     sub xs 0 (len - 1)
 
+
+
+let find (p: 'a -> bool) (arr: 'a array): int option =
+    let len = length arr
+    in
+    let rec find_from i =
+        if i = len then
+            None
+        else if p (get arr i) then
+            Some i
+        else
+            find_from (i + 1)
+    in
+    find_from 0
 
 
 let binsearch
