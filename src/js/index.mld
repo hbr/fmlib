@@ -140,8 +140,8 @@ If the application is a browser application you can write a simple html file
 and load the html file into the browser.
 
 An optional start command is necessary, if the application has been designed to
-be start by a start command. If the application start itself automatically by
-registering as an event listener on the [load] event of the browser window, then
+be started by a start command. If the application starts itself automatically by
+registering an event listener on the [load] event of the browser window, then
 there is no need for a start command.
 
 In many cases an explicit start command is convenient to send to the application
@@ -372,7 +372,7 @@ and start the application in the html file
 ]}
 
 
-The third and simplest method is to call [make] directly withing the a
+The third and simplest method is to call [make] directly within the
 application
 
 {[

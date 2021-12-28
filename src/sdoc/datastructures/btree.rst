@@ -229,7 +229,7 @@ Insertion
 ============================================================
 
 All nodes have at most ``m - 1`` keys and ``m`` children where ``m`` is the
-order of the B tree. A node which has exactyl ``m - 1`` keys (and ``m`` children
+order of the B tree. A node which has exactly ``m - 1`` keys (and ``m`` children
 in case of an interior node) is full.
 
 Insertion always starts in a leaf node. If the leaf node is full, then the
@@ -245,7 +245,7 @@ insertion is described by the data type
 
 .. code-block:: ocaml
 
-    tyep 'a insert =
+    type 'a insert =
         | Normal_insert of 'a t
         | Split_insert of 'a t * (Key.t * 'a) * 'a t
 
@@ -312,7 +312,7 @@ interior node.
 Insertion into a leaf node
 ------------------------------------------------------------
 
-The insertion into a leaf node is easy, if the leaf is not full. In case of of
+The insertion into a leaf node is easy, if the leaf is not full. In case of
 overflow we have to distinguish several cases.
 
 In the following we assume that we want to insert a key value pair ``y`` at
@@ -410,7 +410,7 @@ Overflow, even order:
     key value pairs consists of two subarrays of size ``k - 1`` with a single
     separator pair ``s`` which separates the two subarrays.
 
-    We have to distinguish the case ``i < k`` and ``i >= k``. In both cases ``s``
+    We have to distinguish the cases ``i < k`` and ``i >= k``. In both cases ``s``
     can be used as the popup key. The insertion of ``y`` happens either in the
     left or in the right subarray.
 
@@ -549,7 +549,7 @@ Insertion into an interior node
 ------------------------------------------------------------
 
 In this subsection we treat the situation that a key value pair has been
-inserted into the ``i``th child ``t`` of an interior node and the insertion into
+inserted into the ``i`` th child ``t`` of an interior node and the insertion into
 the child ``t`` caused an overflow and resulted in the triple ``(u, y, v)``
 where ``u`` and ``v`` are two valid B trees separated by the popup key value
 pair ``y``. Furthermore the interior node is full and must be splitted as well.
@@ -841,7 +841,7 @@ B tree requires that each leaf node or interior node which is not the root of
 the tree must have a minimal number of keys (and a minimal number of children in
 case of an interior node).
 
-If a leaf node underflows because of the deletion of a key value pair, the
+If a node underflows because of the deletion of a key value pair, the
 missing key value pair can be pulled from the parent and the missing child from
 the sibling. This can require to merge the underflowing child with its sibling
 (details see below).

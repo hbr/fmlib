@@ -2,20 +2,25 @@ opam-version: "2.0"
 
 synopsis: "Functional monadic library"
 
+
 description: """
 
-Library supporting functional programming with managed effects. It features
+Umbrella for a collection of libraries supporting functional programming with
+managed effects. The umbrella contains only documentation. See the following
+packages to get the functionality:
 
-- Fmlib_std: A lot of standard data types.
+- fmlib_std: A lot of standard data types.
 
-- Fmlib_parse: Monadic parsing functions with combinators suitable for indentation sensitive
-  parsing.
+- fmlib_parse: Monadic parsing functions with combinators suitable for
+  incremental and indentation sensitive parsing.
 
-- Fmlib_pretty: Pretty printing functions.
+- fmlib_pretty: Pretty printing functions. Prints hierachical structures like
+  expressions and indented paragraphs nicely.
 
-- Fmlib_js: Interface to javscript via js_of_ocaml.
+- fmlib_js: Interface to javscript via js_of_ocaml.
 
 """
+
 
 maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
 

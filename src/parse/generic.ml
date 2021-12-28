@@ -440,21 +440,12 @@ struct
             (
                 let* s    = sep in
                 let* item = p in
-                many (next r s item))
-                </>
-                return r
-            in
-            let* item = p in
-            many (first item)
+                many (next r s item)
+            )
+            </>
+            return r
+        in
+        let* item = p in
+        many (first item)
 
-    (*
-        let one_or_more_separated (p: 'a t) (sep: _ t): 'a list t =
-            return (fun a l -> a :: l)
-            |= p
-            |= zero_or_more (sep >>= fun _ -> p)
-
-
-        let zero_or_more_separated (p: 'a t) (sep: _ t): 'a list t =
-            one_or_more_separated p sep
-            </> return []*)
 end (* Make *)

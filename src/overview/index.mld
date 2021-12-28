@@ -1,7 +1,7 @@
 {0 Fmlib}
 
-The library [Fmlib] supports functional programming with managed effects. It has
-the following components:
+The library [Fmlib] supports functional programming in Ocaml with managed
+effects. It has the following components:
 
 
 - {{: ../fmlib_std/index.html}[Fmlib_std]} Standard Types
@@ -16,6 +16,18 @@ the following components:
 All libraries of {e Fmlib} are prefixed by [Fmlib_] to avoid nameclashes with
 any other used libraries.
 
+
+
+{1 Installation}
+
+[Fmlib] can be installed easily with the help of the ocaml package manager opam:
+
+{v
+    opam install fmlib_std
+    opam install fmlib_pretty
+    opam install fmlib_parse
+    opam install fmlib_js
+v}
 
 
 {1 Design and Implementation}

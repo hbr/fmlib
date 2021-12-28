@@ -37,7 +37,7 @@ The binary search algorithm has the interface::
         ...
 
 
-The search key is in many case only a part of the items in the array. Therefore
+The search key is in many cases only a part of the items in the array. Therefore
 we need a function ``key_of`` to extract the search key from an item. The
 comparison function ``compare`` defines the order of the keys with the standard
 semantics used in ocaml
@@ -81,14 +81,14 @@ The basic search algorithm works between two valid indices ``lower`` and
 
     0 <= lower < upper < length arr
 
-    arr.(lower) < key < arr.(upper`
+    arr.(lower) < key < arr.(upper)
 
 
-If ``lower + 1 = upper`` then no exact match can be found, because there is no
+If ``lower + 1 = upper``, then no exact match can be found, because there is no
 other element between the indices ``lower`` and ``upper``. Therefore the pair
 ``(upper, false)`` satisfies the specification.
 
-If ``lower + 1 < upper`` there is at least one index between ``lower`` and
+If ``lower + 1 < upper``, then there is at least one index between ``lower`` and
 ``upper`` i.e. ``2 <= upper - lower`` and ``(upper - lower) / 2`` is at least
 ``1``.
 
