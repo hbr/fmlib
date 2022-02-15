@@ -59,6 +59,7 @@ struct
                 More (text, state, f)
 end
 
+
 include Readable
 
 
@@ -67,6 +68,17 @@ let string_of (r: t): string =
         String.From_source (Readable)
     in
     From.make r
+
+
+let write_to_channel (oc: out_channel) (r: t): unit =
+    let rec write r =
+        if has_more r then
+            begin
+                output_char oc (peek r);
+                write (advance r)
+            end
+    in
+    write r
 
 
 

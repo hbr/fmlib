@@ -1,299 +1,48 @@
 (** Pretty Printer: Generate nicely formatted ascii text. *)
 
-(** {1 Overview}
 
-    The pretty printer allows to print nicely formatted ascii text. The user
-    generates a document with break hints. The primitives to generate documents
-    are
+(** {1 Documentation}
 
-    - [empty] Empty document.
-    - [text str] Document which contains the string [str]. [str] should not
-      contain newlines in order not to interfere with the formatter.
-    - [break str] Break hint with alternative text [str].
-    - [doc2 <+> doc2] Concatenation of the documents [doc1] and [doc2]
-    - [nest indent doc] Indented document.
-    - [group doc] Treat all top level break hints of [doc] consistently i.e.
-    either print all break hints with their alternative text or as a newline.
-
-    With these primitives a surprisingly rich set of formattings can be made.
-
-    The user generates documents not only by using the primitives. There are a
-    lot of convenience functions to make document generation easy.
-
-    Document creation is done lazily. Only very few resources are consumed in
-    producing a document. The work starts with the layout function. The layout
-    function does the layout and never buffers more than one line.
-
-    Layout is done lazily as well. The layout generates a stream of characters.
-    Lines are formatted only if the characters of the line are pulled out of the
-    stream.
-
-    If you just create a document and layout it but you never use the stream,
-    then no work is done.
+    {{!page-pretty} Pretty Printing Overview}
 *)
-
-(** {2 Term Printing}
-
-    The usage of the pretty printer is best explained by an example. Suppose
-    we want to print the function application [f a b (g c d) e] where the
-    function names and arguments might have different length. We create a {i
-    document} which represents the structure by
-
-    {[
-    let doc =
-        group (
-            text "f" <+> space <+>
-            indent
-                2
-                (stack_or_pack
-                    " "
-                    [text "a";
-                     text "b";
-                     group (
-                         text "(g" <+> space <+>
-                         indent
-                            2
-                            (stack_or_pack " " [text "c"; text "d"])
-                         <+> text ")");
-                     text "e"])
-        )
-    ]}
-
-    where [text "blabla"] is a document with some unbreakable text, [<+>]
-    concatenates two documents, [space] is a break hint whose alternative text
-    is a blank, [stack_or_pack atxt [...]] stacks a list of documents separated
-    by a break hint with the alternative text [atxt].
-
-    The command
-
-    {[let stream = layout 5 doc ]}
-
-    creates a stream of characters which is nicely formatted using a desired
-    line width of 5 characters. Since 5 characters are not enough to put any of
-    the subterms completely on a line, the output is
-
-    {[
-    123456789012345
-    f
-      a
-      b
-      (g
-        c
-        d)
-      d
-    ]}
-
-    i.e. each break hint is printed as a newline.
-
-    If we give the pretty printer a line width of 10, it could pack the
-    application [g c d] on a line and print
-
-    {[
-    123456789012345
-    f
-      a
-      b
-      (g c d)
-      d
-    ]}
-
-    If the pretty printer has enough line width e.g. a line width of 15, it can
-    put the whole expression on a line.
-
-    {[
-    123456789012345
-    f a b (g c d) d
-    ]}
-
-    By using [stack_or_pack] we instructed the pretty printer to either print
-    all break hints as newlines or all break hints with their alternative texts.
-    If we use [pack] instead of [stack_or_pack], the pretty printer tries to
-    pack as many arguments as possible on a line.
-
-    E.g. with a line width of 11 and using [pack] instead of [stack_or_pack] we
-    get the output
-
-    {[
-    123456789012345
-    f
-      a b
-      (g c d) d
-    ]}
-
-    With a line width of 10 and using [pack] we get
-
-    {[
-    123456789012345
-    f
-      a b
-      (g c d)
-      d
-    ]}
-
-    because the pretty printer cannot pack [(g c d)] and [d] on a single line.
-
-*)
-
-(** {2 Character Stream}
-
-    The basic type [t] of the pretty printer is a lazy character stream. I.e.
-    characters are only generated if needed. The pretty printer implements the
-    interface {!Fmlib_std.Interfaces.SOURCE} to represent a character stream.
-    You can ask the stream [has_more r] whether there are more characters in the
-    stream and [peek r] to get the next character. The instruction [advance r]
-    returns the stream [r] advanced by one character position.
-
-    The pretty printer has a function [string_of r] to return a string
-    representation of the character stream.
-
-    However you very rarely need a string representation of a character stream.
-    All functions in [Fmlib] are able to handle character streams.
-
-
- *)
-
-
-(** {2 Formatted Paragraphs }
-
-    There are functions to generate formatted paragraphs with indentation.
-
-    {[
-        let words =
-            wrap_words "bla bla bla bla bla bla bla" <+> cut
-
-        let doc = paragraphs [
-            words;
-            words;
-            nest 4 words;
-            words;
-        ]
-
-        let stream = layout 16 doc
-    ]}
-
-    The [stream] produces the following output
-    {[  12345678901234567890
-
-        bla bla bla bla
-        bla bla bla
-
-        bla bla bla bla
-        bla bla bla
-
-            bla bla bla
-            bla bla bla
-            bla
-
-        bla bla bla bla
-        bla bla bla
-    ]}
-
-*)
-
-
-
-
-
-(** {2 Generate Documents}
-
-    Clearly, it is tedious to write documents by hand. Usually you have some
-    tree like structure and you want to generate a document from the tree
-    structure.
-
-    Let's assume you have a tree structure like
-
-    {[
-    type tree =
-        { name: string; children: tree list; }
-
-    let leaf (name: string): tree =
-        {name; children = [] }
-
-    let tree (name: string) (children: tree list): tree =
-        {name; children}
-    ]}
-
-    Write a function which converts the tree structure to a document.
-
-    {[
-    let doc_of_tree (tree: tree): doc =
-        let rec doc is_top tree =
-            match tree.children with
-            | [] ->
-                text tree.name
-            | _ ->
-                let d =
-                    parent_child
-                        " " 2
-                        (text tree.name)
-                        (children tree.children ())
-                in
-                if is_top then
-                    d
-                else
-                    char '(' <+> d <+> char ')'
-        and children lst () =
-            match lst with
-            | [last] ->
-                doc false last
-            | head :: tail ->
-                doc false head <+> space
-                >> children tail    (* Lazy concatenation!! *)
-            | [] ->
-                assert false (* 'lst' is never empty *)
-        in
-        doc true tree
-    ]}
-
-    Then the simple command
-
-    {[
-    tree
-        "f"
-        [leaf "a";
-         leaf "b";
-         tree "g" [leaf "c"; leaf "d"];
-         leaf "e"]
-    |> layout 10
-    ]}
-
-    generates the character stream
-
-    {[
-    123456789012345
-    f
-      a
-      b
-      (g c d)
-      e
-    ]}
-
-
-    Note the usage of the lazy concatentation operator [>>] in the recursive
-    part of the function handling the children. This makes sure that even if the
-    tree structure is hugh, the iteration over it is done only on demand. I.e.
-    recursive calls are made only if the corresponding characters are needed
-    when processing the character stream.
-*)
-
-
-
-
 
 
 
 (** {1 API} *)
 
 
+(** {2 Types} *)
+
+
+
+type doc
+(** A document which can be pretty printed. *)
+
+
+type t
+(** A pretty printed document as a readable character stream. *)
+
+
+
+
+(** {2 Layout a Document} *)
+
+val layout: int -> doc -> t
+(** [layout width doc] Layout the document [doc] with a the line [width] into a
+    character stream. *)
+
+
+val layout_with_ribbon: int -> int -> doc -> t
+(** [layout width ribbon doc] Layout the document [doc] with a the line [width]
+    and the [ribbon] width. Note: [width] is the complete line width and
+    [ribbon] is the line width minus the indentation of the current line. *)
+
+
+
 
 
 
 (** {2 Character Stream} *)
-
-
-
-type t
-(** A readable character stream. *)
 
 
 val has_more: t -> bool
@@ -320,33 +69,31 @@ val string_of: t -> string
 (** [string_of s] A string representation of the stream [s]. *)
 
 
+val write_to_channel: out_channel -> t -> unit
+(** [write_to_channel oc s] Write the stream [s] to the output channel [oc]. *)
 
 
-(** {2 Document} *)
 
 
 
-(** A document. *)
-type doc
+(** {2 Document Combinators}
 
-(** [layout width doc] Layout the document [doc] with a the line [width]. *)
-val layout: int -> doc -> t
-
-
-(** [layout width ribbon doc] Layout the document [doc] with a the line [width]
-    and the [ribbon] width. Note: [width] is the complete line width and
-    [ribbon] is the line width minus the indentation of the current line. *)
-val layout_with_ribbon: int -> int -> doc -> t
+    This section describes all combinators which can be used to generate
+    documents and combine them into bigger documents.
+*)
 
 
-(** An empty document. *)
+
+(** {3 Basic Combinators} *)
+
 val empty: doc
+(** An empty document. *)
 
 
 val text: string -> doc
 (** [text str] A document with the unbreakable string [str]. It is highly
     recommended that the string does not contain newlines. Newlines in a text
-    string confuses the formatter. *)
+    string confuse the layouter. *)
 
 
 val substring: string -> int -> int -> doc
@@ -373,6 +120,15 @@ val space: doc
 
 val cut: doc
 (** [cut] A break hint with an empty alternative text. *)
+
+
+val (<+>): doc -> doc -> doc
+(** [doc1 <+> doc2] Concatentate the documents [doc1] and [doc2]. *)
+
+
+val (>>): doc -> (unit -> doc) -> doc
+(** [doc >> lazy_doc] Concatenate the document [doc] with the lazy document
+    [lazy_doc]. *)
 
 
 val group: doc -> doc
@@ -412,6 +168,25 @@ val nest: int -> doc -> doc
 
 
 
+val with_width: int -> doc -> doc
+(** [with_width n doc] Format the document [doc] with line [width].
+
+    Use this combinator if you want to format the internal document [doc] with a
+    different line width than the overall document.
+*)
+
+
+val with_ribbon: int -> doc -> doc
+(** [with_ribbon n doc] Format the document [doc] with [ribbon] width.
+
+    Use this combinator if you want to format the internal document [doc] with a
+    different ribbon width than the overall document.
+*)
+
+
+
+(** {3 Convenience Combinators} *)
+
 val parent_child: string -> int -> doc -> doc -> doc
 (** [parent_child hint indent parent child]
 
@@ -427,24 +202,6 @@ val parent_child: string -> int -> doc -> doc -> doc
     |> group
     ]}
 *)
-
-
-
-val with_width: int -> doc -> doc
-(** [with_width n doc] Format the document [doc] with line [width].*)
-
-
-val with_ribbon: int -> doc -> doc
-(** [with_ribbon n doc] Format the document [doc] with [ribbon] width.*)
-
-
-val (<+>): doc -> doc -> doc
-(** [doc1 <+> doc2] Concatentate the documents [doc1] and [doc2]. *)
-
-
-val (>>): doc -> (unit -> doc) -> doc
-(** [doc >> lazy_doc] Concatenate the document [doc] with the lazy document
-    [lazy_doc]. *)
 
 
 

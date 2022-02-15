@@ -6,3 +6,9 @@
     (preprocess (pps ppx_inline_test))
     (modules_without_implementation fmlib_pretty)
 )
+
+
+(documentation
+  (mld_files index pretty)
+  (package fmlib_pretty)
+)
