@@ -2,8 +2,8 @@
     maps based on arrays
 
     Use [Stdlib.Array] in case you need functions which are not contained in
-    this module. There are no problems using [Std.Array] and [Stdlib.Array],
-    because both datatypes are identical.
+    this module. There are no problems using [Fmlib_std.Array] and
+    [Stdlib.Array], because both datatypes are identical.
 
     Futhermore there are the modules [Set] and [Map] which implement finite sets
     and finite maps based on sorted arrays. For small sets and maps, the array

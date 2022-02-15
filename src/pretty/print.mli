@@ -138,8 +138,8 @@
 
     The basic type [t] of the pretty printer is a lazy character stream. I.e.
     characters are only generated if needed. The pretty printer implements the
-    interface {!Std.Module_types.SOURCE} to represent a character stream. You
-    can ask the stream [has_more r] whether there are more characters in the
+    interface {!Fmlib_std.Interfaces.SOURCE} to represent a character stream.
+    You can ask the stream [has_more r] whether there are more characters in the
     stream and [peek r] to get the next character. The instruction [advance r]
     returns the stream [r] advanced by one character position.
 
@@ -147,7 +147,7 @@
     representation of the character stream.
 
     However you very rarely need a string representation of a character stream.
-    All functions in {!Fmlib} are able to handle character streams.
+    All functions in [Fmlib] are able to handle character streams.
 
 
  *)

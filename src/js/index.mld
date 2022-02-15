@@ -4,7 +4,6 @@
 uses [js_of_ocaml] to do the actual javascript generation.
 
 
-
 {2 API}
 
 Entry point: {!module: Fmlib_js}
@@ -41,9 +40,9 @@ The library is minimalistic and it is assumed that the programmer writes his own
 convenience functions to combine the primitives in a way appropriate for his
 application.
 
-For data exchange between ocaml and javascript we have the module {!module:
-Fmlib_js.Base.Value} to generate arbitrary javascript values and {!module:
-Fmlib_js.Base.Decode} to decode javascript values into ocaml values. All
+For data exchange between ocaml and javascript we have the module
+{!module: Fmlib_js.Base.Value} to generate arbitrary javascript values and
+{!module: Fmlib_js.Base.Decode} to decode javascript values into ocaml values. All
 conversions are type safe. If you successfully decode a javascript value into an
 ocaml value of a certain type, it is guaranteed that the ocaml value has the
 type.
