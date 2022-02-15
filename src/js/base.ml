@@ -218,12 +218,13 @@ struct
      *)
 
     let raise_js (message: string): 'a =
+        let js_msg = Js.string message in
         Js.(
-            raise_js_error
-                (new%js
-                    error_constr
-                    (Js.string message)
-                )
+            new%js
+                error_constr
+                js_msg
+            |> Js_error.of_error
+            |> Js_error.raise_
         )
 
 

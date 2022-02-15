@@ -1,7 +1,5 @@
 (library
-    (libraries unix fmlib_std fmlib_pretty fmlib_parse fmlib_js)
-    (inline_tests)
-    (preprocess (pps ppx_inline_test))
+    (libraries fmlib_std fmlib_pretty fmlib_parse fmlib_js)
     (public_name fmlib)
     (name fmlib))
 
