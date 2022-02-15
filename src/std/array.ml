@@ -69,10 +69,8 @@ let replace (i: int) (x: 'a) (xs: 'a array): 'a array =
     (* 0 1 ... i ... (len-1)
                ^ replace
     *)
-    let len = length xs in
-    let arr = make len x in
-    blit xs 0 arr 0 i;
-    blit xs (i + 1) arr (i + 1) (len - (i + 1));
+    let arr = copy xs in
+    set arr i x;
     arr
 
 
