@@ -19,3 +19,7 @@ let start (loc: 'a t): Position.t =
 
 let _end (loc: 'a t): Position.t =
     snd (fst loc)
+
+
+let map (f: 'a -> 'b) (loc: 'a t): 'b t =
+    make (range loc) (value loc |> f)

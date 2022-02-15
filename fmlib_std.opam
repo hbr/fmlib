@@ -41,5 +41,4 @@ depends: [
     "dune" {>= "1.10"}
     "odoc" {with-doc}
     "ppx_inline_test" {>= "v0.13.0"}
-    "fmlib" {=version}
 ]

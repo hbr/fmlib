@@ -3,14 +3,41 @@
 *)
 
 
-type violation =
+type expectation =
     | Indent of int
-    | Align of int
-    | Align_between of int * int
+    (** [Indent n] An indentation of at least [n] columns is expected. *)
+
+    | Align of int (** [Align n] Start at colmun [n] is expected. *)
+
+    | Align_between of int * int (** [Align_between a b] Start between the
+                                     columns [a] and [b] is expected. *)
+(** The expected indentiation. *)
+
+
+type violation = expectation
+(** @deprecated Use [expectation]! *)
+
+
+val group:
+    ('a * expectation option) list
+    -> (expectation option * 'a list) list
+(** [group lst] Group the list of expectations.
+
+    Failed expectations with the same indentation expectation (or not
+    indentation expectation) are grouped into one list. The sequence is not
+    changed.
+*)
+
 
 
 type t
 (** Allowed indentations *)
+
+
+
+val expectation: t -> expectation option
+(** [expectation ind] The expected indentation or alignment. Returns [None] if
+    all positions are allowed. *)
 
 
 val initial: t
@@ -19,9 +46,9 @@ val initial: t
 *)
 
 
-val check_position: int -> t -> violation option
-(** [check_position col ind] Return a violation, if [pos] is not an allowed
-    indentation position. Otherwise return [None]. *)
+val check_position: int -> t -> expectation option
+(** [check_position col ind] Return a violated expectation, if [pos] is not an
+    allowed indentation position. Otherwise return [None]. *)
 
 
 val token: int -> t -> t
@@ -45,6 +72,12 @@ val left_align: t -> t
     positions. *)
 
 
+val end_align: t -> t -> t
+(** [end_align ind0 ind] End the aligned sequence i.e. handle the corner case
+    that the aligned sequence is empty.
+ *)
+
+
 val start_indent: int -> t -> t
 (** [start_indent i ind] Start an indented grammar construct indented by at
     least [i] relative to its parent.
@@ -55,6 +88,6 @@ val start_indent: int -> t -> t
 *)
 
 
-val end_indent: int -> t -> t -> t
-(** [end_indent i ind0 ind] End the current indentation which has been started
-    by [start_indent i ind0]. *)
+val end_indent: t -> t -> t
+(** [end_indent ind0 ind] End the current indentation which has been started
+    with [ind0]. *)

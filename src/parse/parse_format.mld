@@ -1,0 +1,190 @@
+{0 Format Error Messages Nicely}
+
+{{!page-parse} Up}
+
+
+As shown in the {{!page-parse_error} previous chapter} there is support in the
+combinators to collect expressive information concering errors during parsing.
+The parsers in this library support the collection of position information as
+well (only the generic parser has no support for position information).
+
+At the end of the parsing, the parser has either succeeded or failed because of
+a syntax error or a semantic error. There are functions like
+{{!Fmlib_parse.Character.Make.Parser.failed_expectations} [failed_expectations]}
+and
+{{!Fmlib_parse.Character.Make.Parser.failed_semantic} [failed_semantic]}
+which return the corresponding error information.
+
+It is not too difficult to use the error information and print some expressive
+error messages. However it is tedious to do this by hand. The parsing library
+has some support to print the error messages nicely.
+
+
+
+
+{1 Form}
+
+Let's look at the {{!page-parse_calculator} calculator example} with the
+following input:
+
+{v
+    1
+    + 6^2 * 200
+    - (100 - 50^3)
+    +, 300
+    - 2
+v}
+
+Parsing this input will result in a syntax error at the unexpected comma.
+
+The functions in this library help us to generate the following error message:
+
+{v
+
+    1 | 1
+    2 | + 6^2 * 200
+    3 | - (100 - 50^3)
+    4 | +, 300
+         ^
+
+    At the marker I was expecting one of the following:
+
+        - unary operator
+        - number
+        - opening parenthesis '(' or '['
+v}
+
+If we feed the calculator with the input
+
+{v
+    1 +
+    + 6^2 * 200
+    - (100 - 50^3)
+    + 300 / (100 - 50 - 20 - 30)
+    - 2
+v}
+
+it is possible to generate the error message
+
+{v
+
+    1 | 1
+    2 | + 6^2 * 200
+    3 | - (100 - 50^3)
+    4 | + 300 / (100 - 50 - 20 - 10)
+                 ^^^^^^^^^^^^^^^^^^
+
+    Zero divisor
+v}
+
+
+
+
+{1 Syntax Errors}
+
+The module
+{{!module-Fmlib_parse.Character.Make.Error_reporter} [Error_reporter]}
+makes the generation of error messages easy.
+
+Let's assume that we have a failed parser [p] which has failed because of a
+syntax error.  An error reporter can be generated from [p] by
+[Error_reporter.make_syntax p].
+
+Let's call the error reporter [r]. The error reporter needs some form of the
+input stream to extract the relevant source snippet. If the parser has read the
+input from an input channel [ic] then we can generate the error message by
+
+{[
+    seek_in ic 0;   (* Reposition the input channel to the start. *)
+
+    let doc =
+        Error_reporter.run_on_channel ic r
+]}
+
+The generated [doc] has type {!Fmlib_pretty.Print.doc}. [doc] is a
+representation of the error message. The module {!Fmlib_pretty.Print} has
+functions to layout the message with a certain text width and write the document
+to a channel (i.e. file), to convert it to a string etc.
+
+If we want to write the error message to [stderr] we just issue the call
+
+{[
+    Fmlib_pretty.Print.(
+        layout 80 doc       (* Layout with text width 80 *)
+        |>
+        write_to_channel stderr
+    )
+]}
+
+and we are ready.
+
+
+
+{1 Semantic Errors}
+
+If the [fail] combinator has been used in the parser [p], then the parser can
+fail either with a syntax error or a semantic error. Since semantic errors are
+transparent to the parser (they are encapsuled in the functor argument
+[Semantic]) some support is needed from the user to generate the error message.
+
+The user has to provide two functions to describe the semantic error:
+
+- [semantic_range: Semantic.t -> Position.range]: Compute the start and end
+  position of the semantic error.
+
+- [semantic_message: Semantic.t -> Fmlib_pretty.Print.doc]: Compute the specific
+  error message.
+
+In the {{!page-parse_error} calculator example} we have used
+[Position.range * string] as the type of semantic errors. The two needed
+functions are in that case fairly trivial.
+
+{[
+    let semantic_range error =
+        fst error
+
+    let semantic_message error =
+        snd error
+        |>
+        Fmlib_pretty.Print.text
+]}
+
+Having a parser [p] which failed either because of a syntax or semantic error we
+can generate an error message by
+
+{[
+    seek_in 0 ic;
+
+    Error_reporter.(
+        make
+            semantic_range
+            semantic_message
+            p
+        |>
+        run_on_channel ic
+        |>
+        Fmlib_pretty.Print.layout 80
+        |>
+        Fmlib_pretty.write_to_channel stderr
+    )
+]}
+
+Because it is very frequent to read from a file represented by an input channel
+and to write the error message to [stderr] the above sequence can be shortened
+to
+
+{[
+    seek_in 0 ic;
+
+    Error_reporter.(
+        make
+            semantic_range
+            semantic_message
+            p
+        |>
+        run_on_channels ic 80 stderr
+    )
+]}
+
+
+{{!page-parse} Up}

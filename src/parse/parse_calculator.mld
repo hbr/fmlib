@@ -1,0 +1,368 @@
+{0 Calculator Example}
+
+{{!page-parse} Up}
+
+{1 Features}
+
+In the following example we want to write a parser which parses and evaluates
+numeric expressions of the form
+
+{[
+    1 + 2 * 3
+
+    (1 + 2) * 3
+
+    1 + - 2 * 3
+
+    1 + 2 ^ - 3
+]}
+
+We have one unary operator [-] and the binary operators [+], [-], [*], [/] and
+[^] and assume the usual precedence rules and associativity rules for arithmetic
+expressions.
+
+All numbers are integer numbers.
+
+Division by zero and negative exponents shall be flagged as errors.
+
+Blanks and newlines shall be ignored.
+
+
+
+
+{1 Operators}
+
+We want to assign to each operator a precedence and an associativity.
+
+{[
+    type assoc =
+        | Left
+        | Right
+
+
+    type info = int * assoc
+]}
+
+We find the information of the operators with the help of a map
+
+{[
+    module Map:
+    sig
+        find: char -> info
+    end
+    =
+    struct
+        include Map.Make (Char)
+
+        let add_left (c: char) (i: int) (m: 'info t): 'info t =
+            add c (i, Left) m
+
+        let add_right (c: char) (i: int) (m: 'info t): 'info t =
+            add c (i, Right) m
+
+        let map: 'info t =
+            empty
+            |> add_left  '+' 0
+            |> add_left  '-' 0
+            |> add_left  '*' 1
+            |> add_left  '/' 1
+            |> add_right '^' 2
+
+        let find (c: char): info =
+            match find_opt c map with
+            | None ->
+                assert false (* illegal call *)
+            | Some i ->
+                i
+    end
+]}
+
+
+
+{1 Character Parser}
+
+We write the parser as a lexerless parser i.e. we use a character parser which
+uses characters as tokens.
+
+{[
+    module CP = Character.Make (Unit) (Int) (String)
+
+    open CP
+]}
+
+No state is needed, our final construct is an integer
+(the value of the expression) and semantic error messages are strings.
+
+Since there is no lexer, it is necessary to recognize and remove whitespace.
+
+{[
+    let whitespace: int t =
+        skip_zero_or_more (char ' ' </> char '\n')
+
+    let lexeme (p: 'a t): 'a t =
+        let* a = p in
+        let* _ = whitespace in
+        return a
+]}
+
+Sequences of zero or more blanks and newlines are treated as whitespace. A
+lexeme is any construct followed by optional whitespace. The [lexeme] combinator
+is convenient. It allows us to write a combinator [p] without considering
+whitespace. Then [lexeme p] parses the construct described by [p] and removes
+the whitespace which after the construct.
+
+
+{1 Operators and Numbers}
+
+{[
+    let unary_operator: char t =
+        lexeme (char '-')
+
+    let binary_operator: char t =
+        let op_chars = "+-*/^"
+        in
+        one_of_chars op_chars "binary operator"
+        |>
+        lexeme
+
+    let number: int t =
+        one_or_more
+            return
+            (fun v d -> 10 * v + d |> return)
+            digit
+        |>
+        lexeme
+]}
+
+
+{1 Parentheses}
+
+{[
+    let lpar: char t =
+        lexeme (
+            map (fun _ -> ')') (char '(')
+            </>
+            map (fun _ -> ']') (char '[')
+        )
+
+    let rpar (c: char): char t =
+        lexeme (char c)
+]}
+
+[lpar] recognizes a left parenthesis. '(' and '\[' are allowed as opening
+parenthesis. The combinator [left] returns the expected closing parenthesis.
+
+[rpar] recognizes the closing parenthesis. It is given the expected closing
+parenthesis.
+
+
+
+{1 Associating Operators}
+
+If the parser finds an expression of the form [unop1 e1 op2 e2] it has to decide
+if [op1] binds stronger than [op2] and parse it like [(unop1 e1) op2 e2].
+
+The same applies to the binary expression [e1 op1 e2 op2 e3]. If [op1] binds
+stronger than [op2] then the parser has to parse it like [(e1 op1 e2) op2 e3].
+
+We use the precedence and associativity information of the operators to write
+the decision procedure.
+
+{[
+    let is_left (c1: char) (c2: char): bool t =
+        (* Does the left operator 'c1' bind stronger than 'c2'? *)
+        let (p1, a1) = Map.find c1
+        and (p2, _ ) = Map.find c2
+        in
+        return (
+            p1 > p2
+            ||
+            (
+                p1 = p2
+                &&
+                a1 = Left
+            )
+        )
+]}
+
+
+
+
+{1 Performing the Operations}
+
+To perform a unary operation (which in our case is just the unary minus) we
+write the combinator
+
+{[
+    let make_unary (u: char) (a: int): int t =
+        assert (u = '-');
+        return ((-1) * a)
+]}
+
+For the binary operations we need a function to do the exponentiation.
+
+{[
+    let power (a: int) (b: int): int =
+        assert (b <> 0);
+        let rec pow b res =
+            if b = 0 then
+                res
+            else
+                pow (b - 1) (a * res)
+        in
+        pow b 1
+]}
+
+Division and exponentiation can fail. The correct semantic action is described
+by the following combinator.
+
+{[
+    let make_binary (a: int) (o: char) (b: int): int t =
+        match o with
+        | '+' ->
+            return (a + b)
+        | '-' ->
+            return (a - b)
+        | '*' ->
+            return (a * b)
+        | '/' ->
+            if b = 0 then
+                fail "Division by zero"
+            else
+                return (a / b)
+        | '^' ->
+            if b < 0 then
+                fail "Negative exponent"
+            else
+                return (power a b)
+        | _ ->
+            assert false (* cannot happen *)
+]}
+
+
+{1 Expression Combinator and Parser}
+
+With the help of the library function
+{{!Fmlib_parse.Interfaces.COMBINATOR.operator_expression} [operator_expression]}
+and
+{{!Fmlib_parse.Interfaces.COMBINATOR.parenthesized} [parenthesized]}
+a combinator which parses an arbitrarily deep expression can be written easily.
+
+{[
+    let rec expr (): int t =
+        let primary (): int t =
+            parenthesized
+                (fun _ a _ -> return a)
+                lpar
+                expr
+                rpar
+            </>
+            number
+        in
+        operator_expression
+            (primary ())
+            (Some unary_operator)
+            binary_operator
+            is_left
+            make_unary
+            make_binary
+]}
+
+An expression is an operator expression where the primary expression is either a
+parenthesized expression or a number.
+
+
+All used combinators remove whitespace after each construct. There remains to
+remove initial whitespace. The final parser is constructed by
+
+{[
+    let parse: Parser.t =
+        make () (let* _ = whitespace in expr ())
+]}
+
+
+
+{1 Some Unit Tests}
+
+Some unit tests show that the parser works as expected.
+
+
+{[
+    let%test _ =
+        let open Parser in
+        let p = run_on_string " 1 +,2 + 2 " parse (* syntax error *)
+        in
+        has_failed_syntax p
+        &&
+        column p = 4
+]}
+
+
+{[
+    let%test _ =
+        let open Parser in
+        let p = run_on_string " 1 + 2 , + 2 " parse (* syntax error *)
+        in
+        has_failed_syntax p
+        &&
+        column p = 7
+]}
+
+
+{[
+    let%test _ =
+        let p = Parser.run_on_string "1 - 2 - 3" parse in
+        Parser.(
+            has_succeeded p
+            &&
+            final p = -4
+        )
+]}
+
+
+{[
+    let%test _ =
+        let p = Parser.run_on_string " 1 + 2 ^ 3" parse in
+        Parser.(
+            has_succeeded p
+            &&
+            final p = 9
+        )
+]}
+
+
+
+{[
+let%test _ =
+    let p = Parser.run_on_string "1 + - 2 * 3" parse in
+    Parser.(
+        has_succeeded p
+        &&
+        final p = -5
+    )
+]}
+
+
+{[
+    let%test _ =
+        let open Parser in
+        let p = run_on_string "1 + 2 ^  - 3" parse (* semantic error *)
+        in
+        has_failed_semantic p
+        &&
+        failed_semantic p = "Negative exponent"
+]}
+
+
+
+{[
+    let%test _ =
+        let open Parser in
+        let p = run_on_string "1 + 2 ^  (3 / 0) " parse (* semantic error *)
+        in
+        has_failed_semantic p
+        &&
+        failed_semantic p = "Division by zero"
+]}
+
+{{!page-parse} Up}

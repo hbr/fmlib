@@ -32,8 +32,12 @@ author = 'Helmut Brandl'
 extensions = [
         #'alba_lexer',
         #'sphinx.ext.autosectionlabel',
+        'sphinxcontrib.bibtex',
         "sphinx_rtd_theme"
         ]
+
+bibtex_bibfiles = ['refs.bib']
+
 
 # Add any paths that contain templates here, relative to this directory.
 

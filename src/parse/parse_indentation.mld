@@ -1,0 +1,440 @@
+{0 Indentation Sensitivity}
+
+
+{{!page-parse} Up}
+
+
+{1 Situation}
+
+Most programming languages express hierarchical structures by some kind of
+parentheses. Algol like languages use [begin] [end], C like languages use curly
+braces [{], [}] to enclose blocks of code. Since blocks can be nested inside
+blocks, the hierarchical or tree structure is well expressed by the syntax.
+
+For the human reader blocks are usually indented to make the hierarchical
+structure graphically visible. Programming languages like {e Haskell} and {e
+Python} ommit the parentheses and express the hierarchical structure by
+indentation. I.e. the indentation is part of the grammar. This is pleasing to
+the eye, because many parentheses can be ommitted.
+
+The hierarchical structure in the following schematical source file is
+immediately visible without the need of parentheses.
+
+{v
+    xxxxxxxxxxx
+        xxx
+        xxx
+            xxxxxxx
+    xxxxxxxx
+        xxx
+v}
+
+Lower level blocks are indented with respect to their parent block and siblings
+at the same level are vertically aligned.
+
+Because of this good readability configuration languages like {{:
+https://yaml.org/} yaml} have become very popular.
+
+Unfortunately there are not many parsers available which support indentation
+sensitivity. The library {{!page-index}Fmlib_parse} has support to parse
+languages whose grammar uses indentation to structure blocks hierarchically.
+
+
+
+
+{1 Indentation Combinators}
+
+In order to support indentation sensitivity, all constructs parsed by
+combinators have a certain indentation. Usually the identation of a construct is
+the start column of its leftmost token. For aligned constructs the first token
+must be the leftmost token.
+
+
+{2 Indented Block}
+
+If [p] is a combinator parsing a certain construct, then
+
+{[indent 4 p]}
+
+is a combinator which parses [p] indented at least [4] columns with respect to
+its parent.
+
+
+{2 Aligned Blocks}
+
+In order to align blocks vertically we need at least two combinators [p] and [q]
+whose constructs have to be vertically aligned.
+
+The combinator
+
+{[
+    (
+        let* a = align p in
+        let* b = align q in
+        return (a, b)
+    )
+    |> indent 4         (* Note: Indentation of the whole block is
+                                 mandatory!! Never forget!! *)
+]}
+
+parses a construct with the structure
+
+{v
+    xxxxxx
+        pppppp
+        qqqqqq
+v}
+
+where [xxxxxx] belongs to the outer structure.
+
+It is straightforward to parse a list of aligned constructs where the combinator
+[p] parses an individual item.
+
+{[
+    one_or_more (align p) |> indent 0
+]}
+
+Note that some indentation is always necessary. The indentation can be zero. If
+no indentation is given then the parser tries to align the items recognized by
+[p] vertically below the leftmost token of the surrounding construct. This is
+usually not intended and a common pitfall.
+
+
+
+{2 Ignore Indentation}
+
+Sometimes it is necessary to ignore the indentation. The combinator
+
+{[detach p]}
+
+parses a construct described by the combinator [p] and ignores all indentation
+and alignment requirements at that position. This combinator is necessary in
+order to parse whitespace, because whitespace at the start of a line does not
+respect any indentation or alignment requirement.
+
+
+{2 Error Reporting}
+
+With layout parsing a syntax error can have two reasons:
+
+- A token is not the expected one.
+
+- A token does not start at an allowed position.
+
+When a parser fails with a syntax error, it reports a list of failed
+expectations. Each failed expectations has two parts. A message describing the
+syntactic construct expected an an optional indentation expectation. If the
+indentation expectation is present, then the syntax error occurred because the
+token appeared at a not allowed position.
+
+Because of the presence of biased choice and optional constructs in the
+combinators, multiple syntax expectations can fail. Therefore the parsers return
+a list of syntax expectations in case of a syntax error. In order make the
+expectations more informative for the user, it is common to use constructs like
+
+{[
+    p </> q </> r <?> "some higher level expectation"
+]}
+
+The [<?>] works as expected with layout parsing when the operator is used inside
+the indent and alignment combinators. When positioned outside, the parser works
+correctly, but the error messages might be misleading.
+
+{[
+    (* Correct placement of '<?>' *)
+    p
+    </>
+    q
+    <?> "p or q"
+    |> align
+    |> one_or_more
+
+    (* Wrong placement of '<?>' *)
+    p
+    </>
+    q
+    |> align
+    <?> "p or q"
+    |> one_or_more
+]}
+
+If [p] and [q] fail because they are not properly aligned, their expectations
+are reported with the correct failed alignment expectation. In the correct
+sequence the operator [<?>] still {e sees} the failed alignment and reports the
+more expressive expectation with the same failed alignment expectation. In the
+wrong sequence the [<?>] operator does not {e see} the alignment requirement any
+more and reports the more expressive expectation without the failed alignment
+requirement.
+
+
+
+{1 Example}
+
+In this example we write a parser which parses a very simplified subset of {e
+yaml}.
+
+
+{2 Requirements}
+
+Here are some examples of yaml structures and the corresponding json structure
+which the parser should recognize
+
+{v
+    Hello Mr. Spock # some comment
+
+        json: "Hello Mr. Spock"
+
+    "Hello: Blabla#"
+
+        json: "Hello: Blabla#"
+
+    - - - hello
+
+        json: [[["hello"]]]
+
+    1: 11: hello
+       12: ""
+       "###": hash
+
+        json: {"1": {"11": "hello", "12": "", "###": "hash"}}
+
+    k1:
+    - 1
+    - - 1.1
+      - 1.2
+    k2: s2
+
+        json: {"k1": ["1", ["1.1", "1.2"]], "k2": "s2"}
+v}
+
+Scalars and keys in key value pairs come in two flavors. Either a sequence of
+characters spanning to a colon or a newline or a sequence of characters enclosed
+in double quotes. We don't treat escape sequences and strings in single quotes
+here. Here we focus on the implementation of the indentation requirements.
+
+Note that key value pairs have to be indented, if they occur as a substructure.
+Lists as a value of a key value pair do not need to be indented. The [- ] is
+sufficient to indicate the start of a list.
+
+
+{2 Yaml Structure}
+
+The final construct of the parser shall be a yaml value according to the
+following module:
+
+{[
+    module Yaml =
+    struct
+        type t =
+            | Scalar of string
+            | List   of t list
+            | Record of (string * t) list
+
+        let scalar str = Scalar str
+
+        let list lst = List lst
+
+        let record lst = Record lst
+
+        let rec to_json: t -> string =
+            (* recursive function to map a yaml value into a json string
+               for testing purposes *)
+    end
+]}
+
+
+{2 Basic Combinators}
+
+We parse the yaml structure with the lexerless character parser.
+
+{[
+    module CP = Character.Make (Unit) (Yaml) (Unit)
+    open CP
+]}
+
+A yaml comment starts with a hash sign [#] and spans to the end of the line.
+
+{[
+    let comment: char t =
+        let* _ = char '#' in
+        let* _ =
+            (charp (fun c -> c <> '\n') "comment character")
+            |> skip_zero_or_more
+        in
+        return '#'
+]}
+
+Whitespace is any sequence of zero or more blanks, newlines and comments.
+
+{[
+    let whitespace: int t =
+        char ' ' </> char '\n' </> comment
+        |> skip_zero_or_more
+        |> no_expectations  (* no expected whitespace in syntax errors *)
+        |> detach           (* whitespace does not repect indentation *)
+
+
+    let lexeme (p: 'a t): 'a t =
+        (* Remove whitespace after 'p' *)
+        let* a = p in
+        let* _ = whitespace in
+        return a
+]}
+
+In order to handle scalars and keys we need raw strings spanning to a colon or a
+newline and quoted strings.
+
+{[
+    let raw_string: string t =
+        let expect  = "chars not containing colon and newline" in
+        let inner c = c <> '\n' && c <> ':' && c <> '#' in
+        let first c = c <> '"' && inner c
+        in
+        (word first inner expect)
+        |> map String.trim
+        |> lexeme
+
+    let quoted_string: string t =
+        let expect = "chars except newline and dquote" in
+        let ok c = c <> '\n' && c <> '"'
+        in
+        let* _   = char '"' in
+        let* str = (word ok ok expect) </> return "" in
+        let* _   = char '"' |> lexeme
+        in
+        return str
+
+    let scalar: Yaml.t t =
+        (quoted_string </> raw_string)
+        |> map Yaml.scalar
+        <?> "scalar"
+]}
+
+
+The start of a list element is indicated by [-]. We use the combinator [dash]
+to recognize the start of a list element.
+
+{[
+    let dash: char t =
+        char '-' |> lexeme
+]}
+
+The key in a key value pair is either a raw string or a quoted string followed
+by a colon. The combinator recognizing a key has to backtrack, because a string
+not followed by a colon can still be a yaml scalar.
+
+{[
+    let key: string t =
+        backtrack
+            (
+                let* str = raw_string </> quoted_string in
+                let* _   = char ':' |> lexeme in
+                return str
+            )
+            "<key>:"
+]}
+
+
+
+{2 Recursive Yaml Parsing}
+
+Now we have to parse recursively according to the recursive definition of a yaml
+structure. A yaml value is either a scalar, a sequence (i.e. list) of items or a
+record of key value pairs.
+
+{[
+    let rec yaml (): Yaml.t t =
+        sequence_block ()
+        </>
+        record_block ()
+        </>
+        scalar
+
+    and sequence_block ...
+    and record_block ...
+]}
+
+The first alternative is the sequence, because a sequence can be easily
+recognized by the first character [-]. If something doesn't start with a dash,
+then it is certainly not a sequence and the remaining alternatives can be tried.
+
+We have to try to find a record before a scalar because a record can start with
+a scalar which represents the key of the first key value pair. If there is no
+colon after the key, then a pure scalar can be tried. Therefore we have made the
+combinator [key] backtrackable in order to fail without consuming any character.
+
+
+A sequence block is a list of one or more aligned sequence elements. The
+implementation is straightforward.
+
+{[
+    and sequence_block (): Yaml.t t =
+        one_or_more
+            (
+                sequence_element ()
+                <?>
+                "list element: \"- <yaml value>\""
+                |> align
+            )
+        |> map (fun (a, lst) -> Yaml.list (a :: lst))
+        <?> "sequence of aligned \"- <yaml value>\""
+
+    and sequence_element (): Yaml.t t =
+        let* _ = dash in
+        yaml () |> indent 1
+]}
+
+Note that all sequence elements are vertically aligned and the yaml values after
+the dash have to be indented at least by one column.
+
+{v
+        # legal sequence element            # illegal sequence element
+        -                                   -
+          k1: 100                           k1: 100
+          k2: 200                           k2: 200
+v}
+
+A record block is a sequence of aligned key value pairs.
+
+{[
+    and record_block (): Yaml.t t =
+        one_or_more
+            (
+                record_element ()
+                <?> "\"<key>: <yaml value>\""
+                |> align
+            )
+        |> map (fun (a, lst) -> Yaml.record (a :: lst))
+        <?> "sequence of aligned \"<key>: <yaml value>\""
+
+    and record_element (): (string * Yaml.t) t =
+        let* str = key in
+        let* y   =
+            sequence_block () |> indent 0
+            </>
+            (record_block () </> scalar |> indent 1)
+        in
+        return (str, y)
+]}
+
+
+Note the subtlety of the indentation of sequence blocks and record blocks and
+scalars.
+
+{v
+        # legal record element              # illegal record element
+        key:                                key:
+        - item1                             k1: value1
+        - item2                             k2: value2
+
+v}
+
+Note furthermore that each aligned block is within some indentation (zero or
+more columns). {e This is important}. Without some indentation the parsers try
+to align the elements in the block with some outer elements (which usually
+fails). It is a common pitfall to forget the indentation.
+
+
+
+
+{{!page-parse} Up}

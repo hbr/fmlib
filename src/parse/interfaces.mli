@@ -8,7 +8,7 @@ sig
         more token can be pushed into the parser via [put_token p] or the input
         stream can be ended via [put_end p].
 
-        [has_ended p] is equivalent to [not (needs_more p)]. [has_ended p]
+        [has_result p] is equivalent to [not (needs_more p)]. [has_result p]
         signals that the parser has either succeeded or failed.
 
         If it has succeeded the final value is available via [final p].
@@ -57,12 +57,23 @@ sig
     (** [needs_more p] Does the parser [p] need more token? *)
 
 
-    val has_ended: t -> bool
-    (** [has_ended p] Has the parser [p] ended parsing and either succeeded or
+    val has_result: t -> bool
+    (** [has_result p] Has the parser [p] ended parsing and either succeeded or
         failed?
 
-        [has_ended p] is the same as [not (needs_more p)]
+        [has_result p] is the same as [not (needs_more p)]
     *)
+
+
+
+    val has_ended: t -> bool
+    (** @deprecated Use [has_result]. *)
+
+
+    val has_received_end: t -> bool
+    (** [has_received_end p] Has the parser [p] already received the end of
+        token stream via [put_end]?
+     *)
 
 
     val put: token -> t -> t
@@ -74,7 +85,20 @@ sig
 
 
     val put_end: t -> t
-    (** [put_end p] Push and end token into the parser [p]. *)
+    (** [put_end p] Push and end token into the parser [p].
+
+        Precondition: [not (has_received_end p)]
+    *)
+
+
+    val run_on_stream: token Stream.t -> t -> t
+    (** [run_on_stream str p] Run the parser [p] on the stream of tokens [str].
+    *)
+
+
+    val run_on_list: token list -> t -> t
+    (** [run_on_list lst p] Run the parser [p] on the list of tokens [lst].
+    *)
 
 
     val has_succeeded: t -> bool
@@ -184,6 +208,15 @@ sig
     *)
 
 
+    val map_and_update: (state -> 'a -> 'b * state) -> 'a t -> 'b t
+    (** [map_and_update f p]
+
+        Try combinator [p]. In case of success, map the returned state [state]
+        and value [a] to [f state a]. In case of failure, do nothing.
+
+    *)
+
+
     val succeed: 'a -> 'a t
     (** [succeed a]
 
@@ -209,6 +242,8 @@ sig
         skipping whitespace the parser can still expect more whitespace.
         Therefore there is a failed expectation *whitespace* on the stack.
         However you rarely want this expectation to be reported.
+
+        @deprecated Use {!no_expectations}
     *)
 
 
@@ -251,6 +286,29 @@ sig
     *)
 
 
+    val no_expectations: 'a t -> 'a t
+    (** [no_expectations p]
+
+        Parse the combinator [p].
+
+        - [p] fails: [no_expectations p] fails with the same error.
+
+        - [p] succeeds without consuming tokens: [no_expectations p] succeeds
+        without any added expectations.
+
+        - [p] succeeds and consumes some token: [no_expectations p] succeeds
+        without any expectations.
+
+        Many combinators can succeed with expectations. E.g. the combinator
+        {{!optional} [optional p]} expects a [p] and succeeds if it does not
+        encounter a construct described by [p]. All repetitive combinators like
+        {!one_or_more} try to consume as many items as possible. At the end they
+        are still expecting an item.
+
+        This combinator allows to clear such unneeded expectations. It is
+        particularly useful when removing whitespace. The expectation of
+        whitespace is not a meaningful error message to the user.
+    *)
 
 
     (** {2 State Combinators} *)
@@ -258,6 +316,10 @@ sig
 
     val get: state t
     (** Get the current user state. *)
+
+
+    val set: state -> unit t
+    (** Set the user state. *)
 
 
     val update: (state -> state) -> unit t
@@ -269,8 +331,17 @@ sig
         state. The returned value is the old state. *)
 
 
+    val state_around:
+        (state -> state) -> 'a t -> (state -> 'a -> state -> state) -> 'a t
+    (** [state_around before p after]
 
-    (** {2 Convenience Combinators} *)
+        If [s0] is the initial state, then execute [p] with the start state
+        [before s0] and set the update the final state [s1] by [after s0 a s1]
+        where [a] is the returned value in case of success and [s1] is the final
+        state after executing [p].
+    *)
+
+    (** {2 Optional Elements} *)
 
 
     val optional: 'a t -> 'a option t
@@ -284,45 +355,36 @@ sig
     *)
 
 
-    val zero_or_more: 'r -> ('item -> 'r -> 'r) -> 'item t -> 'r t
-    (** [zero_or_more start f p]
+    (** {2 Repetition} *)
 
-        Try the combinator [p] as often as possible. Return [start] if [p] fails
-        without consuming token. As long as [p] succeeds use [f] to accumulate
-        the results.
 
-        The first time [p] fails without consuming token, return the accumulated
-        result.
+    val zero_or_more_fold_left: 'r -> ('r -> 'a -> 'r t) -> 'a t -> 'r t
+    (** [zero_or_more_fold_left start f p]
 
-        If [p] fails by consuming token, then [zero_or_more f p] fails with the
-        same error.
+        Try the combinator [p] as often as possible. Accumulate the results to
+        the start value [start] using the folding function [f].
     *)
 
 
+    val one_or_more_fold_left:
+        ('a -> 'r t) -> ('r -> 'a -> 'r t) -> 'a t -> 'r t
+    (** [one_or_more_fold_left first f p]
 
-    val one_or_more:
-        ('item -> 'r)
-        -> ('item -> 'r -> 'r)
-        -> 'item t
-        -> 'r t
-    (** [one_or_more first next p]
-
-        [one_or_more first next p] is equivalent to
-
-        {[
-            let* x = p in
-            zero_or_more (first x) next p
-        ]}
-
+        Try the combinator [p] at least once and then as often as possible. Put
+        the first value returned by [p] into the function [first] returning a
+        result and accumulate the subsequent values as often as possible and
+        accumulate the results to the start value returned by [first] using the
+        folding function [f].
     *)
 
-    val list_zero_or_more: 'a t -> 'a list t
-    (** [list_zero_or_more p] Parse zero or more occurrences of [p] and returned
+
+    val zero_or_more: 'a t -> 'a list t
+    (** [zero_or_more p] Parse zero or more occurrences of [p] and return
         the collected result in a list. *)
 
 
-    val list_one_or_more:  'a t -> ('a * 'a list) t
-    (** [list_zero_or_more p] Parse one or more occurrences of [p] and returned
+    val one_or_more:  'a t -> ('a * 'a list) t
+    (** [zero_or_more p] Parse one or more occurrences of [p] and return
         the collected results as a pair of the first value and a list of the
         remaining values. *)
 
@@ -338,8 +400,8 @@ sig
 
 
     val one_or_more_separated:
-        ('item -> 'r)
-        -> ('r -> 'sep -> 'item -> 'r)
+        ('item -> 'r t)
+        -> ('r -> 'sep -> 'item -> 'r t)
         -> 'item t
         -> 'sep t
         -> 'r t
@@ -349,6 +411,89 @@ sig
         convert the first occurrence of [p] into the result and use [next] to
         accumulate the results.
     *)
+
+
+
+
+    (** {2 Parenthesized expressions} *)
+
+    val parenthesized:
+        ('lpar -> 'a -> 'rpar -> 'b t)
+        -> 'lpar t
+        -> (unit -> 'a t)
+        -> ('lpar -> 'rpar t)
+        -> 'b t
+    (** [parenthesized make lpar p rpar]
+
+        Parse an expression recognized by the combinator [p] enclosed within
+        parentheses. [lpar] recognizes the left parenthesis and [rpar]
+        recognizes the right parenthesis. The value returned by [lpar] is given
+        to [rpar]. With that mechanism it is possible to recognize matching
+        parentheses of different kinds.
+
+        After successful parsing the function [make] is called with the final
+        value (and the parentheses).
+
+        The combinator [p] is entered as a thunk in order to be able to call it
+        recursively. In the combinator [parenthesized] the combinator [p] is
+        called only guardedly. Therefore the combinator [p] can contain nested
+        parenthesized expressions.
+
+        Precondition: The combinator [lpar] has to consume at least one token in
+        case of success.
+    *)
+
+
+
+
+
+    (** {2 Operator expressions} *)
+
+
+    val operator_expression:
+        'exp t
+        -> 'op t option
+        -> 'op t
+        -> ('op -> 'op -> bool t)
+        -> ('op -> 'exp -> 'exp t)
+        -> ('exp -> 'op -> 'exp -> 'exp t)
+        -> 'exp t
+    (** {[
+            operator_expression
+                primary         (* Parse a primary expression *)
+                unary_operator  (* Parse a unary operator *)
+                binary_operator (* Parse a binary operator *)
+                is_left         (* Is the left operator binding stronger? *)
+                make_unary      (* Make a unary expression from the operator and
+                                   its operand *)
+                make_binary     (* Make a binary expression from the operator
+                                   and its operands *)
+        ]}
+
+        Parse an operator expression by using the following combinators:
+
+        - [is_left o1 o2] decides, if the operator [o1] on the left has more
+        binding power than the operator [o2]. I.e. if the unary operator [u] has
+        more binding power than the binary operator [o], then [u a o b] is
+        parsed as [(u a) o b]. If the binary operator [o1] has more binding
+        power than the binary operator [o2], then [a o1 b o2 b] is parsed as [(a
+        o1 b) o2 c].
+
+        - [make_unary u a] makes the unary expression [(u a)].
+
+        - [make_binary a o b] makes the binary expression [(a o b)].
+
+        - [primary] parses a primary expression.
+
+        - [unary_operator] parses a unary operator.
+
+        - [binary_operator] parses a binary operator.
+
+        Precondition: [primary], [unary_operator] and [binary_operator] have to
+        consume at least one token in case of success. Otherwise infinite
+        recursion can happen.
+    *)
+
 
 
 

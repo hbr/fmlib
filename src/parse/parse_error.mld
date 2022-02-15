@@ -1,0 +1,321 @@
+{0 Error Messages}
+
+{{!page-parse} Up}
+
+
+{1 Basics}
+
+The parsers in {!Fmlib_parse} support the generation of user friendly error
+messages. There are 2 types of errors:
+
+- Syntax errors: Something unexpecting appeared in the input stream. The parser
+  has a list of expectations. In the generic parser {!Fmlib_parse.Generic.Make}
+the type of syntactic expectation is customizable. In the other parsers an
+expectation is described by a string and an optional indentation expectation
+(see chapter {{!page-parse_indentation} Indentation Sensitivity} for more
+     information on indentation expectations).
+
+- Semantic errors: The parser has been able to successfully parse some construct
+  but failed to perform the corresponding semantic action. Semantic errors are
+  not issued by the library. Semantic errors are always issued by the user by
+  invoking [fail error] where [error] is the user specific error message.
+
+
+
+{1 Syntax Errors}
+
+
+{2 Available Error Information}
+
+Why is there a list of expectations in case of a syntax error? Because of
+alternatives like [p </> q </> r]. If this construct fails syntactically because
+all three combinators have failed without consuming any token, then the
+expectations of all three combinators are in the list of syntax expectations.
+
+Remember that alternatives are tried only if a combiator fails without consuming
+tokens (this can be enforced by backtracking). If in [p </> q </> r] the
+combinator [p] fails by consuming tokens, then the alternatives are not even
+tried. However [p] has failed because it encountered something unexpected after
+successfully consuming some tokens. At that specific state it has some
+expectations which are reported as errors.
+
+In order to generate syntax error messages the following functions are available
+in a parser:
+
+- [has_failed_syntax parse]: Has the parser [parse] failed because it detected
+  something unexpected in the input stream.
+
+
+- [position parse]: The position (line number and column number) where the parser
+  [parse] has finished parsing (either successfully or because of a failure). In
+  case of a syntax error the position points exactly to the start of the
+  unexpected token in the input stream. This function is not available in the
+  generic parser, because the generic parser does not know of any positions.
+
+
+- [lookaheads parse]: A pair consisting of the unconsumed lookahead tokens of
+  the parser [parse] and a flag which indicates if the end of input has been
+  reached after the lookahead tokens. If there are no unconsumed lookahead
+  tokens and the end stream has been reached, then the end of input has been
+  unexpected.
+
+
+- [failed_expectations parse]: The list of failed expectations of the parser
+  [parse]. In case of the generic parser the failed expectations are a list of
+  user specific expectations. For the character and token parser each
+  expectation in the list of failed expectations is a pair consisting of
+  {ul
+  {- a string describing the failed expectation}
+
+  {- an optional indentation expectation (see {!Fmlib_parse.Indent}) if the
+  current position does not satisfy the indentation specification}
+  }
+
+With these functions it is possible to write quite informative error messages.
+
+Let us look at some syntax errors in the {{!page-parse_calculator} calculator}
+example.
+
+{[
+
+    012345678901234567890
+
+    1 + ,2 + 2
+]}
+
+There is an unexpected comma in line 0 at column 4. The first lookahead token is
+[','].
+
+At the position of the comma, the parser would expect one of the following:
+
+- An additional whitespace character, either blank or newline.
+
+- A unary minus.
+
+- An opening parenthesis, either ['('] or ['\[']
+
+- A digit starting the next number.
+
+With the available information it is possible to generate an error message like:
+
+{v
+    0 | 1 + ,2 + 2
+            ^
+    I have found an unexpected ','. I was expecting one of
+    - ' '
+    - '\n'
+    - '-'
+    - '('
+    - '['
+    - digit
+v}
+
+
+
+{2 Improved Syntax Errors}
+
+The error message in the previous section is already quite readable. However it
+can be improved by giving the user more relevant information.
+
+It is quite useless to inform the user about expected whitespace. Whitespace can
+occur nearly everywhere. This does not give any information. In the library
+there is a generic combinator [no_expectations] to wrap combinators like the
+whitespace combinator.
+
+If we use
+
+{[
+    let whitespace: int t =
+        char ' ' </> char '\n'
+        |> skip_zero_or_more
+        |> no_expectations
+]}
+
+as the whitespace combinator then we get rid of the useless information about
+expected whitespace characters.
+
+We can do better with the expected parentheses. It is more instructive to the
+user to tell him that an opening parenthesis has been expected than telling each
+parenthesis as a separated expectation.
+
+By using
+
+{[
+    let lpar: char t =
+        lexeme (
+            map (fun _ -> ')') (char '(')
+            </>
+            map (fun _ -> ']') (char '[')
+        )
+        <?>
+        "opening parenthesis '(' or '['"
+]}
+
+we give to the user a more instructive error message. The operator [<?>] let us
+collapse several failed alternatives into a more abstract expectation. With [p
+</> q </> r <?> "message"] we bundle the 3 expectations into one expectation.
+
+We can use [<?>] to improve the error message above furthermore. It is better to
+report about an expected number than reporting an expected digit. We can achieve
+this by
+
+{[
+    let number: int t =
+        one_or_more
+            (fun d -> d)
+            (fun v d -> 10 * v + d)
+            digit
+        |>
+        no_expectations
+        <?>
+        "number"
+        |>
+        lexeme
+]}
+
+Here we have added the [no_expectations] combinator in order to not report the
+expectation of one more digit in case that there have been already sufficient
+digits to form a number.
+
+With all these improvements we are able to generate the following error message:
+
+{v
+    0 | 1 + ,2 + 2
+            ^
+    I have found an unexpected ','. I was expecting one of
+    - '-'
+    - opening parenthesis '(' or '['
+    - number
+v}
+
+Maybe it would be even better to report [unary '-'] instead of ['-'].
+
+
+
+
+{1 Semantic Errors}
+
+Semantic errors are triggered by the user by calling [fail error] where [error]
+is the semantic error message. In the {{!page-parse_calculator} calculator
+example} we have triggered an error message when {e division by zero} or a {e
+negative exponent} occurred.
+
+The position returned by [position parse] is not very interesting. The parser
+has already found a syntactically valid construct. Therefore the position points
+beyond the end of the construct. In order to form an informative error message
+we want to have the start position and the end position of the construct which
+failed semantically.
+
+In the {{!Fmlib_parse.Character.Make} character parser} there is a combinator
+[located]. If we wrap the combinator [p] in [located p] then we get the result
+of [p] with the start and end position.
+
+The [located] combinator is useful only for constructs which do not have
+trailing whitespace. We are usually interested in the position range of the
+construct without the whitespace.
+
+In the {{!page-parse_calculator} calculator example} of the previous chapter the
+recommended wrapping of operators and numbers is the following:
+
+{[
+    type operator = Position.range * char
+    type operand  = Position.range * int
+
+    let unary_operator: operator t =
+        lexeme (char '-' |> located)
+
+    let binary_operator: operator t =
+        let op_chars = "+-*/^"
+        in
+        one_of_chars op_chars "binary operator"
+        |>
+        located
+        |>
+        lexeme
+
+    let number: operand t =
+        one_or_more
+            (fun d -> d)
+            (fun v d -> 10 * v + d)
+            digit
+        |>
+        located
+        |>
+        no_expectations
+        <?>
+        "number"
+        |>
+        lexeme
+]}
+
+Note that the [located] combinator is called before removing the whitespace
+(i.e. calling [lexeme]).
+
+With this modification we get all operators and the numbers with the additional
+range information.
+
+The combinator [make_binary] has to be modified to use this information
+correctly in the success cases and in the case of a semantic failure.
+
+{[
+    let make_binary
+            (((p1, _), a): operand)
+            ((_, o): operator)
+            (((pb1, p2), b): operand)
+        : operand t
+        =
+        match o with
+        | '+' ->
+            return ((p1, p2), a + b)
+        ...
+        | '/' ->
+            if b = 0 then
+                fail ((pb1, p2), "Zero divisor")
+            else
+                return ((p1, p2), a / b)
+        | '^' ->
+            if b < 0 then
+                fail ((pb1, p2), "Negative exponent")
+            else
+                return ((p1, p2), power a b)
+        ...
+]}
+
+In this case the type of the semantic error has to be described by the module
+
+{[
+    module Semantic =
+    struct
+        type t = Position.range * string
+    end
+]}
+
+and not by the module [String].
+
+
+Suppose we feed the calculator parser with the following input
+
+{[
+    1 + 2 / (4 - 4)
+]}
+
+The parser fails semantically because division by zero is not allowed. With the
+available error information we can generate the following error message:
+
+{v
+
+    0 | 1 + 2 / (4 - 4)
+                 ^^^^^
+
+    I have encountered a
+
+        Zero divisor
+
+    which is not allowed.
+v}
+
+In the token parser there is no [located] combinator. There is no need, because
+the tokens already contain the range information.
+
+
+{{!page-parse} Up}

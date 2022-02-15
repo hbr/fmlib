@@ -72,6 +72,8 @@ struct
     let left_align (s: t): t =
         {s with indent = Indent.left_align s.indent}
 
+    let end_align (s0: t) (s: t): t =
+        {s with indent = Indent.end_align s0.indent s.indent}
 
     let start_detach (s:t): t =
         {s with indent = Indent.initial}
@@ -86,6 +88,6 @@ struct
         {s with indent = Indent.start_indent i s.indent}
 
 
-    let end_indent (i: int) (s0: t) (s: t): t =
-        {s with indent = Indent.end_indent i s0.indent s.indent}
+    let end_indent (s0: t) (s: t): t =
+        {s with indent = Indent.end_indent s0.indent s.indent}
 end

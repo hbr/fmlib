@@ -12,6 +12,7 @@ Find the documentation of the API from a user's perspective `here
     :caption: Contents:
 
     datastructures/index
+    parsing/index
 
 
 ..
@@ -20,3 +21,6 @@ Find the documentation of the API from a user's perspective `here
 
     * :ref:`genindex`
     * :ref:`search`
+
+
+.. bibliography::

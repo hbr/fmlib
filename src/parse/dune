@@ -1,8 +1,21 @@
 (library
     (public_name fmlib_parse)
     (name fmlib_parse)
-    (libraries fmlib_std)
+    (libraries fmlib_std fmlib_pretty)
     (modules_without_implementation fmlib_parse)
     (inline_tests)
     (preprocess (pps ppx_inline_test))
+)
+
+(documentation
+    (mld_files
+      index
+      parse
+      parse_overview
+      parse_calculator
+      parse_recursion
+      parse_error
+      parse_format
+      parse_indentation)
+    (package fmlib_parse)
 )

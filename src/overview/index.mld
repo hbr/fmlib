@@ -3,14 +3,13 @@
 The library [Fmlib] supports functional programming in Ocaml with managed
 effects. It has the following components:
 
+- {!Fmlib_std} Standard Types
 
-- {{: ../fmlib_std/index.html}[Fmlib_std]} Standard Types
+- {!Fmlib_pretty} Pretty Printing
 
-- {{: ../fmlib_pretty/index.html}[Fmlib_pretty]} Pretty Printing
+- {!Fmlib_parse}  Parsing
 
-- {{: ../fmlib_parse/index.html}[Fmlib_parse]}  Parsing
-
-- {{: ../fmlib_js/index.html}[Fmlib_js]} Interface to javascript via [js_of_ocaml]
+- {!Fmlib_js} Interface to javascript via [js_of_ocaml]
 
 
 All libraries of {e Fmlib} are prefixed by [Fmlib_] to avoid nameclashes with
@@ -23,11 +22,11 @@ any other used libraries.
 [Fmlib] can be installed easily with the help of the ocaml package manager opam:
 
 {v
-    opam install fmlib_std
-    opam install fmlib_pretty
-    opam install fmlib_parse
-    opam install fmlib_js
+    opam install fmlib
 v}
+
+The components of [Fmlib] can be installed separately via opam.
+
 
 
 {1 Design and Implementation}
@@ -50,6 +49,5 @@ choose your input method and you push the characters into the parser.
 
 The library is {e functional} in the sense that it avoids mutation or uses
 mutation only locally to improve performance. Exception handling is avoided as
-well. The module {{: ../fmlib_std/Fmlib_std/Result/index.html}
-[Fmlib_std.Result]} can be used to achieve the same
-effect as exception handling.
+well. The module {!Fmlib_std.Result} can be used to achieve the same effect as
+exception handling.

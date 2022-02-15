@@ -40,6 +40,10 @@ struct
                 false
 
 
+        let has_result (p: t): bool =
+            not (needs_more p)
+
+
         let has_ended (p: t): bool =
             not (needs_more p)
 
@@ -74,6 +78,12 @@ struct
                 true
             | _ ->
                 false
+
+
+        let has_received_end (p: t): bool =
+            match p with
+            | Done (b, _) | More (b, _) ->
+                B.has_end b
 
 
         let failed_expectations (p: t): Expect.t list =
@@ -115,6 +125,7 @@ struct
 
 
         let put_end (p: t): t =
+            assert (not (has_received_end p));
             let put = function
                 | More (b, f) ->
                     More (B.push_end b, f)
@@ -125,6 +136,23 @@ struct
             put p |> consume_lookaheads
 
 
+        let run_on_stream (str: Token.t Stream.t) (p: t): t =
+            let rec run p =
+                if needs_more p then
+                    try
+                        put (Stream.next str) p |> run
+                    with Stream.Failure ->
+                        put_end p
+                else
+                    p
+            in
+            run p
+
+
+        let run_on_list (lst: Token.t list) (p: t): t =
+            run_on_stream
+                (Stream.of_list lst)
+                p
 
         let state (p: t): State.t =
             match p with
@@ -209,9 +237,24 @@ struct
     let ( let* ) = (>>=)
 
 
+    let map_and_update (f: State.t -> 'a -> 'b * State.t) (p: 'a t): 'b t =
+        fun buf k ->
+        p
+            buf
+            (fun a_opt buf ->
+                 match a_opt with
+                 | None ->
+                     k None buf
+                 | Some a ->
+                     let b, state = f (B.state buf) a in
+                     k (Some b) (B.put state buf)
+            )
+
+
     let map (f: 'a -> 'b) (p: 'a t): 'b t =
-        let* a = p in
-        return (f a)
+        map_and_update
+            (fun state a -> f a, state)
+            p
 
 
 
@@ -225,10 +268,32 @@ struct
         k (Some (B.state b)) b
 
 
+    let set (state: State.t): unit t =
+        fun b k ->
+        k (Some ()) (B.put state b)
+
+
     let get_and_update (f: State.t -> State.t): State.t t =
         fun b k ->
         let st = B.state b in
         k (Some st) (B.update f b)
+
+
+    let state_around
+            (before: State.t -> State.t)
+            (p: 'a t)
+            (after: State.t -> 'a -> State.t -> State.t)
+        : 'a t
+        =
+        fun b0 k ->
+        p
+            (B.update before b0)
+            (fun res b ->
+                 match res with
+                 | None ->
+                     k None b
+                 | Some a ->
+                     k res B.(update (after (state b0) a) b))
 
 
 
@@ -320,6 +385,25 @@ struct
                      k res b)
 
 
+
+    let no_expectations (p: 'a t): 'a t =
+        fun b0 k ->
+        p
+            (B.start_new_consumer b0)
+            (fun res b ->
+                 let consumed = B.has_consumed b in
+                 let b = B.end_new_consumer b0 b in
+                 match res with
+                 | Some _ when not consumed ->
+                     k res (B.reset_errors b0 b)
+                 | Some _ ->
+                     k res (B.clear_errors b)
+                 | _ ->
+                     k res b
+            )
+
+
+
     let (<?>) (p: 'a t) (e: Expect.t): 'a t =
         fun b0 k ->
         p
@@ -366,8 +450,6 @@ struct
 
 
 
-
-
     let optional (p: 'a t): 'a option t =
         (
             let* a = p in
@@ -385,11 +467,17 @@ struct
             choices (p </> q) qs
 
 
-    let zero_or_more (start: 'r) (f: 'item -> 'r -> 'r) (p: 'item t): 'r t =
+    let zero_or_more_fold_left
+            (start: 'r)
+            (f: 'r -> 'a -> 'r t)
+            (p: 'a t)
+        : 'r t
+        =
         let rec many r =
             (
-                let* a = consumer p in
-                many (f a r)
+                let* a = p in
+                let* r = f r a in
+                many r
             )
             </>
             return r
@@ -397,41 +485,44 @@ struct
         many start
 
 
-    let one_or_more
-            (first: 'item -> 'r)
-            (next:  'item -> 'r -> 'r)
-            (p: 'item t)
+    let one_or_more_fold_left
+            (first: 'a -> 'r t)
+            (f: 'r -> 'a -> 'r t)
+            (p: 'a t)
         : 'r t
         =
-        let* a = p in
-        zero_or_more (first a) next p
+        let* r = p >>= first in
+        zero_or_more_fold_left r f p
 
 
-    let list_zero_or_more (p: 'a t): 'a list t =
-        let* xs = zero_or_more [] (fun x xs -> x :: xs) p
+
+
+    let zero_or_more (p: 'a t): 'a list t =
+        let* xs =
+            zero_or_more_fold_left [] (fun xs x -> x :: xs |> return) p
         in
         return (List.rev xs)
 
 
-    let list_one_or_more (p: 'a t): ('a * 'a list) t =
+    let one_or_more (p: 'a t): ('a * 'a list) t =
         let* x = p in
-        let* xs = list_zero_or_more p in
+        let* xs = zero_or_more p in
         return (x, xs)
 
 
     let skip_zero_or_more (p: 'a t): int t =
-        zero_or_more 0 (fun _ i -> i + 1) p
+        zero_or_more_fold_left 0 (fun i _ -> return (i + 1)) p
 
 
     let skip_one_or_more (p: 'a t): int t =
-        let* n = skip_zero_or_more p in
         let* _ = p in
+        let* n = skip_zero_or_more p in
         return (n + 1)
 
 
     let one_or_more_separated
-            (first: 'item -> 'r)
-            (next:  'r -> 'sep  -> 'item -> 'r)
+            (first: 'item -> 'r t)
+            (next:  'r -> 'sep  -> 'item -> 'r t)
             (p: 'item t)
             (sep: 'sep t)
         : 'r t
@@ -440,12 +531,273 @@ struct
             (
                 let* s    = sep in
                 let* item = p in
-                many (next r s item)
+                next r s item >>= many
             )
             </>
             return r
         in
-        let* item = p in
-        many (first item)
+        let* res = p >>= first in
+        many res
 
+
+
+    (* Parenthesized
+     * -------------
+     *)
+
+
+    let parenthesized
+            (mk: 'lpar -> 'a -> 'rpar -> 'b t)
+            (lpar: 'lpar t)
+            (p:     unit -> 'a t)
+            (rpar: 'lpar -> 'rpar t)
+        : 'b t
+        =
+        let* lp = lpar in
+        let* a  = p () in
+        let* rp = rpar lp in
+        mk lp a rp
+
+
+
+    (* Operator expressions
+       --------------------
+
+       Binding power:
+
+            o1 > o2     o1 has more binding power to the left of o2
+
+    *)
+    let operator_expression
+            (primary: 'exp t)
+            (unary_operator: 'op t option)
+            (binary_operator: 'op t)
+            (is_left: 'op -> 'op -> bool t)
+            (make_unary: 'op -> 'exp -> 'exp t)
+            (make_binary: 'exp -> 'op -> 'exp -> 'exp t)
+        : 'exp t
+        =
+        let primary         = consumer primary
+        and unary_operator  = Option.map consumer unary_operator
+        and binary_operator = consumer binary_operator
+        in
+        let rec apply_unaries us a =
+            match us with
+            | [] ->
+                return a
+            | u :: us ->
+                apply_unaries us a
+                >>=
+                make_unary u
+        in
+        let rec expression_0 us =
+            match unary_operator with
+            | None ->
+                assert (us = []);
+                primary >>= expression_1
+            | Some unary_operator ->
+                (
+                    let* u = unary_operator in
+                    expression_0 (u :: us)
+                )
+                </>
+                (
+                    let* a = primary in
+                    apply_unaries us a >>= expression_1
+                )
+        and expression_1 a =
+            (
+                let* o = binary_operator in
+                expression_2 a o []
+            )
+            </>
+            return a
+
+        and expression_2 a o us =
+            match unary_operator with
+            | None ->
+                assert (us = []);
+                primary >>= expression_3 a o us
+            | Some unary_operator ->
+                (
+                    let* u = unary_operator in
+                    expression_2 a o (u :: us)
+                )
+                </>
+                (
+                    primary >>= expression_3 a o us
+                )
+        and expression_3 a o1 us b =
+            (
+                let* o2 = binary_operator in
+                expression_4 a o1 us b o2
+            )
+            </>
+            let* b = apply_unaries us b in
+            make_binary a o1 b
+
+        and expression_4 a o1 us b o2 =
+            match us with
+            | [] ->
+                expression_5 a o1 b o2
+            | u :: us_rest ->
+                let* left = is_left u o2 in
+                if left then
+                    let* b = make_unary u b in
+                    expression_4 a o1 us_rest b o2
+                else
+                    let* e, op3 = operand_0 u b o2 [] in
+                    let* e = make_unary u e in
+                    match op3 with
+                    | None ->
+                        make_binary a o1 e
+                    | Some o3 ->
+                        expression_4 a o1 us_rest e o3
+
+        and expression_5 a o1 b o2 =
+            let* left = is_left o1 o2 in
+            if left then
+                let* a = make_binary a o1 b in
+                expression_2 a o2 []
+            else
+                let* e, op3 = operand_0 o1 b o2 [] in
+                let* e = make_binary a o1 e in
+                match op3 with
+                | None ->
+                    return e
+                | Some o3 ->
+                    expression_2 e o3 []
+
+        and operand_0 o1 b o2 us =
+            (* o1 < o2
+                complete [b o2 us] to [e] or [e o3] such that [o1 > o3]
+
+                Note: [o1] can be unary!
+            *)
+            let without_unary =
+                let* c = primary in
+                (
+                    let* o3 = binary_operator in
+                    operand_1 o1 b o2 us c o3
+                )
+                </>
+                (
+                    let* e =
+                        apply_unaries us c
+                        >>=
+                        make_binary b o2
+                    in
+                    return (e, None)
+                )
+            in
+            match unary_operator with
+            | None ->
+                assert (us = []);
+                without_unary
+            | Some unary_operator ->
+                (
+                    let* u = unary_operator in
+                    operand_0 o1 b o2 (u :: us)
+                )
+                </>
+                without_unary
+
+        and operand_1 o1 b o2 us c o3 =
+            (* o1 < o2 *)
+            let _ = o1, b, o2, us, c, o3 in
+            match us with
+            | [] ->
+                operand_2 o1 b o2 c o3
+            | u :: us ->
+                operand_3 o1 b o2 us u c o3
+
+        and operand_2 o1 b o2 c o3 =
+            (* o1 < o2 *)
+            let* left = is_left o2 o3 in
+            if left then
+                let* e = make_binary b o2 c in
+                let* left = is_left o1 o3 in
+                if left then
+                    return (e, Some o3)
+                else
+                    operand_0 o1 e o3 []
+            else
+                (* o2 < o3 *)
+                let* e, op4 = operand_0 o2 c o3 [] in
+                (
+                    match op4 with
+                    | None ->
+                        let* f = make_binary b o2 e in
+                        return (f, None)
+                    | Some o4 ->
+                        (* [o1 b o2 e o4] with [o2 > o4] *)
+                        let* f = make_binary b o2 e in
+                        (* [o1 f o4] *)
+                        let* left = is_left o1 o4 in
+                        if left then
+                            return (f, Some o4)
+                        else
+                            operand_0 o1 f o4 []
+                )
+
+        and operand_3 o1 b o2 us u c o3 =
+            (* o1 < o2 *)
+            let* left = is_left u o3 in
+            if left then
+                let* e = make_unary u c in
+                operand_1 o1 b o2 us e o3
+            else
+                let* e, op4 = operand_0 u c o3 [] in
+                let _ = e, op4 in
+                match op4 with
+                | None ->
+                    (* [o1 b o2 us u e] *)
+                    let* f =
+                        apply_unaries (u :: us) e
+                        >>=
+                        make_binary b o2
+                    in
+                    return (f, None)
+                | Some o4 ->
+                    (* [o1 b o2 us u e o4] with [o1 < o2] and [u > o4] *)
+                    let* f = make_unary u e in
+                    (* [o1 b o2 us f o4] *)
+                    operand_1 o1 b o2 us f o4
+
+        in
+        expression_0 []
+
+
+
+(*    let operator_expression
+            (lpar: 'par t)
+            (rpar: 'par -> _ t)
+            (make_par: 'par -> 'exp -> 'exp t)
+            (primary: 'exp t)
+            (unary_operator: 'op t option)
+            (binary_operator: 'op t)
+            (is_left: 'op -> 'op -> bool t)
+            (make_unary: 'op -> 'exp -> 'exp t)
+            (make_binary: 'exp -> 'op -> 'exp -> 'exp t)
+        : 'exp t
+        =
+        let rec op_exp (): 'exp t =
+            operator_expression_0
+                (prim ())
+                unary_operator
+                binary_operator
+                is_left
+                make_unary
+                make_binary
+
+        and prim (): 'exp t =
+            parenthesized
+                (fun lp exp _ ->  make_par lp exp)
+                lpar
+                op_exp
+                rpar
+            </>
+            primary
+        in
+        op_exp ()*)
 end (* Make *)

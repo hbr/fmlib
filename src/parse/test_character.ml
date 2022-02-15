@@ -374,6 +374,57 @@ struct
 end
 
 
+let%test _ =
+    (* an indented character *)
+    let open Indent_sensitive (Char) in
+    let str = {|
+        a
+            b
+        |}
+    in
+    let p =
+        (
+            let* _ = whitespace in
+            let* _ = char_ws 'a'in
+            char_ws 'b' |> indent 4
+        )
+        |>
+        make ()
+        |>
+        Parser.run_on_string str
+    in
+    Parser.has_succeeded p
+    &&
+    Parser.final p = 'b'
+    &&
+    Parser.column p = 8
+
+
+
+let%test _ =
+    (* a wrongly indented character *)
+    let open Indent_sensitive (Char) in
+    let str = {|
+        a
+           b
+        |}
+    in
+    let p =
+        (
+            let* _ = whitespace in
+            let* _ = char_ws 'a'in
+            char_ws 'b' |> indent 4
+        )
+        |>
+        make ()
+        |>
+        Parser.run_on_string str
+    in
+    Parser.has_failed_syntax p
+    &&
+    Parser.column p = 11
+
+
 
 let%test _ =
     (* A character left aligned. *)
@@ -418,15 +469,39 @@ let%test _ =
 
 
 let%test _ =
+    (* Two characters aligned *)
+    let open Indent_sensitive (Char) in
+    let p =
+        (
+            let* _ = whitespace in
+            let* _ = char_ws 'a' in
+            (
+                let* _ = char_ws 'b' |> align in
+                char_ws 'c' |> align
+            )
+            |> indent 0
+        )
+        |> make ()
+      |> Parser.run_on_string {|
+            a   b
+                c
+          |}
+    in
+    Parser.has_succeeded p
+
+
+let%test _ =
     (* Two characters indented and aligned *)
     let open Indent_sensitive (Char) in
     let p =
         (let* _  = whitespace in
          let* c0 = char_ws 'a' |> align in
          let* _  =
-             (let* _ = char_ws 'b' |> align in
-              char_ws 'c' |> align)
-             |> align |> indent 1
+             (
+                 let* _ = char_ws 'b' |> align in
+                 char_ws 'c' |> align
+             )
+             |> indent 1
          in
          return c0)
         |> make ()
@@ -451,9 +526,11 @@ let%test _ =
         (let* _  = whitespace in
          let* c0 = char_ws 'a' |> align in
          let* _  =
-             (let* _ = char_ws 'b' |> align in
-              char_ws 'c' |> align)
-             |> align |> indent 1
+             (
+                 let* _ = char_ws 'b' |> align in
+                 char_ws 'c' |> align
+             )
+             |> indent 1
          in
          return c0)
         |> make ()
@@ -471,6 +548,64 @@ let%test _ =
     &&
     Parser.failed_expectations p = ["'c'", Some (Align 4)]
 
+
+
+
+let%test _ =
+    (* Alignment without indentation *)
+    let str = {|
+            a a
+            a
+        b
+        c
+            a
+        |}
+    in
+    let open Indent_sensitive (Int) in
+    let p =
+        (
+            let* _  = whitespace  in
+            let* n  = char_ws 'a' |> skip_one_or_more in
+            let* _  = char_ws 'b' |> align in
+            let* _  = char_ws 'c' |> align in
+            let* m  = char_ws 'a' |> skip_zero_or_more in
+            return (n + m)
+        )
+        |> make ()
+        |> Parser.run_on_string str
+    in
+    Parser.(
+        has_succeeded p
+        &&
+        final p = 4
+    )
+
+
+
+let%test _ =
+    (* Alignment without indentation, failed *)
+    let str = {|
+            a a a
+                a
+             b
+             c
+    |}
+    in
+    let open Indent_sensitive (Int) in
+    let p =
+        (
+            let* _  = whitespace  in
+            let* n  = char_ws 'a' |> skip_one_or_more in
+            let* _  = char_ws 'b' |> align in
+            let* _  = char_ws 'c' |> align in
+            return n
+        )
+        |> make ()
+        |> Parser.run_on_string str
+    in
+    Parser.(
+        has_failed_syntax p
+    )
 
 
 

@@ -37,6 +37,7 @@ sig
              and type expect   = Expect.t
              and type semantic = Semantic.t
              and type state    = State.t
+        (** @inline *)
     end
 
 
@@ -50,6 +51,7 @@ sig
             type state = State.t
             and type expect = Expect.t
             and type semantic = Semantic.t
+    (** @inline *)
 
 
 
@@ -74,6 +76,18 @@ sig
     *)
 
 
+    val expect_end:
+        (State.t -> Expect.t) -> 'a -> 'a t
+    (** [expect_end error a] Expect the end of input.
+
+        In case of success return [a]. In case of failure (i.e. not yet at the
+        end of input) then compute via [error] the syntax error from the state.
+
+        WARNING: This combinator only makes sense if you generate your parser
+        with [make_parser]. If you generate your parser with [make] then the end
+        of input is automatically expected after the toplevel construct.
+    *)
+
 
 
 
@@ -86,7 +100,7 @@ sig
         - [p] Combinator which returns in case of success an object of type
         [Final.t]
         - [e] Error function. Generates an expectation from the state. The
-        function is used if at the expected end of input other token arrive.
+        function is used if an other token arrives at the expected end of input.
 
         The generated parser expects a token stream which can be successfully
         parsed by the combinator [p]. It can succeed only if an end token is

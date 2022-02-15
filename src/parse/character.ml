@@ -49,7 +49,9 @@ struct
         type t = P.t
 
         let needs_more          = P.needs_more
+        let has_result          = P.has_result
         let has_ended           = P.has_ended
+        let has_received_end    = P.has_received_end
         let has_succeeded       = P.has_succeeded
         let has_failed_syntax   = P.has_failed_syntax
         let has_failed_semantic = P.has_failed_semantic
@@ -61,6 +63,8 @@ struct
 
         let put                 = P.put
         let put_end             = P.put_end
+        let run_on_stream       = P.run_on_stream
+        let run_on_list         = P.run_on_list
 
 
         let position (p: t): Position.t =
@@ -78,22 +82,124 @@ struct
         let state (p: t): User.t =
             P.state p |> State.user
 
+
+
         let run_on_string (str: string) (p: t): t =
-            let len = String.length str
-            in
-            let rec run i p =
-                if needs_more p then
-                    if i = len then
-                        put_end p
-                    else if i < len then
-                        run (i + 1) (put str.[i] p)
-                    else
-                        assert false (* cannot happen. *)
-                else
-                    p
-            in
-            run 0 p
+            run_on_stream
+                (Stream.of_string str)
+                p
+
+
+        let run_on_channel (ic: in_channel) (p: t): t =
+            run_on_stream
+                (Stream.of_channel ic)
+                p
     end
+
+
+    module Error_reporter =
+    struct
+        open Fmlib_pretty.Print
+
+        type t = {
+            p: Parser.t;
+            semantic: Semantic.t -> doc;
+            extractor: Source_extractor.t;
+        }
+
+        let make
+                (semantic_range: Semantic.t -> Position.range)
+                (semantic:       Semantic.t -> doc)
+                (p: Parser.t)
+            : t
+            =
+            assert (not (Parser.has_succeeded p));
+            let open Parser in
+            {
+                p;
+                semantic;
+                extractor =
+                    if has_failed_syntax p then
+                        Source_extractor.of_position 5 (position p)
+                    else
+                        Source_extractor.of_range
+                            5
+                            (semantic_range (failed_semantic p));
+            }
+
+
+        let make_syntax (p: Parser.t): t =
+            assert (Parser.has_failed_syntax p);
+            let semantic _ = assert false
+            in
+            make semantic semantic p
+
+
+        let needs_more (r: t): bool =
+            Source_extractor.needs_more r.extractor
+
+        let put (c: char) (r: t): t =
+            {r with
+             extractor = Source_extractor.put c r.extractor
+            }
+
+        let put_end (r: t): t =
+            {r with
+             extractor = Source_extractor.put_end r.extractor
+            }
+
+        let document (r: t): doc =
+            let open Parser
+            in
+            Source_extractor.document r.extractor
+            <+> cut <+>
+            (
+                if has_failed_syntax r.p then
+                    Syntax_error.document
+                        (Position.column (position r.p))
+                        (failed_expectations r.p)
+                else
+                    r.semantic (failed_semantic r.p)
+            )
+
+
+        let run_on_stream
+                (str: char Stream.t)
+                (r: t)
+            : doc
+            =
+            {r with extractor =
+                        Source_extractor.run_on_stream str r.extractor
+            }
+            |> document
+
+
+        let run_on_string (str: string) (r: t): Fmlib_pretty.Print.doc =
+            run_on_stream
+                (Stream.of_string str)
+                r
+
+
+        let run_on_channel (ic: in_channel) (r: t): Fmlib_pretty.Print.doc =
+            run_on_stream
+                (Stream.of_channel ic)
+                r
+
+        let run_on_channels
+                (ic: in_channel)
+                (width: int)
+                (oc: out_channel)
+                (r: t)
+            : unit
+            =
+            assert (0 < width);
+            let open Fmlib_pretty.Print
+            in
+            run_on_channel ic r
+            |> layout width
+            |> write_to_channel oc
+    end
+
 
 
 
@@ -118,11 +224,28 @@ struct
         )
 
 
+    let map_and_update (f: User.t -> 'a -> 'b * User.t) (p: 'a t): 'b t =
+        Basic.(
+            map_and_update
+                (fun state a ->
+                     let b, user = f (State.user state) a
+                     in
+                     b,
+                     State.put user state)
+                p
+        )
+
+
     let get: User.t t =
         Basic.(map State.user get)
 
+
     let update (f: User.t -> User.t): unit t =
         Basic.update (State.update f)
+
+
+    let set (user: User.t): unit t =
+        update (fun _ -> user)
 
 
     let get_and_update (f: User.t -> User.t): User.t t =
@@ -131,6 +254,19 @@ struct
                 State.user
                 (get_and_update (State.update f))
         )
+
+    let state_around
+            (before: User.t -> User.t)
+            (p: 'a t)
+            (after: User.t -> 'a -> User.t -> User.t)
+        : 'a t
+        =
+        Basic.state_around
+            (State.update before)
+            p
+            (fun s0 a s1 -> State.(update (after (user s0) a) s1))
+
+
 
     let backtrack (p: 'a t) (e: string): 'a t =
         Basic.( backtrack p (e, None) )
@@ -196,6 +332,9 @@ struct
 
     (* Character Combinators *)
 
+    let expect_end (error: string) (a: 'a): 'a t =
+        Basic.expect_end (fun _ -> error, None) a
+
 
     let char (expected: char): char t =
         let error () = String.(one '\'' ^ one expected ^ one '\'')
@@ -256,6 +395,20 @@ struct
         let* d = digit_char
         in
         return Char.(code d - code '0')
+
+
+    let word
+            (first: char -> bool)
+            (inner: char -> bool)
+            (expect: string)
+        : string t
+        =
+        let* c0 = charp first expect in
+        zero_or_more_fold_left
+            (String.make 1 c0)
+            (fun str c -> str ^ String.make 1 c |> return)
+            (charp inner expect)
+        |> no_expectations
 
 
     let hex_lowercase: int t =
@@ -325,11 +478,11 @@ struct
     let base64 (start: string -> 'r) (next: string -> 'r -> 'r): 'r t =
         let _,_ = start, next in
         let start0 arr =
-            Base64.decode arr |> start
-        and next0  arr r =
-            next (Base64.decode arr) r
+            Base64.decode arr |> start |> return
+        and next0  r arr =
+            next (Base64.decode arr) r |> return
         in
-        let* r = one_or_more start0 next0 base64_group in
+        let* r = one_or_more_fold_left start0 next0 base64_group in
         let* _ = skip_zero_or_more (char '=') in
         return r
 
@@ -367,18 +520,29 @@ struct
         assert (0 <= i);
         let* state = Basic.get_and_update (State.start_indent i) in
         let* a     = p in
-        let* _     = Basic.update (State.end_indent i state) in
+        let* _     = Basic.update (State.end_indent state) in
         return a
 
 
+    let align0 (left: bool) (p: 'a t): 'a t =
+        let f_align =
+            if left then
+                State.left_align
+            else
+                State.align
+        in
+        Basic.state_around
+            f_align
+            p
+            (fun s0 _ s1 -> State.end_align s0 s1)
+
+
     let align (p:'a t): 'a t =
-        let* _ = Basic.update State.align in
-        p
+        align0 false p
 
 
     let left_align (p:'a t): 'a t =
-        let* _ = Basic.update State.left_align in
-        p
+        align0 true p
 
 
     let detach (p: 'a t): 'a t =
@@ -386,15 +550,6 @@ struct
         let* a     = p in
         let* _     = Basic.update (State.end_detach state) in
         return a
-
-
-    let zero_or_more_aligned (r: 'r) (f: 'a -> 'r -> 'r) (p: 'a t): 'r t =
-        zero_or_more r f (align p) |> align |> indent 1
-
-
-    let one_or_more_aligned (r: 'a -> 'r) (f: 'a -> 'r -> 'r) (p: 'a t): 'r t =
-        one_or_more r f (align p) |> align |> indent 1
-
 
 
     (* Make the final parser *)

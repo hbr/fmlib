@@ -132,6 +132,9 @@ struct
         {b with _end = End_received}
 
 
+    let put (state: State.t) (b: t): t =
+        {b with state}
+
 
     let update (f: State.t -> State.t) (b: t): t =
         (* Update the state. *)
@@ -151,6 +154,10 @@ struct
 
     let clear_last_error (b: t): t =
         {b with error = Error.clear_last b.error}
+
+
+    let reset_errors (b0: t) (b: t): t =
+        {b with error = b0.error}
 
 
     let consume (state: State.t) (b: t): t =
@@ -250,7 +257,7 @@ struct
         else
             (* The current backtrackable parser is not nested within another
                backtrackable parser. We end buffering and forget all consumed
-               token. The lookahead token remain in the buffer. *)
+               token. The lookahead tokens remain in the buffer. *)
             {b with
              is_buffering =
                  false;
@@ -268,15 +275,18 @@ struct
         *)
         assert (count_toks b0 <= count_toks b);
         assert (b._end <> End_consumed);
-        {b0 with
-         toks =
-             b.toks;
-         _end =
-             b._end;
-         error =
-             match e with
-             | None ->
-                 b0.error
-             | Some e ->
-                 Error.add_expected e b0.error}
+        if b0.la_ptr = b.la_ptr then
+            (* failed without consumption, no backtracking necessary *)
+            {b with is_buffering = b0.is_buffering}
+        else
+            (* failed with consumption, backtracking necessary *)
+            {
+                b0 with
+                toks  = b.toks;
+                _end  = b._end;
+                error =
+                    match e with
+                    | None -> b0.error (* not_followed_by ? *)
+                    | Some e -> Error.add_expected e b0.error
+            }
 end

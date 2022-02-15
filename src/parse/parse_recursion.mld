@@ -1,0 +1,143 @@
+{0 Recursion in Combinators}
+
+
+{{!page-parse} Up} {{!Fmlib_parse} API}
+
+
+
+Grammars are usually recursive. Combinators have to be recursive as well in
+order to reflect the recursiveness of grammars properly.
+
+Combinator parsers implement {e parsing expression grammars} and not {e context
+free grammars}. The main differences of parsing expression grammars to context
+free grammars are:
+
+- Choice is biased (if the first alternative succeeds, then other alternatives
+  are not tried).
+
+- Left recursion is not allowed.
+
+Users are usually happy about the biased choice because this avoids a lot of
+ambiguity which can happen in context free grammars.
+
+However it is easy to fall into the trap of left recursion which leads to an
+infinite recursion when implemented with combinator parsing.
+
+This section describes the basic rule which avoids left recursion:
+
+{e Never call a combinator recursively when the recursive call is not guarded}.
+
+
+
+{1 Guarded Recursion}
+
+What does guarded recursion mean?
+
+Suppose you want to write a recursive combinator [crec] which you want to call
+recursively in the body. Then the combinator has to have the structure
+
+{[
+    let rec crec arg1 arg2 ...
+        =
+        let* a = p in   (* 'p' has to consume at least one token in case
+                            of success. *)
+        crec ...        (* guarded recursive call *)
+]}
+
+The same applies to mutually recursive functions. At any position of a recursive
+call, the call has to be guarded. I.e. before starting a new recursion loop at
+least one token has to be consumed.
+
+Since [let*] and [(>>=)] are the same operators just with different syntactic
+sugar, the following code is valid as well.
+
+{[
+    let rec crec arg1 arg2 ...
+        =
+        p >>= (fun a -> crec ...)
+]}
+
+The parser described by the combinator [p] has to consume at least one token. In
+case of success it returns some [a]. With that result the function [fun a ->
+crec ...] is called. Therefore the recursive call does not happen before at
+least one token has been consumed.
+
+
+{1 Repetition Example}
+
+All parsers in the library have combinators which parse sequences of zero or
+more and sequences of one or more items. We implement here a constructor to
+parse zero or more items of type ['a] returned by a combinator [p] as a list of
+['a]s.
+
+
+{[
+    zero_or_more (p: 'a t): 'a list t =
+        let rec many lst =
+            (
+                let* a = p  (* 'p' has to consume at least one token *)
+                in
+                many (a :: lst) (* guarded recursive call *)
+            )
+            </>
+            return (List.rev lst)
+        in
+        many []
+]}
+
+Here the combinator [many] starts by parsing one item by using the combinator
+[p].
+
+In case of success it adds the item in front of the list does the same
+again.
+
+In case of failure there are no more items in the input stream and therefore the
+combinator returns the list. It has to reverse the list because the later items
+have been pushed to the front of the list.
+
+The above code reflects the grammar rule
+
+{v
+    sequence ::=
+        empty
+        |
+        item sequence
+v}
+
+which avoids left recursion.
+
+
+
+
+
+{1 Mutual Recursion}
+
+In mutually recursive functions the guard condition is the same. Before closing
+a recursion loop at least one token has to be consumed. The following code
+describes schematically a valid mutual recursion where the guard condition is
+satisfied.
+
+{[
+    let rec crec1 ... =
+        ( ... )
+        </>
+        crec2 ...               (* unguarded call; ok *)
+
+    and crec2 ... =
+        crec3 ...               (* unguarded call; ok *)
+        </>
+        (
+            let* b = q ...      (* guard consuming tokens *)
+            let* c = crec2 ...  (* guarded recursive call *)
+            ...
+        )
+
+    and crec3 ... =
+        let* a = p ...          (* guard consuming tokens *)
+        let* b = crec1 ...      (* guarded recursive call   *)
+]}
+
+
+
+
+{{!page-parse} Up} {{!Fmlib_parse} API}

@@ -1,0 +1,346 @@
+{0 Overview}
+
+{{!page-parse} Up}
+
+
+{1 Features}
+
+
+The parsers of this library implement parsers for {i Parsing Expression
+Grammars} with parsing combinators. They have the following main features:
+
+- Like all combinator parsers (e.g. like [parsec] of Haskell) you have the
+full flexibility of a functional language. There is no preprocessing step
+where the parser has to be generated from the grammar.
+
+- All parsers are incremental and work in push mode. You can parse part of
+the input stream, look into the state of the parser. Store the parser at
+different locations and resume parsing at any location in the input stream.
+
+- It is possible to parse indentation sensitive grammars.
+
+These features in combination are to the best of our knowledge unique in
+[Fmlib_parse].
+
+
+Parsing expression grammars are very similar to context free grammers.
+There are two main differences:
+
+- The choice between alternatives is biased. I.e. if parsing of the first
+alternative succeeds, then the next one is not parsed.
+
+- Left recursion is forbidden.
+
+Accepting these restrictions leads to fairly efficient parser which can be
+implemented directly in a functional language.
+
+
+{1 Main Modules}
+
+All parsers in this library are combinator parsers.
+
+- {!module:Fmlib_parse.Character.Make} A parser where the tokens are characters.
+
+- {!module:Fmlib_parse.Generic.Make} A generic parser where all is customizable.
+
+
+All parsers are functors which need some other modules to be instantiated. All
+parsers have to be instantiated with the following modules:
+
+- [Final]: The type [Final.t] is the type of the final construct which the
+  parser returns after successful parsing.
+
+- [State]: The type [State.t] is any type of state which the user wants to read,
+  write or update during parsing. It can be accessed at any time. If the user
+does not need a state, then the module [Unit] of ocaml's standard library can be
+used.
+
+- [Semantic]: During parsing the user is able to recognize semantic errors.
+  There is a function [fail error] which let the parser fail with a semantic
+error with the error object of type [Semantic.t].
+
+E.g. if you want to write a parser which parses a stream of characters then you
+should write a module which looks like
+
+{[
+    module State =
+    struct
+        type t = ...        (* your user state *)
+        ...
+    end
+
+    module Final =
+    struct
+        type t = ...        (* type of the final construct *)
+        ...
+    end
+
+    module Semantic =
+    struct
+        type t = ...        (* type of semantic error *)
+        ...
+    end
+
+    module Basic = Fmlib_parse.Character.Make (State) (Final) (Semantic)
+
+    open Basic
+
+    ...
+]}
+
+After that you write combinators starting from the basic combinators of [Basic]
+until you have a combinator which represents a parser for the whole input stream
+i.e. a combinator of type [Final.t Basic.t]. Finally you use [Basic.make] to
+generate the actual parser of type [Basic.Parser.t]. The next sections show how
+to work with combinators and how to generate the actual parser.
+
+
+
+{1 Combinators}
+
+
+The grammar is described by combinators. A combinator of type ['a t] returns an
+object of type ['a] after successful parsing.
+
+
+{2 Basic Combinators}
+
+There are the following basic combinators:
+
+- [return: 'a -> 'a t] The combinator [return 5] immediately succeeds without
+  consuming tokens with the value [5].
+
+- [fail: Semantic.t -> 'a t] The combinator [fail "Division by zero"]
+  immediately fails with the corresponding semantic error message
+  (assuming [Semantic = String]).
+
+As the name implies {e combinators} can be combined to form more complex
+combinators.
+
+
+{2 Sequencing}
+
+If we have the combinators [p: 'a t], [q: 'a -> 'b t] and
+[r: 'a -> 'b -> 'c t] and a
+function [f: 'a -> 'b -> 'c -> 'd] then
+we can form
+
+{[
+    let* a = p in
+    let* b = q a in
+    let* c = r a b in
+    return (f a b c)
+]}
+
+which is a combinator of type ['d t]. This combinator describes a parser which
+first parses [p]. In case of success [p] returns the value [a]. Then the parser
+described by [q a] is exectuted which returns in case of success the value [b].
+The the parser described by [r a b] is executed which returns in case of success
+the value [c]. Then the parser succeeds by returning [f a b c].
+
+
+{2 Choice}
+
+In order to describe syntactic alternatives there is the choice operator
+[</>: 'a t -> 'a t -> ' t]. If we have combinators [p: 'a t], [q: 'a t]
+and [r: 'a t]
+then the combinator
+
+{[
+    p </> q </> r
+]}
+
+starts by using the combinator [p]. If [p] succeeds the whole choice succeeds.
+If [p] fails without consuming tokens, the parsing resumes with the combinator
+[q]. If it succeeds then the whole choice succeeds. If [q] fails without
+consuming tokens, then the last combinator [r] is used.
+
+The expression [p </> q] is a {e biased} choice, because the first alternative
+has priority. If the first alternative succeeds the next one is not tried.
+
+If one of the alternatives in a biased choice fails after consuming some token,
+then the whole construct fails. Backtracking is needed (see next section) to
+restore consumed tokens.
+
+
+{2 Repetition}
+
+If you have a combinator [p] of type ['a t] which parses a certain construct, it
+is often necessary to parse a sequence of {e one or more} or {e zero or more}
+repetitions of the construct. All parsers have combinators to parse repetitions
+of a given combinator. E.g.
+
+{[
+    list_zero_or_more p
+]}
+
+parses zero or more occurrences of the constructs parsed by [p] and returns them
+in a list. There are more combinators which parse repetitions like
+[one_or_more], [skip_one_or_more], [zero_or_more], [one_or_more_separated] ...
+All these combinators can be found in {!Fmlib_parse.Interfaces.COMBINATOR}.
+
+
+
+
+{2 Operator Expressions}
+
+Recognizing operator expressions with unary and binary operators are a very
+common task for parsers. It is not very complicated to make a combinator
+recognizing operator expressions by using a combinator of basic combinators.
+However many cases can be parsed by using the combinator
+{{!Fmlib_parse.Interfaces.COMBINATOR.operator_expression} operator_expression}.
+
+This combinator needs combinators to
+
+- parse parentheses
+
+- parse unary and binary operators like [-], [+], [*], ...
+
+- parse primary expressions
+
+Usually primary expressions are constants, identifiers or functions applied to
+arguments.
+
+Furthermore combinators are needed which
+
+- decide the precedence and associativity of operators
+
+- make unary and binary expressions from the operator and the operand(s).
+
+
+The {{!page-parse_calculator} calculator example} shows a simple but typical use
+case for this combinator.
+
+
+
+{2 Backtracking}
+
+Sometimes it is not possible for a combinator to fail without consuming some
+token. This is the case, if the first token is not sufficient to decide whether
+the alternative is the correct one.
+
+In order to make such a parser fail without consuming any token it can be
+wrapped with the backtracking combinator. If the combinator [p] fails after
+consuming one or more tokens, then [backtrack p expect] fails with the
+expectation [expect] without consuming any token. The consumed tokens are pushed
+back to the lookahead and the original state is reestablished.
+
+Backtracking has a cost because the consumed tokens have to be buffered and the
+original state has to be stored. The most efficient parsers do not use
+backtracking. However sometimes it is inevitable to backtrack.
+
+
+{2 State}
+
+Every parser can be instantiated with a state module. In compilers typically a
+symbol table is part of the state.
+
+There are combinators to access the state during parsing. Some examples:
+
+- [get: State.t t] Get the state.
+
+- [put: State.t -> unit t] Set the state.
+
+- [update: (State.t -> State.t) -> unit t] Update the state.
+
+E.g. a source file in a programming language consists of a sequence of
+definitions. After successful parsing of a definition the new definition can be
+added to the state with the following code:
+
+{[
+        let* (name, def) = definition   (* parse a definition *)
+        in
+        update
+            (State.add_definition name def)
+]}
+
+where the module [State] has a function with the signature
+[add_definition: string -> definition -> t -> t].
+
+
+
+{1 Make a Parser}
+
+Let's assume we have a combinator [c] with the type [Final.t t]. Then
+
+{[
+    make state c
+]}
+
+generates a parser of type [Basic.Parser.t]. Let's assume [p] is the generated
+parser. Then we have the following functions to inspect the parser [p]:
+
+- [Basic.Parser.needs_more p]: Does the parser [p] need more tokens?
+
+- [Basic.Parser.state p]: The state of the parser.
+
+- [Basic.Parser.has_result p]: Has the parser [p] succeeded or failed?
+
+- [Basic.Parser.has_succeeded p]: Has the parser [p] succeeded?
+
+- [Basic.Parser.final p]: The final result of the parser. Requires that the
+  parser has succeeded.
+
+In order to handle errors there are the following functions:
+
+- [Basic.Parser.has_failed_syntax p]: Has the parser [p] failed with a syntax
+  error?
+
+- [Basic.Parser.failed_expectations p]: The list of failed expectations.
+
+- [Basic.Parser.has_failed_semantic p]: Has the parser [p] failed with a
+  semantic error?
+
+- [Basic.Parser.failed_semantic p]: The encountered semantic error.
+
+
+In order to push tokens into the parser [p] we have the function
+
+{[
+    Basic.Parser.put token p
+]}
+
+The function returns a new parser which has either consumed the token
+successfully and needs more tokens or has a result (success or failure).
+
+At the end of the token stream there is the function
+{[
+    Basic.Parser.put_end p
+]}
+
+The function returns a new parser. After encountering the end, a result is
+available, either success or failure.
+
+Note the inversion of control. The generated parser does not read from an input
+stream. Instead of reading from an input stream tokens are pushed into the
+parser.
+
+Tokens can be pushed even after the parser has a result. The not needed tokens
+are just pushed as lookahead tokens and can be recovered by
+[Basic.Parser.lookaheads p].
+
+After signalling the end by [put_end p] to the parser, it is no longer allowed
+to push tokens into the parser.
+
+
+
+{1 Running the Parser on Streams}
+
+The generated parsers have inversion of control. However it is not necessary to
+use the inversion of control. Any parser can be run on a stream of tokens by
+
+{[
+    Basic.Parser.run_on_stream stream p
+]}
+
+The character parser accepts character tokens, therefore it has the additional
+functions
+
+{[
+    Basic.Parser.run_on_string "..." p
+
+    Basic.Parser.run_channel ic p   (* 'ic' is an input channel *)
+]}
+
+
+{{!page-parse} Up}

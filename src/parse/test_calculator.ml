@@ -37,9 +37,9 @@ let mulop: mulop t =
 let number: int t =
     (* Parse one number. *)
     let* v =
-        one_or_more
-            (fun d -> d)
-            (fun v d -> 10 * v + d)
+        one_or_more_fold_left
+            (fun d -> return d)
+            (fun v d -> 10 * v + d |> return)
             digit
     in
     let* _ = whitespace in      (* strip whitespace *)
@@ -58,15 +58,15 @@ let parenthesized (p: unit -> 'a t): 'a t =
 let rec expr (): int t =
     (* Parse a sum [a + b - c ...]. *)
     one_or_more_separated
-       (fun x -> x)
-       (fun s op x ->
-            match op with
-            | Plus ->
-                s + x
-            | Minus ->
-                s - x)
-       (product ())
-       addop
+        return
+        (fun s op x ->
+             match op with
+             | Plus ->
+                 s + x |> return
+             | Minus ->
+                 s - x |> return)
+        (product ())
+        addop
 
 and atomic (): int t =
     number
