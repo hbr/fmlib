@@ -11,11 +11,6 @@ The design of layout parsing in ``Fmlib`` is based on the work of
   construct. This modification makes the default handling more practical but
   does not change the semantics.
 
-- An indented construct is always indented relative to the (up to now) leftmost
-  token of the surrounding construct. This change is neccessary to guarantee
-  that an indented construct is really indented relative to its surrounding.
-  This is not guaranteed by :cite:t:`adams2014layout2`.
-
 - The transition relation to describe the formal semantics has been extended to
   make parsing expressions not backtracking by default. A backtracking
   expression has to be annotated explicitly.
@@ -456,8 +451,7 @@ Indentation
 --------------------------------------------------------------------------------
 
 
-Indentation has no effect if the alignment flag is set or if there has not yet
-been encountered any token in the surrounding construct.
+Indentation has no effect if the alignment flag is set.
 
 .. math::
 
@@ -467,38 +461,29 @@ been encountered any token in the surrounding construct.
         \hline
         (p^n, wu, I, +) & \Rightarrow & o
     \end{array}
-    \quad
-    \begin{array}{lcl}
-        (p, wu, [j, \infty], f) & \Rightarrow & o
-        \\
-        \hline
-        (p^n, wu, [j, \infty], f) & \Rightarrow & o
-    \end{array}
 
-In the other cases the lower bound of the indentation set has to be increased by
-:math:`n` relative to column of the (up to now) left most token.
-
+If the alignment flag is not set, then the transition is described by the rules
 
 .. math::
 
     \begin{array}{lcl}
-        (p, wu, [k+i, \infty], -) & \Rightarrow & \top^f_J w
-        \\
-        k \ne \infty
+        (p, wu, [i+n, \infty], -) & \Rightarrow & \top^f_{[k,l]} w
         \\
         \hline
-        (p^n, wu, [j, k], -) & \Rightarrow & \top^-_{[j, k]} w
+        (p^n, wu, [i,j], -)
+        & \Rightarrow
+        & \top^f_{[i, \text{ min } j\, (l-n)]} w
     \end{array}
     \quad
     \begin{array}{lcl}
-        (p, wu, [k+i, \infty], -) & \Rightarrow & \perp w
-        \\
-        k \ne \infty
+        (p, wu, I^n, -) & \Rightarrow & \perp w
         \\
         \hline
-        (p^n, wu, [j, k], -) & \Rightarrow & \perp w
+        (p^n, wu, I, -) & \Rightarrow & \perp w
     \end{array}
 
+where :math:`i + n \le k \le l` and therefore :math:`i \le l - n` is guaranteed
+because of the invariant.
 
 
 

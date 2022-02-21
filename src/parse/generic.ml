@@ -80,12 +80,6 @@ struct
                 false
 
 
-        let has_received_end (p: t): bool =
-            match p with
-            | Done (b, _) | More (b, _) ->
-                B.has_end b
-
-
         let failed_expectations (p: t): Expect.t list =
             assert (has_failed_syntax p);
             match p with
@@ -125,7 +119,6 @@ struct
 
 
         let put_end (p: t): t =
-            assert (not (has_received_end p));
             let put = function
                 | More (b, f) ->
                     More (B.push_end b, f)
@@ -154,24 +147,42 @@ struct
                 (Stream.of_list lst)
                 p
 
-        let state (p: t): State.t =
+        let buffer (p: t): B.t =
             match p with
-            | More (b, _)
-            | Done (b, _) ->
-                B.state b
+            | More (b, _) | Done (b, _) ->
+                b
+
+        let state (p: t): State.t =
+            buffer p |> B.state
 
 
         let has_lookahead (p: t): bool =
-            match p with
-            | More (b, _)
-            | Done (b, _) ->
-                B.has_lookahead b
+            buffer p |> B.has_lookahead
+
+        let first_lookahead_token (p: t): Token.t option =
+            buffer p |> B.first_lookahead
+
+
+        let has_received_end (p: t): bool =
+            buffer p |> B.has_end
+
+
+        let has_consumed_end (p: t): bool =
+            buffer p |> B.has_consumed_end
+
+
+        let fold_lookahead
+                (a: 'a)
+                (ftok: Token.t -> 'a -> 'a)
+                (fend: 'a -> 'a)
+                (p: t)
+            : 'a
+            =
+            buffer p |> B.fold_lookahead a ftok fend
 
 
         let lookaheads (p: t): Token.t array * bool =
-            match p with
-            | More (b, _)
-            | Done (b, _) ->
+            let b = buffer p in
                 B.lookaheads b,
                 B.has_end b
     end
@@ -316,7 +327,7 @@ struct
         fun b k ->
         More (b,
               fun b ->
-                  assert (B.has_lookahead b);
+                  assert (B.has_lookahead b || B.has_end b);
                   match f (B.state b) (B.first_lookahead b)  with
                   | Ok (a, s1) ->
                       k (Some a) (B.consume s1 b)
@@ -766,38 +777,4 @@ struct
 
         in
         expression_0 []
-
-
-
-(*    let operator_expression
-            (lpar: 'par t)
-            (rpar: 'par -> _ t)
-            (make_par: 'par -> 'exp -> 'exp t)
-            (primary: 'exp t)
-            (unary_operator: 'op t option)
-            (binary_operator: 'op t)
-            (is_left: 'op -> 'op -> bool t)
-            (make_unary: 'op -> 'exp -> 'exp t)
-            (make_binary: 'exp -> 'op -> 'exp -> 'exp t)
-        : 'exp t
-        =
-        let rec op_exp (): 'exp t =
-            operator_expression_0
-                (prim ())
-                unary_operator
-                binary_operator
-                is_left
-                make_unary
-                make_binary
-
-        and prim (): 'exp t =
-            parenthesized
-                (fun lp exp _ ->  make_par lp exp)
-                lpar
-                op_exp
-                rpar
-            </>
-            primary
-        in
-        op_exp ()*)
 end (* Make *)

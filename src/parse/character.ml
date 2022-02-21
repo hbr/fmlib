@@ -52,6 +52,7 @@ struct
         let has_result          = P.has_result
         let has_ended           = P.has_ended
         let has_received_end    = P.has_received_end
+        let has_consumed_end    = P.has_consumed_end
         let has_succeeded       = P.has_succeeded
         let has_failed_syntax   = P.has_failed_syntax
         let has_failed_semantic = P.has_failed_semantic
@@ -59,6 +60,8 @@ struct
         let failed_expectations = P.failed_expectations
         let failed_semantic     = P.failed_semantic
         let has_lookahead       = P.has_lookahead
+        let first_lookahead_token = P.first_lookahead_token
+        let fold_lookahead      = P.fold_lookahead
         let lookaheads          = P.lookaheads
 
         let put                 = P.put
@@ -520,7 +523,7 @@ struct
         assert (0 <= i);
         let* state = Basic.get_and_update (State.start_indent i) in
         let* a     = p in
-        let* _     = Basic.update (State.end_indent state) in
+        let* _     = Basic.update (State.end_indent i state) in
         return a
 
 

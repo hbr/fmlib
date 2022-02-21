@@ -176,20 +176,25 @@ let start_indent (i: int) (ind: t): t =
            token. *)
         ind
     else
-        match ind.ub with
-        | None ->
-            (* It does not make sense to indent relative to something which does
-               not yet have any token. *)
-            ind
-        | Some ub ->
-            {
-                lb  = ub + i;
-                ub  = None;
-                abs = false;
-            }
+        {
+            lb  = ind.lb + i;
+            ub  = None;
+            abs = false;
+        }
 
-let end_indent (ind0: t) (ind: t): t =
-    if ind0.abs || ind0.ub = None then
+
+let end_indent (i: int) (ind0: t) (ind: t): t =
+    if ind0.abs then
         ind
     else
-        ind0
+        match ind.ub, ind0.ub with
+        | None, _ ->
+            (* Not yet received any token. *)
+            ind0
+        | Some ub, None ->
+            (* Received some token, but parent not yet. *)
+            assert (ind0.lb + i <= ub);
+            {ind0 with ub = ind.ub}
+        | Some ub, Some ub0 ->
+            assert (ind0.lb + i <= ub);
+            {ind0 with ub = Some (min ub0 (ub - i))}

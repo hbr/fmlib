@@ -405,9 +405,9 @@ let%test _ =
     (* a wrongly indented character *)
     let open Indent_sensitive (Char) in
     let str = {|
-        a
-           b
-        |}
+   a
+   b |}
+(* ^ column 3 *)
     in
     let p =
         (
@@ -422,7 +422,7 @@ let%test _ =
     in
     Parser.has_failed_syntax p
     &&
-    Parser.column p = 11
+    Parser.column p = 3
 
 
 

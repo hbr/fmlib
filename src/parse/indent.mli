@@ -88,6 +88,6 @@ val start_indent: int -> t -> t
 *)
 
 
-val end_indent: t -> t -> t
-(** [end_indent ind0 ind] End the current indentation which has been started
-    with [ind0]. *)
+val end_indent: int -> t -> t -> t
+(** [end_indent i ind0 ind] End the current indentation which has been started
+    with and indentation of [i] columns relative to [ind0]. *)

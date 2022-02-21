@@ -1,3 +1,16 @@
+# Release 0.5.1
+
+## Fmlib_parse
+
+- Rework of lookahead access. Main function now `fold_lookahead`.
+
+- Added interfaces `MINIMAL_PARSER`, `NORMAL_PARSER`, `FULL_PARSER`, `LEXER`.
+
+- Added `Token_parser` and `Parse_with_lex` to support the separation of parsing
+  and lexing.
+
+
+
 # Release 0.5.0
 
 ## Fmlib_std

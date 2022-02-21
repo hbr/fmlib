@@ -1,3 +1,60 @@
+module type MINIMAL_PARSER =
+sig
+    type t
+    type token
+
+    val needs_more: t -> bool
+    val put: token -> t -> t
+    val put_end: t -> t
+    val run_on_stream: token Stream.t -> t -> t
+
+    type final
+    val has_succeeded: t -> bool
+    val final: t -> final
+
+    type expect
+    val has_failed_syntax: t -> bool
+    val failed_expectations: t -> expect list
+end
+
+module type NORMAL_PARSER =
+sig
+    include MINIMAL_PARSER
+
+    type semantic
+    val has_failed_semantic: t -> bool
+    val failed_semantic: t -> semantic
+
+    type state
+    val state: t -> state
+end
+
+
+module type FULL_PARSER =
+sig
+    include NORMAL_PARSER
+
+    val first_lookahead_token: t -> token option
+    val has_received_end: t -> bool
+    val has_consumed_end: t -> bool
+    val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
+end
+
+
+
+module type LEXER =
+sig
+    include MINIMAL_PARSER
+        with type token = char
+         and type expect = string * Indent.expectation option
+
+    val first_lookahead_token: t -> token option
+    val position: t -> Position.t
+
+    val restart: t -> t
+end
+
+
 module type PARSER =
 sig
     type token
@@ -10,6 +67,7 @@ sig
     val has_result: t -> bool
     val has_ended: t -> bool
     val has_received_end: t -> bool
+    val has_consumed_end: t -> bool
     val put: token -> t -> t
     val put_end: t -> t
     val run_on_stream: token Stream.t -> t -> t
@@ -22,6 +80,8 @@ sig
     val failed_semantic: t -> semantic
     val state: t -> state
     val has_lookahead: t -> bool
+    val first_lookahead_token: t -> token option
+    val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
     val lookaheads: t -> token array * bool
 end
 

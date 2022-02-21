@@ -1,3 +1,184 @@
+(** Module types *)
+
+
+
+(** A minimal parser is a sink of tokens which either succeeds or returns a list
+    of failed syntax expectations.
+
+*)
+module type MINIMAL_PARSER =
+sig
+    (** *)
+
+    type t          (** Type of the parser. *)
+
+    (** {1 Feeding Tokens} *)
+
+    type token      (** Type of the tokens. *)
+
+    val needs_more: t -> bool
+    (** [needs_more p] Does the parser [p] need more tokens? *)
+
+    val put: token -> t -> t
+    (** [put tok p] Push token [tok] into the parser [p].
+
+        Even if the parser has ended, more tokens can be pushed into the parser.
+        The parser stores the token as lookahead token.
+
+        If the parser has already received the end of the token stream via
+        {!put_end}, then all subsequent tokens are ignored.
+    *)
+
+    val put_end: t -> t
+    (** [put_end p] Push and end token into the parser [p].
+
+    *)
+
+    val run_on_stream: token Stream.t -> t -> t
+    (** [run_on_stream str p] Run the parser [p] on the stream of tokens [str].
+
+    *)
+
+
+
+    (** {1 Success} *)
+
+    type final      (** Type of the final result. *)
+
+    val has_succeeded: t -> bool
+    (** [has_succeeded p] Has the parser [p] succeeded? *)
+
+
+    val final: t -> final
+    (** [final p] The final object constructed by the parser [p] in case of
+        success.
+
+        Precondition: [has_succeeded p]
+    *)
+
+
+
+    (** {1 Syntax Errors} *)
+
+    type expect     (** Type of expectations. *)
+
+    val has_failed_syntax: t -> bool
+    (** [has_failed_syntax p] Has the parser [p] failed with a syntax error? *)
+
+    val failed_expectations: t -> expect list
+    (** [failed_expectations p] The failed expectations due to a syntax error.
+
+        Precondition: [has_failed_syntax p]
+    *)
+end
+
+
+(** A normal parser parses a stream of tokens like a {!MINIMAL_PARSER}. In
+    addition it can have a state and semantic errors.
+*)
+module type NORMAL_PARSER =
+sig
+    include MINIMAL_PARSER
+    (** @inline *)
+
+    (** {1 Semantic Errors} *)
+
+    type semantic (** Type of semantic errors. *)
+
+    val has_failed_semantic: t -> bool
+    (** Has the parser failed because of a semantic error? *)
+
+    val failed_semantic: t -> semantic
+    (** The semantic error encountered.
+
+        Precondition: A semantic error has occurred.
+    *)
+
+
+    (** {1 State} *)
+
+    type state (** Type of the state of the parser (in many cases [unit]) *)
+
+    val state: t -> state
+    (** The state of the parser. *)
+end
+
+
+(** A full parser parses a stream of tokens like a {!MINIMAL_PARSER}. In
+    addition it can have a state, semantic errors and gives access to the
+    lookahead tokens.
+*)
+module type FULL_PARSER =
+sig
+    include NORMAL_PARSER
+    (** @inline *)
+
+
+    (** {1 Lookaheads} *)
+
+    val first_lookahead_token: t -> token option
+    (** The first lookahead token (or [None] in case there is none). *)
+
+    val has_received_end: t -> bool
+    (** [has_received_end p] Has the parser [p] already received the end of
+        token stream via [put_end]?
+     *)
+
+    val has_consumed_end: t -> bool
+    (** [has_consumed_end p] Has the parser [p] already received the end of
+        token stream via [put_end] and consumed it?
+     *)
+
+    val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
+    (** [fold_lookahead a  ftok fend p]
+
+        Fold the lookahead tokens with the start value [a] and the folding
+        function [ftok]. At the end of the lookahead tokens, call [fend] if
+        there is an unconsumed end.
+    *)
+end
+
+
+(** A lexer is a restartable parser where the tokens are characters. *)
+module type LEXER =
+sig
+    include MINIMAL_PARSER
+        with type token = char
+         and type expect = string * Indent.expectation option
+    (** @inline *)
+
+    (** {1 Lookahead} *)
+
+    val first_lookahead_token: t -> token option
+    (** The first lookahead character or [None] if there is no character in the
+        lookahead buffer. *)
+
+
+    (** {1 Position} *)
+
+    val position: t -> Position.t
+    (** Line and column number of the current position of the lexer.
+
+    *)
+
+    (** {1 Restart}
+
+        A lexer does not consume the entire input stream. It just consumes
+        characters until a token has been recognized. In case of the successful
+        recognition of a token, it returns the token (see {!final}). Then it can
+        be restarted to recognize the next token.
+    *)
+
+    val restart: t -> t
+    (** Next lexer, ready to recognize the next token of the input stream.
+
+        All lookaheads from the previous lexer are pushed onto the new lexer
+        which starts a the position where the previous lexer finished.
+    *)
+end
+
+
+
 module type PARSER =
 sig
 
@@ -5,7 +186,7 @@ sig
 
     (**
         A parser [p] is a sink of token. As long as it signals [needs_more p]
-        more token can be pushed into the parser via [put_token p] or the input
+        more token can be pushed into the parser via [put token p] or the input
         stream can be ended via [put_end p].
 
         [has_result p] is equivalent to [not (needs_more p)]. [has_result p]
@@ -76,18 +257,25 @@ sig
      *)
 
 
+    val has_consumed_end: t -> bool
+    (** [has_consumed_end p] Has the parser [p] already received the end of
+        token stream via [put_end] and consumed it?
+     *)
+
     val put: token -> t -> t
     (** [put token p] Push [token] into the parser [p].
 
         Even if the parser has ended, more token can be pushed into the parser.
         The parser stores the token as lookahead token.
+
+        If the parser has already received the end of the token stream via
+        {!put_end}, then all subsequent tokens are ignored.
     *)
 
 
     val put_end: t -> t
     (** [put_end p] Push and end token into the parser [p].
 
-        Precondition: [not (has_received_end p)]
     *)
 
 
@@ -140,8 +328,20 @@ sig
     *)
 
     val has_lookahead: t -> bool
-    (** [has_lookahead p] Are there any unconsumed lookahead token in the buffer
+    (** [has_lookahead p] Are there any unconsumed lookahead tokens in the buffer
         or has the end token not yet been consumed? *)
+
+    val first_lookahead_token: t -> token option
+    (** The first lookahead token. *)
+
+    val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
+    (** [fold_lookahead a  ftok fend p]
+
+        Fold the lookahead tokens with the start value [a] and the folding
+        function [ftok]. At the end of the lookahead tokens, call [fend] if
+        there is an unconsumed end.
+    *)
+
 
 
     val lookaheads: t -> token array * bool

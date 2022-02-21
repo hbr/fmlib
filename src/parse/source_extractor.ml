@@ -20,7 +20,7 @@ let of_range
     assert (0 <= extra);
     assert (Position.is_valid_range range);
     let number_width =
-        (Position.line (snd range) + extra)
+        (Position.line (snd range) + 1)
         |> string_of_int
         |> String.length
     in
@@ -101,7 +101,7 @@ let source_line (p: t): Pretty.doc =
     Pretty.(
         fill n ' '
         <+>
-        (Position.line p.pos |> string_of_int |> text)
+        (Position.line p.pos + 1 |> string_of_int |> text)
         <+>
         text source_separator
         <+>

@@ -10,7 +10,7 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
         [
             wrap_words "indented at least";
             text (string_of_int (i - col));
-            text "more"
+            wrap_words "columns more"
         ]
         |> separated_by (group space)
 

@@ -79,12 +79,23 @@ struct
         Array.length b.toks
 
 
+    let count_la_toks (b: t): int =
+        count_toks b - b.la_ptr
+
+
     let has_end (b: t): bool =
         match b._end with
         | No_end ->
             false
         | _ ->
             true
+
+    let has_consumed_end (b: t): bool =
+        match b._end with
+        | End_consumed ->
+            true
+        | _ ->
+            false
 
 
     let has_lookahead (b: t): bool =
@@ -101,17 +112,39 @@ struct
 
     let first_lookahead (b: t): Token.t option =
         (* The first lookahead token. *)
-        assert (has_lookahead b);
         if b.la_ptr < count_toks b then
             Some b.toks.(b.la_ptr)
         else
             None
 
+    let fold_lookahead
+                (a: 'a)
+                (ftok: Token.t -> 'a  -> 'a)
+                (fend: 'a -> 'a)
+                (b: t)
+            : 'a
+            =
+            let len = Array.length b.toks in
+            let rec fold i a =
+                if i = len then
+                    match b._end with
+                    | End_received ->
+                        fend a
+                    | _ ->
+                        a
+                else
+                    fold (i + 1) (ftok b.toks.(i) a)
+            in
+            fold b.la_ptr a
+
 
     let push_token (t: Token.t) (b: t): t =
         (* Push a new lookahead token to the buffer. *)
-        if b.is_buffering || has_lookahead b then
-            (* In buffering mode or if they are lookahead token, the new token
+        if has_end b then
+            b (* Ignore all tokens after the end of the stream. *)
+
+        else if b.is_buffering || has_lookahead b then
+            (* In buffering mode or if there are lookahead token, the new token
                is pushed to the buffer. *)
             {b with
              toks =
@@ -128,8 +161,11 @@ struct
 
 
     let push_end (b: t): t =
-        assert (not (has_end b));
-        {b with _end = End_received}
+        match b._end with
+        | No_end ->
+            {b with _end = End_received}
+        | _ ->
+            b
 
 
     let put (state: State.t) (b: t): t =
