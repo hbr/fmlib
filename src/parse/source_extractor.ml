@@ -93,7 +93,7 @@ let source_indent (p: t): int =
 
 let source_line (p: t): Pretty.doc =
     let str =
-        Position.line p.pos |> string_of_int
+        Position.line p.pos + 1 |> string_of_int
     in
     let n = p.number_width - String.length str
     in
@@ -101,7 +101,7 @@ let source_line (p: t): Pretty.doc =
     Pretty.(
         fill n ' '
         <+>
-        (Position.line p.pos + 1 |> string_of_int |> text)
+        text str
         <+>
         text source_separator
         <+>
