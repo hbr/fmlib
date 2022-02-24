@@ -491,10 +491,15 @@ struct
 
 
     let zero_or_more (p: 'a t): 'a list t =
-        let* xs =
-            zero_or_more_fold_left [] (fun xs x -> x :: xs |> return) p
+        let rec many () =
+            (
+                let* a = p in
+                let* lst = many () in
+                return (a :: lst)
+            )
+            </> return []
         in
-        return (List.rev xs)
+        many ()
 
 
     let one_or_more (p: 'a t): ('a * 'a list) t =

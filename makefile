@@ -32,7 +32,7 @@ gh-pages-odoc: doc
 # Write 'opam' files to the opam repository
 .PHONY: opam opam_rm
 
-version   = 0.5.0
+version   = 0.5.1
 opam_repo = ~/tmp/opam-repository/packages
 dir0      = $(opam_repo)/fmlib/fmlib.$(version)
 dir_std   = $(opam_repo)/fmlib_std/fmlib_std.$(version)
