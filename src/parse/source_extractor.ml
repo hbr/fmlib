@@ -149,14 +149,18 @@ let one_line_marker (p: t): Pretty.doc =
     assert (c1 <= c2);
     let len = c2 - c1 in
     let len = max len 1 in
+    let open Pretty
+    in
     let non_ascii =
         if len = 1 && c1 < String.length p.line
         then
             let ch = p.line.[c1] in
             if ch < ' ' || Char.chr 127 <= ch then
-                Pretty.(" '" ^ Char.escaped ch ^ "'" |> text)
+                text (" nonprintable '" ^ Char.escaped ch ^ "'")
             else
-                Pretty.empty
+                empty
+        else if len = 1 && c1 = String.length p.line then
+            text " end of input"
         else
             Pretty.empty
     in
