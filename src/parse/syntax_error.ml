@@ -23,34 +23,34 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
 
     | Align i ->
         assert (col <> i);
-        let delta, before_after =
+        let delta, more_less =
             if col < i then
-                i - col, "after"
+                i - col, "more"
             else
-                col - i, "before"
+                col - i, "less"
         in
         [
-            text "at";
+            wrap_words "indented exactly";
             text (string_of_int delta);
             plural_s delta "column" |> text;
-            text before_after
+            text more_less
         ]
         |> separated_by (group space)
 
     | Align_between (i, j) ->
-        let delta_i, delta_j, before_after =
+        let delta_i, delta_j, more_less =
             if col < i then
-                i - col, j - col, "after"
+                i - col, j - col, "more"
             else
-                col - i, col - j, "before"
+                col - i, col - j, "less"
         in
         [
-            text "between";
+            wrap_words "indented between";
             text (string_of_int delta_i);
             text "and";
             text (string_of_int delta_j);
             text "columns";
-            text before_after
+            text more_less
         ]
         |> separated_by (group space)
 
