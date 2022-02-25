@@ -319,7 +319,11 @@ struct
         and string_or_record_element (): (string * Yaml.t option) t =
             let* str = string in
             (
-                let* _ = colon in
+                let* _ =
+                    colon
+                    <?>
+                    {|second part of a key value pair ": <value>"|}
+                in
                 let* y = value_in_record () in
                 return (str, Some y)
             )

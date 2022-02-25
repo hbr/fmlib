@@ -12,7 +12,11 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
     let open Pretty in
     match e with
     | Indent i ->
-        assert (col < i);
+        if i <= col then
+            Printf.printf
+                "syntax_error.ml: line %d, col %d, i %d\n"
+                __LINE__
+                col i;
         [
             wrap_words "indented at least";
             text (string_of_int (i - col));
@@ -22,7 +26,11 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
         |> separated_by (group space)
 
     | Align i ->
-        assert (col <> i);
+        if i = col then
+            Printf.printf
+                "syntax_error.ml: line %d, col %d, i %d\n"
+                __LINE__
+                col i;
         let delta, more_less =
             if col < i then
                 i - col, "more"

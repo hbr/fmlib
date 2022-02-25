@@ -17,10 +17,6 @@ struct
         Indent.check_position column s.indent
 
 
-    let expectation (s: t): Indent.expectation option =
-        Indent.expectation s.indent
-
-
     let next (pos: Position.t) (user: User.t) (s: t): t =
         let range =
             match s.range with
@@ -156,9 +152,18 @@ struct
 
     let (<?>) (p: 'a t) (e: String.t): 'a t =
         Basic.(
-            let* state = get in
-            p <?> (e, State.expectation state)
+            update_expectations
+                (fun state -> function
+                     | None ->
+                         (* end of input reached *)
+                         (e, None)
+                     | Some ((p1, _), _) ->
+                         let column = Position.column p1 in
+                         (e, State.check_position column state)
+                )
+                p
         )
+
 
     let get: User.t t =
         Basic.(map State.user get)
@@ -218,10 +223,7 @@ struct
                      (* end of input reached *)
                      Error (expect, None)
 
-                 | Some tok ->
-                     let (p1,p2), tok =
-                         Located.range tok, Located.value tok
-                     in
+                 | Some ((p1, p2), tok) ->
                      let column = Position.column p1
                      in
                      match State.check_position column state with

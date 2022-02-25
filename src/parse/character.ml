@@ -194,8 +194,15 @@ struct
 
     let (<?>) (p: 'a t) (e: expect): 'a t =
         Basic.(
-            let* state = get in
-            p <?> (e, State.check_position state)
+            update_expectations
+                (fun state -> function
+                     | None ->
+                         (* end of input reached *)
+                         (e, None)
+                     | Some _ ->
+                         (e, State.check_position state)
+                )
+                p
         )
 
 

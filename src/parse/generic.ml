@@ -395,10 +395,27 @@ struct
                      k res b
             )
 
+    let update_expectations
+            (f: State.t -> Token.t option -> Expect.t)
+            (p: 'a t)
+        : 'a t
+        =
+        fun b0 k ->
+        p
+            (B.start_alternatives b0)
+            (fun res b ->
+                 match res with
+                 | None ->
+                     k None (B.end_failed_alternatives f b0 b)
+
+                 | Some a ->
+                     k (Some a) (B.end_succeeded_alternatives b0 b)
+            )
 
 
     let (<?>) (p: 'a t) (e: Expect.t): 'a t =
-        fun b0 k ->
+        update_expectations (fun _ _ -> e) p
+        (*fun b0 k ->
         p
             (B.start_alternatives b0)
             (fun res b ->
@@ -406,7 +423,7 @@ struct
                  | None ->
                      k None (B.end_failed_alternatives e b0 b)
                  | Some a ->
-                     k (Some a) (B.end_succeeded_alternatives b0 b))
+                     k (Some a) (B.end_succeeded_alternatives b0 b))*)
 
 
     let backtrack (p: 'a t) (e: Expect.t): 'a t =

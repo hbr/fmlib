@@ -252,15 +252,27 @@ struct
         {b with has_consumed = false}
 
 
-    let end_failed_alternatives (e: Expect.t) (b0: t) (b: t): t =
-      if b.has_consumed then
-          b
-      else
-          {b with
-           has_consumed =
-               b0.has_consumed;
-           error =
-               Error.add_expected e b0.error}
+    let end_failed_alternatives
+            (f: State.t -> Token.t option -> Expect.t)
+            (b0: t)
+            (b: t)
+        : t
+        =
+        if b.has_consumed then
+            b
+        else
+            {
+                b with
+                has_consumed =
+                    b0.has_consumed;
+                error =
+                    if Error.is_semantic b.error then
+                        b.error
+                    else
+                        Error.add_expected
+                            (f b.state (first_lookahead b))
+                            b0.error
+            }
 
 
     let end_succeeded_alternatives (b0: t) (b: t): t =
