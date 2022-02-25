@@ -1,5 +1,11 @@
 module Pretty = Fmlib_pretty.Print
 
+let plural_s (i: int) (s: string): string =
+    if i = 1 then
+        s
+    else
+        s ^ "s"
+
 
 let header (col: int) (e: Indent.expectation): Pretty.doc =
     let open Indent in
@@ -10,7 +16,8 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
         [
             wrap_words "indented at least";
             text (string_of_int (i - col));
-            wrap_words "columns more"
+            plural_s (i - col) "column" |> text;
+            text "more"
         ]
         |> separated_by (group space)
 
@@ -25,7 +32,7 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
         [
             text "at";
             text (string_of_int delta);
-            text "columns";
+            plural_s delta "column" |> text;
             text before_after
         ]
         |> separated_by (group space)
@@ -83,16 +90,14 @@ let document
     =
     let open Pretty
     in
-    let _ = Indent.group es in
+    let ps =
+        Indent.group es
+        |> List.map (one_group col)
+        |> List.concat
+    in
     wrap_words
         "I have encountered something unexpected. I was expecting one of"
     <+> cut <+> cut
     <+>
-    (
-        Indent.group es
-        |> List.map (one_group col)
-        |> List.concat
-        |> paragraphs
-        |> nest 4
-    )
+    (paragraphs ps |> nest 4)
     <+> cut
