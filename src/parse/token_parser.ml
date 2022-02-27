@@ -5,12 +5,11 @@ module State (User: ANY) =
 struct
     type t = {
         indent: Indent.t;
-        range:  Position.range option;
         user:   User.t;
     }
 
     let make (user: User.t): t =
-        {indent = Indent.initial; range = None; user}
+        {indent = Indent.initial;  user}
 
 
     let check_position (column: int) (s: t): Indent.expectation option =
@@ -18,51 +17,20 @@ struct
 
 
     let next (pos: Position.t) (user: User.t) (s: t): t =
-        let range =
-            match s.range with
-            | None ->
-                pos, pos
-            | Some (a, _) ->
-                a, pos
-        in
         {
             user;
-            range =
-                Some range;
             indent =
                 Indent.token (Position.column pos) s.indent
         }
 
-
-    let range (s: t): Position.range option =
-        s.range
 
 
     let user (s: t): User.t =
         s.user
 
 
-    let reset_range (s: t): t =
-        {s with range = None}
-
-
-    let merge_ranges (s0: t) (s: t): t =
-        match s0.range, s.range with
-        | None, None | None, Some _ ->
-            s
-
-        | Some _, None ->
-            {s with range = s0.range}
-
-        | Some (p1, _), Some (_,p2) ->
-            {s with range = Some (p1, p2)}
-
-
-    let put_range (s0: t) (s: t): t =
-        {s with range = s0.range}
-
-
-    let _ = range, reset_range, merge_ranges, put_range
+    let put (user: User.t) (s: t): t =
+        {s with user}
 
 
     let update (f: User.t -> User.t) (s: t): t =
@@ -142,8 +110,12 @@ struct
     type semantic = Semantic.t
 
 
-    let map_and_update (_: User.t -> 'a -> 'b * User.t) (_: 'a t): 'b t =
-        assert false
+    let map_and_update (f: User.t -> 'a -> 'b * User.t) (p: 'a t): 'b t =
+        Basic.map_and_update
+            (fun state a ->
+                 let b, user = f (State.user state) a in
+                 b, State.put user state)
+            p
 
 
     let unexpected (e: String.t): 'a t =
