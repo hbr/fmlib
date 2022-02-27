@@ -82,6 +82,14 @@ sig
     *)
 
 
+    (** {1 Located Constructs} *)
+
+    val located: 'a t -> (Position.range * 'a) t
+    (** [located p] Parse [p] and return the parse value together with its
+        location in the file.
+    *)
+
+
     (** {1 Indentation and Alignment} *)
 
     val indent: int -> 'a t -> 'a t

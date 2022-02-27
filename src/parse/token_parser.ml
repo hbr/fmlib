@@ -6,23 +6,50 @@ struct
     type t = {
         indent: Indent.t;
         user:   User.t;
+        pos1:   Position.t;
+        pos2:   Position.t;
+        consumed: bool;
     }
 
     let make (user: User.t): t =
-        {indent = Indent.initial;  user}
+        {indent = Indent.initial;
+         user;
+         pos1 = Position.start;
+         pos2 = Position.start;
+         consumed = false;}
 
 
     let check_position (column: int) (s: t): Indent.expectation option =
         Indent.check_position column s.indent
 
 
-    let next (pos: Position.t) (user: User.t) (s: t): t =
+    let next (pos1: Position.t) (pos2: Position.t) (user: User.t) (s: t): t =
         {
             user;
             indent =
-                Indent.token (Position.column pos) s.indent
+                Indent.token (Position.column pos1) s.indent;
+            pos1 =
+                if s.consumed then
+                    s.pos1
+                else
+                    pos1;
+            pos2;
+            consumed = true;
         }
 
+
+    let range (s: t): Position.range =
+        s.pos1, s.pos2
+
+
+    let start_located (s: t): t =
+        {s with pos1 = s.pos2; consumed = false}
+
+    let end_located (s0: t) (s: t): t =
+        if s0.consumed then
+            {s with pos1 = s0.pos1}
+        else
+            s
 
 
     let user (s: t): User.t =
@@ -206,7 +233,7 @@ struct
                              | None ->
                                  Error (expect, None)
                              | Some (a, user) ->
-                                 Ok (a, State.next p1 user state)
+                                 Ok (a, State.next p1 p2 user state)
                          end
 
                      | Some vio ->
@@ -215,7 +242,24 @@ struct
             )
 
 
+
+
+
+    (* Location Combinators
+     * ====================
+     *)
+
+
+    let located (p: 'a t): (Position.range * 'a) t =
+        let* s0 = Basic.get_and_update State.start_located in
+        let* a  = p in
+        let* s1 = Basic.get_and_update (State.end_located s0) in
+        return (State.range s1, a)
+
+
+
     (* Indentation combinators *)
+
     let indent (i: int) (p: 'a t): 'a t =
         assert (0 <= i);
         let* state = Basic.get_and_update (State.start_indent i) in
