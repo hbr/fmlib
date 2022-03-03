@@ -139,7 +139,7 @@ let end_line_marker (p: t): Pretty.doc =
     )
 
 
-let one_line_marker (p: t): Pretty.doc =
+let one_line_marker (is_last: bool) (p: t): Pretty.doc =
     let open Position in
     let pos1, pos2 = p.range in
     let c1 = Position.column pos1
@@ -151,7 +151,7 @@ let one_line_marker (p: t): Pretty.doc =
     let len = max len 1 in
     let open Pretty
     in
-    let non_ascii =
+    let annotation =
         if len = 1 && c1 < String.length p.line
         then
             let ch = p.line.[c1] in
@@ -160,7 +160,10 @@ let one_line_marker (p: t): Pretty.doc =
             else
                 empty
         else if len = 1 && c1 = String.length p.line then
-            text " end of input"
+            if is_last then
+                text " end of input"
+            else
+                text " end of line"
         else
             Pretty.empty
     in
@@ -169,13 +172,13 @@ let one_line_marker (p: t): Pretty.doc =
         <+>
         fill len '^'
         <+>
-        non_ascii
+        annotation
         <+>
         cut
     )
 
 
-let put (c: char) (p: t): t =
+let receive_char (is_last: bool) (c: char) (p: t): t =
     let pos = Position.next c p.pos in
     if c <> '\n' then
         {
@@ -189,7 +192,7 @@ let put (c: char) (p: t): t =
             if is_start_line p then
                 start_line_marker p <+> source_line p
             else if is_one_line p then
-                source_line p <+> one_line_marker p
+                source_line p <+> one_line_marker is_last p
             else if is_end_line p then
                 source_line p <+> end_line_marker p
             else
@@ -209,9 +212,12 @@ let put (c: char) (p: t): t =
         }
 
 
+let put: char -> t -> t =
+    receive_char false
 
-let put_end (p: t): t =
-    put '\n' p
+
+let put_end: t -> t =
+    receive_char true '\n'
 
 
 let document (p: t): Pretty.doc =
