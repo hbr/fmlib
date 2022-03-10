@@ -22,6 +22,8 @@ type doc
 type t
 (** A pretty printed document as a readable character stream. *)
 
+type item = char
+(** The item type in the readable stream is [char]. *)
 
 
 
