@@ -19,6 +19,7 @@ module Make
 =
 struct
     type token    = char
+    type item     = token
     type final    = Final.t
     type expect   = string * Indent.expectation option
     type semantic = Semantic.t

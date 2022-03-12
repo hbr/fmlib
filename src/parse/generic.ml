@@ -22,6 +22,7 @@ struct
     module Parser =
     struct
         type token    = Token.t
+        type item     = token
         type final    = Final.t
         type expect   = Expect.t
         type semantic = Semantic.t

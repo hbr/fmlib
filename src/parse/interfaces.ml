@@ -2,6 +2,7 @@ module type MINIMAL_PARSER =
 sig
     type t
     type token
+    type item = token
 
     val needs_more: t -> bool
     val put: token -> t -> t
@@ -57,6 +58,7 @@ end
 module type PARSER =
 sig
     type token
+    type item = token
     type state
     type final
     type expect

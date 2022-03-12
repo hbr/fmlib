@@ -38,6 +38,7 @@ struct
         module P = Basic.Parser
 
         type token    = Token.t
+        type item     = token
         type final    = Final.t
         type state    = User.t
         type expect   = string * Indent.violation option

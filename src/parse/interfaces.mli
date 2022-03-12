@@ -16,6 +16,9 @@ sig
 
     type token      (** Type of the tokens. *)
 
+    type item = token
+    (** In order to conform to the interface {!Fmlib_std.Interfaces.SINK}. *)
+
     val needs_more: t -> bool
     (** [needs_more p] Does the parser [p] need more tokens? *)
 
@@ -206,6 +209,10 @@ sig
 
     type token
     (** Token type. *)
+
+
+    type item = token
+    (** In order to conform to the interface {!Fmlib_std.Interfaces.SINK}. *)
 
 
     type state
