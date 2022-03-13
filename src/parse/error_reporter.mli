@@ -42,6 +42,7 @@ sig
 
     type semantic = Parser.semantic (** Type of the semantic error. *)
 
+
     type t (** The type of the reporter. *)
 
 
@@ -112,6 +113,10 @@ sig
 
 
     (** {1 Run with inverted control} *)
+
+    type item = char
+    (** This type makes the error reporter an instance of
+        {!Fmlib_std.Interfaces.SINK}. *)
 
     val needs_more: t -> bool
     (** Does the reporter need more characters from the source file? *)

@@ -18,6 +18,8 @@ struct
 
     type semantic = Parser.semantic
 
+    type item = char
+
     type t = {
         p: Parser.t;
         semantic: semantic -> doc;
