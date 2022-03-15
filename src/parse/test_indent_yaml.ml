@@ -220,27 +220,6 @@ let write_result (source: string) (p: Parser.t): unit =
         assert false (* Illegal call, no semantic errors *)
 
 
-let print_expectations (p: Parser.t): unit =
-    let open Printf in
-    let open Parser in
-    assert (has_failed_syntax p);
-    Stdlib.List.iter
-        (fun (str, ind) ->
-             match ind with
-             | None ->
-                 printf "- %s\n" str
-             | Some ind ->
-                 match ind with
-                 | Indent.Indent i ->
-                     printf "- Indent %d: %s\n" i str
-                 | Indent.Align i ->
-                     printf "- Align %d: %s\n" i str
-                 | Indent.Align_between (i, j) ->
-                     printf "- Between %d %d: %s\n" i j str
-        )
-        (failed_expectations p)
-
-
 
 
 
