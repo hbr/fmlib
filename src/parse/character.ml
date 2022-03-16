@@ -300,6 +300,10 @@ struct
 
 
 
+    let position: Position.t t =
+        Basic.(map State.position get)
+
+
 
     let located (p: 'a t): 'a Located.t t =
         let* state1 = Basic.get in

@@ -182,6 +182,10 @@ sig
     *)
 
 
+    val position: Position.t t
+    (** The current position in the file. *)
+
+
 
     (** {1 Indentation Combinators} *)
 
