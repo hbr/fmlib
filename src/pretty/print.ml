@@ -579,10 +579,15 @@ let paragraphs: doc list -> doc =
 
 
 let wrap_words (s: string): doc =
+    let is_whitespace c =
+        c = ' ' || c = '\n' || c = '\r' || c = '\t'
+    in
+    let not_whitespace c = not (is_whitespace c)
+    in
     let word_start i =
-        String.find (fun c -> c <> ' ') i s
+        String.find not_whitespace i s
     and word_end i =
-        String.find (fun c -> c = ' ') i s
+        String.find is_whitespace i s
     and len =
         String.length s
     in
