@@ -591,24 +591,27 @@ let wrap_words (s: string): doc =
     and len =
         String.length s
     in
-    let rec from start =
-        let i = word_start start
+    let rec from i () =
+        assert (i < len && not_whitespace s.[i]);
+        let j = word_end i
         in
-        if i = len then
-            empty
+        let k = word_start j
+        in
+        assert (i < j);
+        assert (j = len || is_whitespace s.[j]);
+        assert (k = len || not_whitespace s.[k]);
+        let d = substring s i (j - i)
+        in
+        if k = len then (* only whitespace after [d] *)
+            d
         else
-            let j = word_end i
-            in
-            let rest =
-                substring s i (j - i)
-                >>= fun () -> from j
-            in
-            if start < i then
-                group space <+> rest
-            else
-                rest
+            (d <+> group space) >> from k
     in
-    from 0
+    let i = word_start 0 in
+    if i = len then
+        empty
+    else
+        from i ()
 
 
 
@@ -870,7 +873,7 @@ let%test _ =
 
 
 let%test _ =
-    let words = wrap_words "bla bla bla bla bla bla bla" <+> cut
+    let words = wrap_words " bla bla bla bla bla bla bla " <+> cut
     in
     let doc = paragraphs [
         words;
