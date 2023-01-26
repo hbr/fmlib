@@ -88,11 +88,6 @@ sig
         message describing the error. *)
 
 
-    val run_on_stream: char Stream.t -> t -> doc
-    (** run the reporter on a character stream which represents the source
-        code.*)
-
-
     val run_on_string: string -> t -> doc
     (** run the reporter on a string which represents the source
         code.*)

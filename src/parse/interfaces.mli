@@ -34,12 +34,6 @@ sig
 
     *)
 
-    val run_on_stream: token Stream.t -> t -> t
-    (** [run_on_stream str p] Run the parser [p] on the stream of tokens [str].
-
-    *)
-
-
 
     (** {1 Success} *)
 
@@ -276,16 +270,6 @@ sig
     val put_end: t -> t
     (** [put_end p] Push and end token into the parser [p].
 
-    *)
-
-
-    val run_on_stream: token Stream.t -> t -> t
-    (** [run_on_stream str p] Run the parser [p] on the stream of tokens [str].
-    *)
-
-
-    val run_on_list: token list -> t -> t
-    (** [run_on_list lst p] Run the parser [p] on the list of tokens [lst].
     *)
 
 

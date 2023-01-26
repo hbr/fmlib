@@ -129,24 +129,6 @@ struct
             put p |> consume_lookaheads
 
 
-        let run_on_stream (str: Token.t Stream.t) (p: t): t =
-            let rec run p =
-                if needs_more p then
-                    try
-                        put (Stream.next str) p |> run
-                    with Stream.Failure ->
-                        put_end p
-                else
-                    p
-            in
-            run p
-
-
-        let run_on_list (lst: Token.t list) (p: t): t =
-            run_on_stream
-                (Stream.of_list lst)
-                p
-
         let buffer (p: t): B.t =
             match p with
             | More (b, _) | Done (b, _) ->

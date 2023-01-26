@@ -123,19 +123,5 @@ struct
             p
 
 
-    let run_on_stream (str: char Stream.t) (p: t): t =
-        let rec run p =
-            if needs_more p then
-                try
-                    put (Stream.next str) p |> run
-                with
-                Stream.Failure ->
-                  put_end p
-            else
-                p
-        in
-        run p
-
-    let run_on_string (str: string) (p: t): t =
-        run_on_stream (Stream.of_string str) p
+    let run_on_string = Run_on.string needs_more put put_end
 end

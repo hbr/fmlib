@@ -6,7 +6,6 @@ sig
     val needs_more: t -> bool
     val put: token -> t -> t
     val put_end: t -> t
-    val run_on_stream: token Stream.t -> t -> t
 
     type final
     val has_succeeded: t -> bool
@@ -70,8 +69,6 @@ sig
     val has_consumed_end: t -> bool
     val put: token -> t -> t
     val put_end: t -> t
-    val run_on_stream: token Stream.t -> t -> t
-    val run_on_list:   token list     -> t -> t
     val has_succeeded: t -> bool
     val has_failed_syntax: t -> bool
     val has_failed_semantic: t -> bool

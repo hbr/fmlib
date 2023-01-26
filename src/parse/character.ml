@@ -2,9 +2,6 @@ open Fmlib_std
 open Interfaces
 
 
-
-
-
 module Make
          (User:        ANY)
          (Final:       ANY)
@@ -66,8 +63,6 @@ struct
 
         let put                 = P.put
         let put_end             = P.put_end
-        let run_on_stream       = P.run_on_stream
-        let run_on_list         = P.run_on_list
 
 
         let position (p: t): Position.t =
@@ -87,16 +82,9 @@ struct
 
 
 
-        let run_on_string (str: string) (p: t): t =
-            run_on_stream
-                (Stream.of_string str)
-                p
+        let run_on_string  = Run_on.string  needs_more put put_end
 
-
-        let run_on_channel (ic: in_channel) (p: t): t =
-            run_on_stream
-                (Stream.of_channel ic)
-                p
+        let run_on_channel = Run_on.channel needs_more put put_end
     end
 
 
@@ -165,28 +153,12 @@ struct
                     r.semantic (failed_semantic r.p)
             )
 
+        let run_on_string (str: string) (r: t): doc =
+            Run_on.string needs_more put put_end str r |> document
 
-        let run_on_stream
-                (str: char Stream.t)
-                (r: t)
-            : doc
-            =
-            {r with extractor =
-                        Source_extractor.run_on_stream str r.extractor
-            }
-            |> document
+        let run_on_channel (ic: in_channel) (r: t): doc =
+            Run_on.channel needs_more put put_end ic r |> document
 
-
-        let run_on_string (str: string) (r: t): Fmlib_pretty.Print.doc =
-            run_on_stream
-                (Stream.of_string str)
-                r
-
-
-        let run_on_channel (ic: in_channel) (r: t): Fmlib_pretty.Print.doc =
-            run_on_stream
-                (Stream.of_channel ic)
-                r
 
         let run_on_channels
                 (ic: in_channel)

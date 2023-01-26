@@ -16,9 +16,6 @@ val of_range: int -> Position.range -> t
 
 (** {1 Run the source extractor on a representation of the input} *)
 
-val run_on_stream: char Stream.t -> t -> t
-(** Run the extractor on a stream representing the input. *)
-
 val run_on_string: string -> t -> t
 (** Run the extractor on a string representing the input. *)
 

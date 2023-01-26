@@ -79,27 +79,16 @@ struct
         )
 
 
-    let run_on_stream
-            (str: char Stream.t)
-            (r: t)
-        : doc
-        =
+    let run_on_string (str: string) (r: t): Fmlib_pretty.Print.doc =
         {r with extractor =
-                    Source_extractor.run_on_stream str r.extractor
-        }
+                    Source_extractor.run_on_string str r.extractor}
         |> document
 
 
-    let run_on_string (str: string) (r: t): Fmlib_pretty.Print.doc =
-        run_on_stream
-            (Stream.of_string str)
-            r
-
-
     let run_on_channel (ic: in_channel) (r: t): Fmlib_pretty.Print.doc =
-        run_on_stream
-            (Stream.of_channel ic)
-            r
+        {r with extractor =
+                    Source_extractor.run_on_channel ic r.extractor}
+        |> document
 
     let run_on_channels
             (ic: in_channel)

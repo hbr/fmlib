@@ -201,29 +201,6 @@ let document (p: t): Pretty.doc =
     p.doc
 
 
+let run_on_string  = Run_on.string  needs_more put put_end
 
-let run_on_stream (str: char Stream.t) (p: t): t =
-    let rec run p =
-        if needs_more p then
-            try
-                put (Stream.next str) p |> run
-            with Stream.Failure ->
-                put_end p
-        else
-            p
-    in
-    run p
-
-
-
-let run_on_string (str: string) (ext: t): t =
-    run_on_stream
-        (Stream.of_string str)
-        ext
-
-
-
-let run_on_channel (ic: in_channel) (ext: t): t =
-    run_on_stream
-        (Stream.of_channel ic)
-        ext
+let run_on_channel = Run_on.channel needs_more put put_end
