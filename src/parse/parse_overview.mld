@@ -324,17 +324,12 @@ to push tokens into the parser.
 
 
 
+
 {1 Running the Parser on Streams}
 
 The generated parsers have inversion of control. However it is not necessary to
-use the inversion of control. Any parser can be run on a stream of tokens by
-
-{[
-    Basic.Parser.run_on_stream stream p
-]}
-
-The character parser accepts character tokens, therefore it has the additional
-functions
+use the inversion of control.
+A character parser can be run on a string or on an input channel.
 
 {[
     Basic.Parser.run_on_string "..." p

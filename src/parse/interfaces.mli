@@ -159,7 +159,7 @@ sig
 
         A lexer does not consume the entire input stream. It just consumes
         characters until a token has been recognized. In case of the successful
-        recognition of a token, it returns the token (see {!final}). Then it can
+        recognition of a token, it returns the token (see {!type-final}). Then it can
         be restarted to recognize the next token.
     *)
 

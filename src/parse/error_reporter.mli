@@ -71,7 +71,7 @@ sig
 
         The functions for semantic errors have to be provided by the user
         because semantic errors are transparent to the parser. In case the
-        parser cannot end in a semantic error (i.e. no {!fail} combinator
+        parser cannot end in a semantic error (i.e. no [fail] combinator
         has been used), then use {!make_syntax}.
     *)
 
