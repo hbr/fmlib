@@ -2,6 +2,11 @@
 all: doc test
 
 
+.PHONY: build
+build:
+	dune build
+
+
 
 .PHONY: doc
 doc:
