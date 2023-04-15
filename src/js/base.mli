@@ -81,6 +81,26 @@ sig
     val function3: (t -> t -> t -> t) -> t
     (** [function3 f] See {! function1}, just that here [f] is a three argument
         function. *)
+
+
+    val stringify: t -> t option
+    (** [stringify v] convert the javascript value [v] to a json string. This
+        possible only if the javascript value is one of:
+
+        - null
+        - boolean
+        - number
+        - string
+        - object
+        - array
+    *)
+
+    val parse: t -> t option
+    (** [parse v] parse the javascript value (which must be a string) as a json
+        value and converts it into the corresponding javascript object.
+
+        Precondition: v is a javascript string and a valid json string.
+    *)
 end
 
 
@@ -160,8 +180,13 @@ sig
     val fail:   'a t
     (** Immediately fail i.e. return [None]. *)
 
+
+    val value: Value.t t
+    (** Return the javascript value. *)
+
+
     val (let* ): 'a t -> ('a -> 'b t) -> 'b t
-    (** Combinate decoders.
+    (** Combine decoders.
 
         Example:
         {[
@@ -201,7 +226,7 @@ sig
 
     val map:     ('a -> 'b) -> 'a t -> 'b t
     (** [map f dec] Decode using [dec] and in case of success, map the decoded
-        value by [f]. *)
+        value [a] to [f a]. *)
 
 
     val null:       'a -> 'a t
@@ -292,6 +317,20 @@ module Main:
 sig
     (** {1 Javascript Exceptions}
     *)
+
+    type js_error
+    (** Type of a javascript exception. *)
+
+
+    val of_exception: exn -> js_error option
+    (** [of_exception exn] returns [Some js_error] if the exception [exn] is an
+        exception raised by javascript code and [None] if [exn] is an exception
+        raised by ocaml code.
+     *)
+
+    val raise_js_error: js_error -> 'a
+    (** Raise the javascript exception [js_error] *)
+
 
     val raise_js:   string -> 'a
     (** [raise_js error] Raise a javascript exception. *)

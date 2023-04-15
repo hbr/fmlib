@@ -1,0 +1,57 @@
+{0 Overview}
+
+{{!page-browser} Up}
+
+
+
+
+The library {!module: Fmlib_browser} helps to write web applications which run
+in the browser in a pure functional style. It mimics the elm language in
+ocaml.
+
+The core of a functional web application is a system state and 2 main functions
+to describe the behaviour of a web application.
+
+{ol
+
+{- The system state: It contains all relevant data of the application. For a
+pure static page with no interaction with the user the state is just the [unit]
+value [()]. For an application representing a counter which can be increased or
+decreased by clicking on buttons the state is an [int] which represents the
+value of the counter.}
+
+{- A view function: This function maps the state into a virtual dom. The
+virtual dom is a description of what the user sees on the screen. Furthermore
+the virtual dom contains elements like buttons or text fields which produce
+messages. The messages are dispatched to the update function.}
+
+{- An update function: The update function maps the state of the application and
+a message to a new state.}
+}
+
+If we just want to display a static page with a grocery list the functions are quite
+simple.
+
+{[
+    type message    (* no constructor, i.e. no message can be created. *)
+
+    let view (): unit Html.t =
+        let open Html in
+        ol [] [
+            text "Milk";
+            text "Honey";
+            text "Meet"
+        ]
+
+    let update () (_: message): unit =
+        assert false (* Function can never be called because [message] has no
+                        constructor *)
+]}
+
+
+
+
+
+
+
+{{!page-browser} Up}

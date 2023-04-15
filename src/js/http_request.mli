@@ -42,3 +42,31 @@ val make: string -> string -> (string * string) list -> string -> t
 (** [make method url headers body]
 
 *)
+
+
+val ready_state: t -> int
+(** Ready state of the request
+
+    {[
+        0: request not initialized
+        1: open has been called
+        2: send has been called
+        3: loading
+        4: complete
+    ]}
+*)
+
+
+val status: t -> int
+(** The status of the completed http request
+
+    E.g.: 200: Ok, 403: forbidden, 404: not found, ...
+*)
+
+
+val response_text_value: t -> Base.Value.t
+(** The response text of the completed http request as a javascript value. *)
+
+
+val response_text_string: t -> string
+(** The response text of the completed http request as a string. *)

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            @keyframes rolling {
+            0%   {left:0px;}
+            50%  {left:10px;}
+            100% {left:0px;}
+            }
+        </style>
+
+        <script type="text/javascript" src="webapp.js">
+        </script>
+        <script>
+            function receive (v) {
+                console.log ("message received in javascript");
+                console.log (v)
+                console.log ("echo back")
+                webapp.post(v)
+            }
+            webapp.init ({
+                data: null,
+                onMessage: receive
+            })
+        </script>
+    </head>
+    <body>
+    </body>
+</html>

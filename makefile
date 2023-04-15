@@ -17,9 +17,19 @@ doc:
 sdoc:
 	make -C src/sdoc/ html
 
+
+
+.PHONY: examples
+examples:
+	dune build ./src/examples/browser/webapp.js
+
+
+
 .PHONY: test
 test:
 	dune build @runtest
+
+
 
 .PHONY: gh-pages-odoc
 gh-pages-odoc: doc
@@ -30,6 +40,18 @@ gh-pages-odoc: doc
 	(cd gh-pages; git add odoc; git commit --amend --no-edit; git push -f)
 
 
+.PHONY: gh-pages-webapp
+gh-pages-webapp:
+	dune build --profile release ./src/examples/browser/webapp.js; \
+	(cd gh-pages; git rm -r -f webapp); \
+	mkdir  gh-pages/webapp; \
+	cp src/examples/browser/webapp.js \
+	   src/examples/browser/index.html \
+	   src/examples/browser/data.json  \
+	   gh-pages/webapp/; \
+	(cd gh-pages; git add webapp; git commit --amend --no-edit; git push -f)
+
+
 
 
 
@@ -37,13 +59,14 @@ gh-pages-odoc: doc
 # Write 'opam' files to the opam repository
 .PHONY: opam opam_rm
 
-version   = 0.5.2
-opam_repo = ../opam-repository/packages
-dir0      = $(opam_repo)/fmlib/fmlib.$(version)
-dir_std   = $(opam_repo)/fmlib_std/fmlib_std.$(version)
-dir_pretty= $(opam_repo)/fmlib_pretty/fmlib_pretty.$(version)
-dir_parse = $(opam_repo)/fmlib_parse/fmlib_parse.$(version)
-dir_js    = $(opam_repo)/fmlib_js/fmlib_js.$(version)
+version     = 0.5.2
+opam_repo   = ../opam-repository/packages
+dir0        = $(opam_repo)/fmlib/fmlib.$(version)
+dir_std     = $(opam_repo)/fmlib_std/fmlib_std.$(version)
+dir_pretty  = $(opam_repo)/fmlib_pretty/fmlib_pretty.$(version)
+dir_parse   = $(opam_repo)/fmlib_parse/fmlib_parse.$(version)
+dir_js      = $(opam_repo)/fmlib_js/fmlib_js.$(version)
+dir_browser = $(opam_repo)/fmlib_browser/fmlib_browser.$(version)
 
 opam:
 	mkdir $(dir0); \
@@ -62,4 +85,5 @@ opam_rm:
 	rm -rf $(dir_std); \
 	rm -rf $(dir_pretty); \
 	rm -rf $(dir_parse); \
-	rm -rf $(dir_js)
+	rm -rf $(dir_js);    \
+	rm -rf $(dir_browser)

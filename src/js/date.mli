@@ -81,4 +81,4 @@ val seconds: t -> int
 (** The second (0-59). *)
 
 val milliseconds: t -> int
-(** The the millisecond (0-999). *)
+(** The millisecond (0-999). *)

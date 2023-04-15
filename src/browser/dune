@@ -1,0 +1,16 @@
+(library
+  (public_name fmlib_browser)
+  (name fmlib_browser)
+  (libraries fmlib_js)
+)
+
+
+(documentation
+  (mld_files
+    index
+    browser
+    browser_overview
+    browser_getting_started
+  )
+  (package fmlib_browser)
+)

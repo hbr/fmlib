@@ -55,3 +55,19 @@ let make
         headers;
     req##send_string (Js.string body);
     req
+
+
+let ready_state (req: t): int =
+    req##.readyState
+
+
+let status (req: t): int =
+    req##.status
+
+
+let response_text_value (req: t): Base.Value.t =
+    Obj.magic req##.responseText
+
+
+let response_text_string (req: t): string =
+    Js.to_string req##.responseText

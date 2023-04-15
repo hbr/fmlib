@@ -150,6 +150,15 @@ struct
 
     let replace (new_child: t) (old_child: t) (node: t): unit =
         node##replaceChild new_child old_child
+
+    let rec remove_children (parent: t): unit =
+        match first parent with
+        | None ->
+            ()
+        | Some child ->
+            remove child parent;
+            remove_children parent (* tail recursion, compiled to javascript
+                                      loop. *)
 end
 
 

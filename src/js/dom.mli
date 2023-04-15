@@ -86,6 +86,10 @@ sig
 
         Precondition: [old_child] must be a child of [parent].
     *)
+
+
+    val remove_children: t -> unit
+    (** [remove_children parent] Remove all children from [parent]. *)
 end
 
 

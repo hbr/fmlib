@@ -1,0 +1,13 @@
+(executable
+  (name webapp)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+
+(rule
+    (targets webapp.js)
+    (deps    webapp.bc.js)
+    (mode   (promote (until-clean)))
+    (action (copy %{deps} %{targets}))
+)

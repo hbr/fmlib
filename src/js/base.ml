@@ -38,6 +38,19 @@ struct
 
     let function3 (f: t -> t -> t -> t): t =
         Js.Unsafe.inject f
+
+
+    let stringify (v: t): t option =
+        try
+            Some Js.(Unsafe.coerce (_JSON##stringify v))
+        with _ ->
+            None
+
+    let parse (v: t): t option =
+        try
+            Some Js.(_JSON##parse (Unsafe.coerce v))
+        with _ ->
+            None
 end
 
 
@@ -79,6 +92,10 @@ struct
 
     let fail: 'a t =
         fun _ -> None
+
+
+    let value: Value.t t =
+        fun v -> Some v
 
 
     let (let* ) (m: 'a t) (f: 'a -> 'b t): 'b t =
@@ -216,6 +233,17 @@ struct
     (* General functions
      * =================
      *)
+
+    type js_error = Js.Js_error.t
+
+
+    let of_exception (exn: exn): js_error option =
+        Js.Js_error.of_exn exn
+
+
+    let raise_js_error (js_error: js_error): 'a =
+        Js.Js_error.raise_ js_error
+
 
     let raise_js (message: string): 'a =
         let js_msg = Js.string message in
