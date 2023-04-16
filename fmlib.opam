@@ -17,6 +17,8 @@ packages to get the functionality:
 - fmlib_pretty: Pretty printing functions. Prints hierachical structures like
   expressions and indented paragraphs nicely.
 
+- fmlib_browser: Functional browswer applications
+
 - fmlib_js: Interface to javscript via js_of_ocaml.
 
 """
@@ -46,4 +48,5 @@ depends: [
     "fmlib_pretty" {=version}
     "fmlib_parse"  {=version}
     "fmlib_js"     {=version}
+    "fmlib_browser" {=version}
 ]

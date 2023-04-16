@@ -59,7 +59,7 @@ gh-pages-webapp:
 # Write 'opam' files to the opam repository
 .PHONY: opam opam_rm
 
-version     = 0.5.2
+version     = 0.5.3
 opam_repo   = ../opam-repository/packages
 dir0        = $(opam_repo)/fmlib/fmlib.$(version)
 dir_std     = $(opam_repo)/fmlib_std/fmlib_std.$(version)
@@ -71,14 +71,16 @@ dir_browser = $(opam_repo)/fmlib_browser/fmlib_browser.$(version)
 opam:
 	mkdir $(dir0); \
 	cat fmlib.opam url >$(dir0)/opam; \
-	mkdir $(dir_std); \
+	mkdir -p $(dir_std); \
 	cat fmlib_std.opam url >$(dir_std)/opam; \
-	mkdir $(dir_pretty); \
+	mkdir -p $(dir_pretty); \
 	cat fmlib_pretty.opam url >$(dir_pretty)/opam; \
-	mkdir $(dir_parse); \
+	mkdir -p $(dir_parse); \
 	cat fmlib_parse.opam url >$(dir_parse)/opam; \
-	mkdir $(dir_js); \
+	mkdir -p $(dir_js); \
 	cat fmlib_js.opam url >$(dir_js)/opam
+	mkdir -p $(dir_browser); \
+	cat fmlib_browser.opam url >$(dir_browser)/opam
 
 opam_rm:
 	rm -rf $(dir0); \
