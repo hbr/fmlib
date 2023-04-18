@@ -9,7 +9,9 @@ effects. It has the following components:
 
 - {!Fmlib_parse}  Parsing
 
-- {!Fmlib_js} Interface to javascript via [js_of_ocaml]
+- {!Fmlib_browser} Functional web applications
+
+- {!Fmlib_js} Low level interface to javascript via [js_of_ocaml]
 
 
 All libraries of {e Fmlib} are prefixed by [Fmlib_] to avoid nameclashes with
