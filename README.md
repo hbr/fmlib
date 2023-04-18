@@ -11,6 +11,8 @@
 
 - Parsing: `Fmlib_parse`
 
+- Web applications: `Fmlib_browser`.
+
 - Access to the browser and nodejs: `Fmlib_js`.
 
 
@@ -22,6 +24,8 @@
 - [`Fmlib_pretty`](https://hbr.github.io/fmlib/odoc/fmlib_pretty)
 
 - [`Fmlib_parse`](https://hbr.github.io/fmlib/odoc/fmlib_parse)
+
+- [`Fmlib_browser`](https://hbr.github.io/fmlib/odoc/fmlib_browser)
 
 - [`Fmlib_js`](https://hbr.github.io/fmlib/odoc/fmlib_js)
 
@@ -45,7 +49,7 @@ It is best to install the libraries via the ocaml package manager `opam`.
     opam install fmlib_std
     opam install fmlib_pretty
     opam install fmlib_parse
-    opam install fmlib_js
+    opam install fmlib_browser
 
 
 # Usage with `dune`
