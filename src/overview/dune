@@ -1,5 +1,5 @@
 (library
-    (libraries fmlib_std fmlib_pretty fmlib_parse fmlib_js)
+    (libraries fmlib_std fmlib_pretty fmlib_parse fmlib_js fmlib_browser)
     (public_name fmlib)
     (name fmlib))
 
