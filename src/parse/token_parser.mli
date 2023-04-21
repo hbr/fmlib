@@ -2,6 +2,18 @@
     supplied tokens.
 
     It supports layout parsing and friendly error messages.
+
+    The token parser is a functor which needs a module [Token] to describe the
+    type of tokens. The generated parser receives tokens of type
+    [Position.range * Token.t].
+    I.e. the lexer has to parse the tokens which are usually a token
+    type (identifier, number, keyword, ...) and a string representing the actual
+    token. Furthermore the lexer has to provide position information of the
+    location of the token in the source file.
+
+    The combinators in a token parser work with tokens of type [Token.t].
+
+    The generated parser works with tokens of type [Position.range * Token.t].
 *)
 
 
@@ -15,7 +27,9 @@ module Make
 sig
     (**
        - [State]: User state.
-       - [Token]: Token.
+       - [Token]: Token. A token usually consists of a token type and a string
+       represening the actual token. The generated parser receives an actual
+       token together with information about the location in the file.
        - [Final]: Final result of a successful parse.
        - [Syntax]: Represents what has been syntactically expected and has not
                     been received.
