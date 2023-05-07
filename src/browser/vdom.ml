@@ -68,6 +68,7 @@ type ('msg, 'el) t0 =
      *)
     | Text of string
     | Node of string  * 'msg Attributes.t * ('msg, 'el) t1 list
+    | Node_ns of string  * string * 'msg Attributes.t * ('msg, 'el) t1 list
     | Keyed of string * 'msg Attributes.t * ('msg, 'el) t1 Dictionary.t
 
 
@@ -99,6 +100,16 @@ let node
     Node (tag, Attributes.of_list attrs, lst), ()
 
 
+let node_ns
+        (namespace: string)
+        (tag: string)
+        (attrs: 'msg Attribute.t list)
+        (lst: 'msg t list)
+    : 'msg t
+    =
+    Node_ns (namespace, tag, Attributes.of_list attrs, lst), ()
+
+
 
 let keyed
         (tag: string)
@@ -124,6 +135,7 @@ let element: ('msg, 'el) t1 -> 'el =
 type ('msg, 'el) operations = {
     make_text:     string -> 'el;
     make_element:  string -> 'el list -> 'el;
+    make_element_ns:  string -> string -> 'el list -> 'el;
 
     add_child:     'el -> 'el -> unit;
     remove_child:  'el -> 'el -> unit;
@@ -176,6 +188,15 @@ let make
             in
             add_attributes ops attrs parent;
             Node (tag, attrs, combined_children), parent
+
+        | Node_ns (namespace, tag, attrs, lst), () ->
+            let combined_children, real_children =
+                make_children lst
+            in
+            let parent = ops.make_element_ns namespace tag real_children
+            in
+            add_attributes ops attrs parent;
+            Node_ns (namespace, tag, attrs, combined_children), parent
 
         | Keyed (tag, attrs, _), () ->
             let combined_children, real_children =
@@ -242,17 +263,25 @@ let rec update
     | (Node (tag1, attrs1, lst1), ()),
       (Node (tag2, attrs2, lst2), par) when tag1 = tag2 ->
 
+        update_attributes ops par attrs1 attrs2;
         let children = List.rev (update_children ops par lst1 lst2 [])
         in
-        update_attributes ops par attrs1 attrs2;
         (Node (tag2, attrs1, children), par), false
+
+    | (Node_ns (ns1, tag1, attrs1, lst1), ()),
+      (Node_ns (ns2, tag2, attrs2, lst2), par) when tag1 = tag2 && ns1 = ns2 ->
+
+        update_attributes ops par attrs1 attrs2;
+        let children = List.rev (update_children ops par lst1 lst2 [])
+        in
+        (Node_ns (ns2, tag2, attrs1, children), par), false
 
     | (Keyed (tag1, attrs1, d1), ()),
       (Keyed (tag2, attrs2, d2), par) when tag1 = tag2 ->
 
+        update_attributes ops par attrs1 attrs2;
         let children = update_keyed ops par d1 d2
         in
-        update_attributes ops par attrs1 attrs2;
         (Keyed (tag2, attrs1, children), par), false
 
     | _, _ ->

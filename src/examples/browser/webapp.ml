@@ -79,7 +79,6 @@ and page =
     (state, msg) Page.t
 
 and msg =
-    | No_operation
     | Show_menu
     | Show_page
     | To_page of page
@@ -109,7 +108,7 @@ and msg =
 
 let to_page page   = To_page page
 let time_msg time  = Time time
-let time_zone zone = Time_zone zone
+let zone_msg zone  = Time_zone zone
 let tick time      = Tick time
 let die_face face  = Die_face face
 let send_msg value = Send value
@@ -189,11 +188,11 @@ let digital_clock_page: page =
             ; time "utc" state.time Time.Zone.utc
             ]
     and subs =
-        Subscription.every 1000 (fun time -> Tick time)
+        Subscription.every 1000 tick
     and get_time =
-        Command.perform Task.(map (fun time -> Time time) now)
+        Command.(perform Task.now |> map time_msg)
     and get_zone =
-        Command.perform Task.(map (fun zone -> Time_zone zone) time_zone)
+        Command.(perform Task.time_zone |> map zone_msg)
     in
     let get_time_info = Command.batch [get_time; get_zone]
     in
@@ -356,7 +355,10 @@ let input_page: page =
                   ; value state.text_input
                   ; on_input text_input
                   ] []
-          ; p [] [text (String.reverse state.text_input)]
+          ; p [] [
+              text "reversed text: "
+            ; text (String.reverse state.text_input)
+          ]
           ; h3 [] [text "Slider"]
           ; input [ attribute "type" "range"
                   ; attribute "min" "0"
@@ -590,10 +592,6 @@ let init: (state * msg Command.t) Decoder.t =
 
 
 let update (state: state): msg -> state * msg Command.t = function
-    | No_operation ->
-        state,
-        Command.none
-
     | Show_page ->
         {state with menu = false},
         Command.none
@@ -643,12 +641,11 @@ let update (state: state): msg -> state * msg Command.t = function
 
     | Send value ->
         {state with message = "sending"},
-        (Command.perform
+        (Command.just_do
              Task.(
                  let* _ = log_string "sending to javascript ... " in
                  let* _ = log_value value >>= sleep 1000 in
-                 let* _ = send_to_javascript value in
-                 return No_operation
+                 send_to_javascript value
              ))
 
     | Receive message ->

@@ -1,0 +1,65 @@
+{0 Event Handler}
+
+
+{{!page-doc_getting_started} Getting started}
+{{!page-doc} Up}
+
+
+
+The code in a browser application is event driven. Each pressing of a key,
+moving of the mouse etc. generates a javascript event and the browser checks if
+there is an event handler installed and call the event handling function with
+the event. This architecture is quite universal and flexible.
+
+In the library {!module: Fmlib_browser} each event of interest has to be decoded
+into a message (whose type is user defined) and the message together with the
+state (also user defined) is passed to the user defined update function to
+compute the new state and new commands.
+
+In order to write customized event handlers we need decoders to decode
+information available in the javascript world into a message. The module
+{{!module: Fmlib_browser.Attribute} Attribute} has a function [handler] with the
+signature
+{[
+    val handler:
+        string                      (* event type e.g. "mouseenter"    *)
+        -> Event_flag.stop          (* stop propagation flag           *)
+        -> Event_flag.prevent       (* prevent default action flag     *)
+        -> 'm Decoder.t             (* decode the event into a message *)
+        -> 'm Attribute.t
+]}
+
+An event handler is added on a html element of the virtual dom if the html
+element has a handler attribute.
+
+A simple handler to get notified on mouse clicks looks like
+{[
+    let on_click (m: 'msg): 'msg Attribute.t =
+        let open Attribute in
+        handler
+            "click"
+            Event_flag.no_stop
+            Event_flag.no_prevent
+            Decoder.(return m)
+]}
+
+A decoder which returns on each mouseclick the tag name of the clicked element:
+
+{[
+    let on_click_tagname: string Attribute.t =
+        let open Attribute in
+        handler
+            "click"
+            Event_flag.no_stop
+            Event_flag.no_prevent
+            Decoder.(field "target" (field "tagName" string))
+]}
+
+
+
+
+
+
+
+{{!page-doc_getting_started} Getting started}
+{{!page-doc} Up}

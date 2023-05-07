@@ -3,9 +3,32 @@
 
 {1 Documentation}
 
-{{!page-browser} Introduction to Web Applications}
+{{!page-doc} Introduction to Web Applications}
 
 
 {1 API}
 
 {!Fmlib_browser}
+
+
+{1 Examples}
+
+
+- {{: https://hbr.github.io/fmlib/webapp/index.html} Single Page Application}
+
+- 7 GUIs {{: https://eugenkiss.github.io/7guis/tasks} (requirements)}
+    {ul
+      {- Counter: Already contained in the single page application above}
+      {-
+        {{: https://hbr.github.io/fmlib/webapp/temperature.html} Temperature
+        Converter}}
+      {- {{: https://hbr.github.io/fmlib/webapp/timer.html} Timer}
+      }
+      {- {{: https://hbr.github.io/fmlib/webapp/flight.html} Flight Booking}
+      }
+      {- {{: https://hbr.github.io/fmlib/webapp/circles.html} Draw Circles}
+      }
+    }
+
+{{: https://github.com/hbr/fmlib/blob/master/src/examples/browser} Sources} of
+the examples.

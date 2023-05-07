@@ -1,9 +1,18 @@
-(** Web Applications Running in the Browser *)
+(** Web Applications Running in the Browser
 
 
-(** {1 Documentation}
+    This library helps to write web applications which run in the browser. See
+    some simple
+    {{: https://hbr.github.io/fmlib/webapp/index.html} live examples} and look
+    into the
+    {{: https://github.com/hbr/fmlib/tree/master/src/examples/browser/webapp.ml}
+       source code}.
 
-    {{!page-browser} Introduction to Web Applications}
+
+    For a step by step introduction see
+    {{!page-doc} "Introduction to Web Applications"}.
+
+
 
 *)
 
@@ -12,8 +21,9 @@
 
 
 
-(** {1 API} *)
 
+
+(** {1 Utilities} *)
 
 (** Generate Random Numbers *)
 module Random:
@@ -60,7 +70,9 @@ sig
     (** Generate a random boolean value. *)
 
     val choose: 'a list -> 'a t
-    (** [uniform a lst] Generate a random value of the list [lst].
+    (** [uniform lst] Generate a random value of the list [lst].
+
+        Precondition: List must not be empty [lst <> []]
     *)
 end
 
@@ -152,36 +164,6 @@ end
 
 
 
-
-
-
-(** Javascript Values *)
-module Value:
-sig
-    type t
-
-    val null: t
-
-    val string: string -> t
-
-    val int: int -> t
-
-    val bool: bool -> t
-
-    val float: float -> t
-
-    val record: (string * t) array -> t
-
-    val array: t array -> t
-end
-
-
-
-
-
-
-
-
 (** Event flags to stop propagation and prevent default action. *)
 module Event_flag:
 sig
@@ -200,6 +182,74 @@ sig
 
     val no_stop: stop
     (** Do not stop event propagation. *)
+end
+
+
+
+
+
+
+
+
+
+
+
+(** {1 Encode and Decode Javascript Values} *)
+
+
+
+(** Javascript Values
+
+
+    Javascript values are necessary to comunicate with the javascript world. In
+    order to send a message to the surrounding javascript (see
+    {!val: Task.send_to_javascript}) a javascript value is needed. The following
+    functions can be used to construct arbitrary javascript values (no
+    functions, just data).
+
+    E.g. if you want to construct the javascript object
+
+    {v
+        {first_name: "John", last_name: "Doe", age: 45}
+    v}
+    you just write
+    {[
+        record
+            [|
+              "first_name", string "John"
+            ; "last_name", string "Doe"
+            ; "age", int 45
+            |]
+    ]}
+
+ *)
+module Value:
+sig
+    type t
+
+    val null: t (** The javascript value [null] *)
+
+    val string: string -> t
+    (** [string str] The javascript string [str] *)
+
+    val int: int -> t
+    (** [int 5] The javascript number [5]. *)
+
+    val bool: bool -> t
+    (** [bool true] The javascript value [true]. *)
+
+    val float: float -> t
+    (** [float 5] The javascript number [5]. *)
+
+    val record: (string * t) array -> t
+    (** [record [| "a", int 5;  "b", string "hello"|]] is the javascript value
+        [{a: 5, b: 'hello'}|].
+    *)
+
+    val array: t array -> t
+    (** [array [|int 5; string "hello"; bool true|] ] is the javascript array
+        [[5, "hello", true]].
+     *)
 end
 
 
@@ -264,7 +314,7 @@ sig
     (** {1 API} *)
 
 
-    (** {2 General}
+    (** {1 General}
      *)
 
     type 'a t
@@ -303,12 +353,12 @@ sig
 
         Example:
         {[
-            let* a = decoder1 in
-            decoder1 a
+            let* a = dec1 in
+            dec2 a
         ]}
 
-        First decode the javascript value with decoder [decoder1]. In case of
-        success with the value [a], use decoder [decoder2] which can depend on
+        First decode the javascript value with decoder [dec1]. In case of
+        success with the value [a], use decoder [dec2] which can depend on
         [a].
 
         [let*] is useful to decode various fields of an object.
@@ -332,7 +382,7 @@ sig
     *)
 
 
-    (** {2 Basic decoders}
+    (** {1 Basic decoders}
      *)
 
     val null:      'a -> 'a t
@@ -366,7 +416,7 @@ sig
     *)
 
 
-    (** {2 Complex decoders}
+    (** {1 Complex decoders}
      *)
 
     val field: string -> 'a t -> 'a t
@@ -388,9 +438,9 @@ sig
 
         Examples:
         {[
-            (option int) Value.null         ~>      succeed with None
-            (option int) (Value.int 6)      ~>      succeed with (Some 5)
-            (option int) (Value.string "a") ~>      fail
+            run (option int) Value.null         ~>      Some None
+            run (option int) (Value.int 5)      ~>      Some (Some 5)
+            run (option int) (Value.string "a") ~>      None
         ]}
     *)
 end
@@ -400,330 +450,105 @@ end
 
 
 
+(** {1 Virtual Dom} *)
 
 
 
 
+(** Attributes of Dom Elements.
 
+    There are four types of attributes:
 
+    - style attributes: Color, font size, etc.
 
+    - property attributes: arbitrary javascript values as properties of the
+    corresponding dom element.
 
-(** Tasks to be performed within {{!module:Command} Commands} *)
-module Task:
-sig
-    (** {1 Error types} *)
+    - attributes: string valued attributes to give the element an id, a
+    classname, etc.
 
-    type empty = []
+    - handler attributes: React to user interactions (mouse clicks, ...) on the
+    html element.
 
-    type http_error = [
-        | `Http_status of int
-        (**
-                - 0: no internet, server not found, timeout, ...
-                - 401: bad request
-                - 403: forbidden
-                - 404: page not found
-                - ...
+    Sometimes the distinction between properties and attributes is quite subtle.
+    To the best of my knowledge each added attribute adds a property with the
+    same name (except when the name is a javascript keyword like "class") to the
+    html element. But not all properties even  if it is a string value adds
+    an attribute to the element.
 
-            *)
-        | `Http_no_json (** Resource is not a valid json file *)
-        | `Http_decode (** Resource is a valid json file, but the decoder could
-                           not decode the corresponding javascript object. *)
-    ]
-
-    type not_found  = [`Not_found]
-
-
-    (** {1 Basic type and functions} *)
-
-    type ('a, +'e) t
-    (** Task succeeding with a value of type ['a] or failing with
-         an error object of type ['e] *)
-
-    val succeed: 'a -> ('a, 'e) t
-
-    val return:  'a -> ('a, 'e) t
-
-    val fail: 'e -> ('a, 'e) t
-
-    val result: ('a, 'e) result -> ('a, 'e) t
-
-    val (>>=): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
-
-    val ( let* ): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
-
-    val map: ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
-
-
-    (** {1 Write to the console} *)
-
-    val log_string: string -> (unit, 'e) t
-    (** [log_string str] Write [str] to the console. *)
-
-
-    val log_value: Value.t -> (unit, 'e) t
-    (** [log_value v] Write the javascript object [v] to the console. *)
-
-
-
-
-
-    (** {1 Send messages to the javascript world} *)
-
-    val send_to_javascript: Value.t -> (unit, 'e) t
-    (** [send_to_javascript value] Send the javascript object [value] to the
-        surrounding javascript world. *)
-
-
-
-    (** {1 Focus and blur elements} *)
-
-    val focus: string -> (unit, not_found) t
-    (** [focus id] Put the dom element with [id] into focus. *)
-
-    val blur: string -> (unit, not_found) t
-    (** [blur id] Unfocus the dom element with [id]. *)
-
-
-
-
-    (** {1 Defer tasks a certain time} *)
-
-    val sleep: int -> 'a -> ('a, 'e) t
-    (** [sleep millis a] Sleep for [millis] milliseconds and then return [a].
-
-        Examples:
-
-        {[
-            let* _ = sleep 1000 () in       (* sleep 1000 milliseconds *)
-            task                            (* and then execute [task] *)
-
-            let* a = task1 >>= sleep 1000   (* excute [task1] and return result
-                                               [a] after 1000 milliseconds *)
-            in
-            task2 a                         (* then execute [task2 a] *)
-        ]}
-
-    *)
-
-
-    val next_tick: 'a -> ('a, 'e) t
-    (** [next_tick a] Return [a] in the next tick of the event loop.
-
-        Example: Execute [task] in the next round of the event loop.
-        {[
-            let* _ = next_tick () in
-            task
-        ]}
-    *)
-
-
-
-
-    (** {1 Get time and time zone} *)
-
-    val now: (Time.t, 'e) t
-    (** Get the current time. *)
-
-    val time_zone: (Time.Zone.t, 'e) t
-    (** Get the current time zone. *)
-
-
-
-
-    (** {1 Generate random values} *)
-
-    val random: 'a Random.t -> ('a, 'e) t
-    (** [random ran] Execute the random generator [rand] and return the
-        generated random value. *)
-
-
-
-    (** {1 Make http requests} *)
-
-    val http_text:
-        string
-        -> string
-        -> (string * string) list
-        -> string
-        -> (string, http_error) t
-    (** [http_text method url headers body]
-
-        Make a http [method] request to [url] with [headers] and [body]. Expect
-        the response as a string.
-
-        Method is one of [GET, POST, DELETE, ... ].
-
-        Then headers and the body can be empty.
-    *)
-
-
-    val http_json:
-        string
-        -> string
-        -> (string * string) list
-        -> string
-        -> 'a Decoder.t
-        -> ('a, http_error) t
-end
-
-
-
-
-
-
-
-(** Commands to be executed as a result of an update operation.
-
-    An elementary command consists of a {!module:Task} to be executed.
-
-*)
-module Command:
-sig
-    type _ t
-    (** [msg t] is the type of a command generating an object of type [msg] to
-        inject it into the update function of the application. *)
-
-    val none: _ t
-    (** An empty command. *)
-
-    val batch: 'm t list -> 'm t
-    (** [batch lst] A list of commands to be executed. *)
-
-
-    val perform: ('m, Task.empty) Task.t -> 'm t
-    (** [perform task] Perform the non failing [task] and send the message
-        generated by the task to the application. *)
-
-    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
-    (** [attemp f task] Attempt the possibly failing [task] and map the result
-        via the function [f] into a message to send to the application. *)
-end
-
-
-
-
-
-(** Subscriptions to global events. *)
-module Subscription:
-sig
-
-    (** {1 Basics} *)
-
-    type 'm t
-
-    val none: 'm t
-
-    val batch: 'm t list -> 'm t
-
-    val map: ('a -> 'b) -> 'a t -> 'b t
-
-
-    (** {1 Generic subscription to windows events} *)
-
-    val on_window:
-        string -> 'm Decoder.t -> 'm t
-    (** [on_window event_type decode]
-
-        Subscribe to window events of type [event_type]. Examples
-
-        {[
-            on_window "resize"  decode
-            on_window "keydown" decode
-        ]}
-    *)
-
-
-    (** {1 Subscribe to incoming messages from javascript} *)
-
-    val on_message: 'm Decoder.t -> 'm t
-    (** [on_message decode]
-
-        Subscribe to incoming messages from the javascript world. If there is an
-        incoming message (a javascript object) then decode the object with the
-        help of the function [decode] and send the decoded value as a message to
-        the update function of the application.
-    *)
-
-
-    (** {1 Subscribe to timer events} *)
-
-    val every: int -> (Time.t -> 'm) -> 'm t
-    (** [every millis f] Subscribe to an event which is fired every [millis]
-        milliseconds. Use [f] to map the posix time into a message for the
-        update function. *)
-
-
-    (** {1 Subscribe to keyboard events} *)
-
-    val on_keydown: (string -> 'm) -> 'm t
-
-
-    (** {1 Subscribe to mouse events} *)
-
-    (** The following mouse event subscriptions just decode the [clientX] and
-        [clientY] value of the mouse event. But a mouse event has much more
-        information. You can get a customized subscription which decodes more
-        mouse event data by just writing a decoder [decode] which decodes all
-        values from a mouse event which are of interest and subscribe to the
-        mouse event e.g. by [on_window "mouseup" decode]. *)
-
-    val on_mouse_down: (int -> int -> 'm) -> 'm t
-    (** Subscribe to mousedown events. *)
-
-    val on_mouse_move: (int -> int -> 'm) -> 'm t
-    (** Subscribe to mousemove events. *)
-
-    val on_mouse_up:   (int -> int -> 'm) -> 'm t
-    (** Subscribe to mouseup events. *)
-
-
-
-    (** {1 Subscribe to the window resize event} *)
-
-    val on_resize: (int -> int -> 'm) -> 'm t
-    (** [on_resize f] Subscribe to the window resize event and report the
-        [innerWidth] and [innerHeight] properties to the function [f] to generate
-        the message for the update function. *)
-
-
-
-    (** {1 Subscribe to the window visibility change event} *)
-
-    val on_visibility_change: (string -> 'm) -> 'm t
-    (** [on_visibility_change f] Subscribe to the window visibility
-        change event and report the visibility state which is either "visible"
-        or "hidden" to the function [f] to generate the message for the update
-        function. *)
-end
-
-
-
-
-
-
-(** Attributes of Dom Elements. *)
+ *)
 module Attribute:
 sig
     (** {1 Generic Interface}
      *)
 
-    type 'msg t
+    type 'msg t (** Type of an attribute potentially generating a message of
+                    type ['msg]. *)
+
+
     val style: string -> string -> 'msg t
+    (** [style key value] Add a style attribute to the html element.
+
+        Examples:
+        {[
+            style "color"  "red"
+            style "margin" "20px"
+        ]}
+     *)
+
     val property: string -> Value.t -> 'msg t
+    (** [property key value] Add a javascript property to the html element. *)
+
+
     val attribute: string -> string -> 'msg t
+    (** [attribute key value] Add an attribute to the html element.
+
+        Examples:
+        {[
+            attribute "id" "my_element"
+            attribute "class" "container"
+        ]}
+    *)
+
+
     val handler:
         string
         -> Event_flag.stop
         -> Event_flag.prevent
         -> 'msg Decoder.t
         -> 'msg t
+    (** [handler event_type stop_flag prevent_flag decoder]
+
+        Attribute representing an event listener on an html element. The two
+        flags decide if the event is propagated upwards in the dom tree and if
+        default action (some events like clicking on an anchor element cause
+        default actions in the browser) is prevented.
+
+        The decoder decodes the javascript event object into a message of type
+        ['msg].
+
+        Starting from the event object information from the whole dom tree up to
+        the root can be decode. Each event object has a target (which is the
+        element on which it is fired). The target element has a tag name, can
+        have various properties etc. For more details on event objects see the
+        {{: https://developer.mozilla.org/en-US/docs/Web/API/Event} event api}.
+
+        More information on {{!page-doc_event_handler} event handlers}.
+     *)
 
 
     (** {1 Handler} *)
 
     val on: string -> 'msg Decoder.t -> 'msg t
+    (** [on event_type decoder]
+
+        is equivalent to
+        [handler event_type Event_flag.no_stop Event_flag.no_prevent decoder]
+    *)
 
     val on_click: 'msg -> 'msg t
+    (** [on_click m] produce the message [m] on mouse click. *)
+
 
 
 
@@ -766,7 +591,7 @@ sig
 
 
 
-    (** {2 Margin, border, padding and content}
+    (** {1 Margin, border, padding and content}
 
         {v
 
@@ -862,9 +687,20 @@ sig
     (** "title" attribute to display tooltips *)
 
 
-    (** {1 Attributes for input elements} *)
+    (** {1 Input elements} *)
 
     val value: string -> 'msg t
+    (** The [value] property of the element (usually an input element)
+
+        Each time the user enters something to the input element (text for input
+        type 'text', slider position for input type 'range', date for input type
+        'date'), the value property changes. Using the value property in the
+        virtual dom overwrites whatever the user has written into the input
+        element. Using a 'value' attribute in the virtual dom does *not*
+        overwrite the user value.
+    *)
+
+
     val placeholder: string -> 'msg t
 
     val on_input: (string -> 'msg) -> 'msg t
@@ -883,10 +719,48 @@ sig
     (** {1 Primitives}
      *)
 
-    type 'msg t
+    type 'msg t (** Type of a virtual dom node potentially generating a message
+                    of type ['msg]. *)
 
-    val text: string -> 'msg t
+    val text: string -> 'msg t (** [text str] Create a text node. *)
+
     val node: string -> 'msg Attribute.t list -> 'msg t list -> 'msg t
+    (** [node tag attrs children]
+
+        Create an html element with a tagname, a list of attributes and a list
+        of children.
+    *)
+
+    val node_ns:
+        string -> string -> 'msg Attribute.t list -> 'msg t list -> 'msg t
+    (** [node namespace tag attrs children]
+
+        Like [node], but creates the node within a namespace e.g.
+        "http://www.w3.org/2000/svg" for [svg] elements.
+    *)
+
+
+
+    val svg_node: string -> 'msg Attribute.t list -> 'msg t list -> 'msg t
+    (** [svg_node tag attrs children]
+
+        Create an svg element with a tagname, a list of attributes and a list
+        of children. An svg element is a node in the namespace
+        "http://www.w3.org/2000/svg".
+    *)
+
+
+
+
+    val keyed:
+        string -> 'msg Attribute.t list -> (string * 'msg t) list -> 'msg t
+    (** [keyed tag attrs children]
+
+        Like [node], but add a unique identifier to each child node. This makes
+        adding, removing and modifying child nodes more efficient. The dom
+        diffing algorithm compares child nodes with the same identifier.
+     *)
+
 
 
     (** {1 Headers}
@@ -967,26 +841,424 @@ end
 
 
 
+
+
+
+
+
+
+
+
+(** {1 Commands and Subscriptions} *)
+
+
+
+
+(** Tasks to be performed within {{!module:Command} Commands} *)
+module Task:
+sig
+    (** {1 Error types} *)
+
+    type empty = []
+
+    type http_error = [
+        | `Http_status of int
+        (**
+                - 0: no internet, server not found, timeout, ...
+                - 401: bad request
+                - 403: forbidden
+                - 404: page not found
+                - ...
+
+            *)
+        | `Http_no_json (** Resource is not a valid json file *)
+        | `Http_decode (** Resource is a valid json file, but the decoder could
+                           not decode the corresponding javascript object. *)
+    ]
+
+    type not_found  = [`Not_found]
+
+
+    (** {1 Basic type and functions} *)
+
+    type ('a, +'e) t
+    (** Task succeeding with a value of type ['a] or failing with
+         an error object of type ['e] *)
+
+    val succeed: 'a -> ('a, 'e) t
+
+    val return:  'a -> ('a, 'e) t
+
+    val fail: 'e -> ('a, 'e) t
+
+    val result: ('a, 'e) result -> ('a, 'e) t
+
+    val (>>=): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+
+    val ( let* ): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+
+    val map: ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
+
+
+
+
+
+    (** {1 Write to the console} *)
+
+    val log_string: string -> (unit, 'e) t
+    (** [log_string str] Write [str] to the console. *)
+
+
+    val log_value: Value.t -> (unit, 'e) t
+    (** [log_value v] Write the javascript object [v] to the console. *)
+
+
+
+
+
+    (** {1 Messages to the javascript world} *)
+
+    val send_to_javascript: Value.t -> (unit, 'e) t
+    (** [send_to_javascript value] Send the javascript object [value] to the
+        surrounding javascript world. *)
+
+
+
+    (** {1 Focus and blur elements} *)
+
+    val focus: string -> (unit, not_found) t
+    (** [focus id] Put the dom element with [id] into focus. *)
+
+    val blur: string -> (unit, not_found) t
+    (** [blur id] Unfocus the dom element with [id]. *)
+
+
+
+
+    (** {1 Defer tasks a certain time} *)
+
+    val sleep: int -> 'a -> ('a, 'e) t
+    (** [sleep millis a] Sleep for [millis] milliseconds and then return [a].
+
+        Examples:
+
+        {[
+            let* _ = sleep 1000 () in       (* sleep 1000 milliseconds *)
+            task                            (* and then execute [task] *)
+
+            let* a = task1 >>= sleep 1000   (* excute [task1] and return result
+                                               [a] after 1000 milliseconds *)
+            in
+            task2 a                         (* then execute [task2 a] *)
+        ]}
+
+    *)
+
+
+    val next_tick: 'a -> ('a, 'e) t
+    (** [next_tick a] Return [a] in the next tick of the event loop.
+
+        Example: Execute [task] in the next round of the event loop.
+        {[
+            let* _ = next_tick () in
+            task
+        ]}
+    *)
+
+
+
+
+    (** {1 Time and time zone} *)
+
+    val now: (Time.t, 'e) t
+    (** Get the current time. *)
+
+    val time_zone: (Time.Zone.t, 'e) t
+    (** Get the current time zone. *)
+
+
+
+
+    (** {1 Random values} *)
+
+    val random: 'a Random.t -> ('a, 'e) t
+    (** [random ran] Execute the random generator [rand] and return the
+        generated random value. *)
+
+
+
+    (** {1 Http requests} *)
+
+    val http_text:
+        string
+        -> string
+        -> (string * string) list
+        -> string
+        -> (string, http_error) t
+    (** [http_text method url headers body]
+
+        Make a http [method] request to [url] with [headers] and [body]. Expect
+        the response as a string.
+
+        Method is one of [GET, POST, DELETE, ... ].
+
+        Then headers and the body can be empty.
+    *)
+
+
+    val http_json:
+        string
+        -> string
+        -> (string * string) list
+        -> string
+        -> 'a Decoder.t
+        -> ('a, http_error) t
+end
+
+
+
+
+
+
+
+(** Commands to be executed as a result of an update operation.
+
+    An elementary command consists of a {!module:Task} to be executed.
+
+*)
+module Command:
+sig
+    type _ t
+    (** [msg t] is the type of a command generating an object of type [msg] to
+        inject it into the update function of the application. *)
+
+    val none: _ t
+    (** An empty command. *)
+
+    val batch: 'm t list -> 'm t
+    (** [batch lst] A list of commands to be executed. *)
+
+
+    val perform: ('m, Task.empty) Task.t -> 'm t
+    (** [perform task] Perform the non failing [task] and send the message
+        generated by the task to the application. *)
+
+
+    val just_do: (unit, Task.empty) Task.t -> 'm t
+    (** [perform task] Perform the non failing [task] and don't send any message
+        to the application. *)
+
+
+    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
+    (** [attemp f task] Attempt the possibly failing [task] and map the result
+        via the function [f] into a message to send to the application. *)
+
+    val map: ('a -> 'b) -> 'a t -> 'b t
+end
+
+
+
+
+
+(** Subscriptions to global events. *)
+module Subscription:
+sig
+
+    (** {1 Basics} *)
+
+    type 'm t
+
+    val none: 'm t
+
+    val batch: 'm t list -> 'm t
+
+    val map: ('a -> 'b) -> 'a t -> 'b t
+
+
+    (** {1 Events on the window object} *)
+
+    val on_window:
+        string -> 'm Decoder.t -> 'm t
+    (** [on_window event_type decode]
+
+        Subscribe to window events of type [event_type]. Examples
+
+        {[
+            on_window "resize"  decode
+            on_window "keydown" decode
+        ]}
+    *)
+
+
+    (** {1 Incoming messages from javascript} *)
+
+    val on_message: 'm Decoder.t -> 'm t
+    (** [on_message decode]
+
+        Subscribe to incoming messages from the javascript world. If there is an
+        incoming message (a javascript object) then decode the object with the
+        help of the function [decode] and send the decoded value as a message to
+        the update function of the application.
+    *)
+
+
+    (** {1 Timer events} *)
+
+    val every: int -> (Time.t -> 'm) -> 'm t
+    (** [every millis f] Subscribe to an event which is fired every [millis]
+        milliseconds. Use [f] to map the posix time into a message for the
+        update function. *)
+
+
+    (** {1 Keyboard events} *)
+
+    val on_keydown: (string -> 'm) -> 'm t
+    val on_keyup:   (string -> 'm) -> 'm t
+
+
+    (** {1 Mouse events} *)
+
+    (** The following mouse event subscriptions just decode the [clientX] and
+        [clientY] value of the mouse event. But a mouse event has much more
+        information. You can get a customized subscription which decodes more
+        mouse event data by just writing a decoder [decode] which decodes all
+        values from a mouse event which are of interest and subscribe to the
+        mouse event e.g. by [on_window "mouseup" decode]. *)
+
+    val on_mouse_down: (int -> int -> 'm) -> 'm t
+    (** Subscribe to mousedown events. *)
+
+    val on_mouse_move: (int -> int -> 'm) -> 'm t
+    (** Subscribe to mousemove events. *)
+
+    val on_mouse_up:   (int -> int -> 'm) -> 'm t
+    (** Subscribe to mouseup events. *)
+
+
+
+    (** {1 Window resize} *)
+
+    val on_resize: (int -> int -> 'm) -> 'm t
+    (** [on_resize f] Subscribe to the window resize event and report the
+        [innerWidth] and [innerHeight] properties to the function [f] to generate
+        the message for the update function. *)
+
+
+
+    (** {1 Visibility change} *)
+
+    val on_visibility_change: (string -> 'm) -> 'm t
+    (** [on_visibility_change f] Subscribe to the window visibility
+        change event and report the visibility state which is either "visible"
+        or "hidden" to the function [f] to generate the message for the update
+        function. *)
+end
+
+
+
+
+
+(** {1 Debugging} *)
+
+
+val debug: string -> unit
+(** [debug str] Log [str] to the console as a side effect. *)
+
+
+val debug_value: Value.t -> unit
+(** [debug_value v a] Log the javascript value [v] to the console
+    as a side effect. *)
+
+
+
+
+
+
+
+
+
+
+(** {1 Sandbox Applications} *)
+
+(**
+    A sandbox application has only limited user interactions. A sandbox
+    application cannot execute commands. It can only get messages from user
+    interactions like mouse clicks, keyboard strokes on elements in focus etc.
+
+    The dom of a sandbox application is put directly under the [body] of the
+    html page i.e. it occupies the whole browser window.
+*)
+
 val sandbox:
     'state
     -> ('state -> 'msg Html.t)
     -> ('state -> 'msg -> 'state)
     -> unit
+(** [sandbox state view update]
+
+    A sandbox application is started with the command
+
+    {[
+        let _ = sandbox state view update
+    ]}
+
+    and it needs only a very simple html file of the form
+
+    {v
+        <!-- file: index.html -->
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <script type="text/javascript" src="webapp.js">
+                </script>
+            </head>
+            <body>
+            </body>
+        </html>
+    v}
+
+    The application is started on the onload event of the browser window.
+*)
 
 
 
 
 
-val element:
+
+val sandbox_plus:
+    'state
+    -> ('state -> 'msg Html.t)
+    -> ('state -> 'msg Subscription.t)
+    -> ('state -> 'msg -> 'state)
+    -> unit
+(** [sandbox_plus state view subs update]
+
+    A [sandbox_plus] application is like a sandbox application. In addition it
+    can receive notifications.
+*)
+
+
+
+
+
+(** {1 Full Web Application} *)
+
+(**
+    A full web application has full user interaction, can execute arbitrary
+    commands and subscribe to all possible global events.
+
+*)
+
+val application:
     string
     -> ('state * 'msg Command.t) Decoder.t
-    -> ('state -> 'msg Html.t)
+    -> ('state -> 'msg Html.t * string)
     -> ('state -> 'msg Subscription.t)
     -> ('state -> 'msg -> 'state * 'msg Command.t)
     -> unit
-(** [element my_app init view subs update]
+(** [application my_app init view subs update]
 
-    Create a browser application named [my_app] on the javascript side. The
+    Browser application named [my_app] on the javascript side. The
     application creates the global object named [my_app] which contains the two
     functions [init] and [post].
 
@@ -995,7 +1267,6 @@ val element:
 
         my_app.init ({
             data: <initialisation object>,
-            element_id: <id of the element under which the application works>,
             onMessage: <function to receive messages on the javascript side from
                         the application>
         })
@@ -1011,16 +1282,58 @@ val element:
 
 
 
-val application:
-    string
-    -> ('state * 'msg Command.t) Decoder.t
+val basic_application:
+    'state
+    -> 'msg Command.t
     -> ('state -> 'msg Html.t * string)
     -> ('state -> 'msg Subscription.t)
     -> ('state -> 'msg -> 'state * 'msg Command.t)
     -> unit
-(** [application my_app init view subs update]
+(** [basic_application state command view subs update]
 
-    Create a browser application named [my_app] on the javascript side. The
+    A [basic_application] is like an [application] which cannot interact with
+    the surrounding javascript. I.e. it cannot receive initialization date, it
+    cannot receive messages and cannot send messages from the javscript world.
+ *)
+
+
+
+
+
+
+
+
+(** {1 Element Application}
+
+    An element application is like {!val: application} above with the difference
+    that the dom is inserted directly under a certain element of the dom tree.
+    The web application generated by the library does not touch the dom outside
+    the user chosen element.
+
+    Purpose of the element application: Use an already written webapplication in
+    javascript and add certain functions written in ocaml by using this library.
+
+    The element application offers a smooth path to start using the library
+    without rewriting an already existing application from scratch.
+
+
+    The javascript part and the ocaml part can communicate via message passing
+    i.e. the javascript part can post a javascript object to ocaml
+    (see {!val: Subscription.on_message}) and the ocaml
+    part can send javascript objects (see {!module: Value} and
+    {!val: Task.send_to_javascript}).
+*)
+
+val element:
+    string
+    -> ('state * 'msg Command.t) Decoder.t
+    -> ('state -> 'msg Html.t)
+    -> ('state -> 'msg Subscription.t)
+    -> ('state -> 'msg -> 'state * 'msg Command.t)
+    -> unit
+(** [element my_app init view subs update]
+
+    Browser application named [my_app] on the javascript side. The
     application creates the global object named [my_app] which contains the two
     functions [init] and [post].
 
@@ -1029,6 +1342,7 @@ val application:
 
         my_app.init ({
             data: <initialisation object>,
+            element_id: <id of the element under which the application works>,
             onMessage: <function to receive messages on the javascript side from
                         the application>
         })

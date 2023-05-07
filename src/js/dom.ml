@@ -60,6 +60,7 @@ object
     method getElementById: js_string -> element Js.t Js.Opt.t Js.meth
     method createTextNode: js_string -> node Js.t Js.meth
     method createElement:  js_string -> element Js.t Js.meth
+    method createElementNS:  js_string -> js_string -> element Js.t Js.meth
     method createDocumentFragment:  unit -> node Js.t Js.meth
 end
 
@@ -257,6 +258,9 @@ struct
 
     let create_text_node (text: string) (doc: t): Node.t =
         doc##createTextNode (Js.string text)
+
+    let create_element_ns (namespace: string) (tag: string) (doc: t): Element.t =
+        doc##createElementNS (Js.string namespace) (Js.string tag)
 
     let create_document_fragment (doc: t): Node.t =
         doc##createDocumentFragment ()

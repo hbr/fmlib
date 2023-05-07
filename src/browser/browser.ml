@@ -36,6 +36,7 @@ type ('state, 'msg) update2 = 'state -> 'msg -> 'state * 'msg Command.t
 type ('s, 'm) operations =
     | Sandbox of
           ('s, 'm) view1
+          * ('s -> 'm Subscription.t)
           * ('s, 'm) update1
     | Element of
           ('s, 'm) view1
@@ -103,6 +104,19 @@ let dom_operations (dispatch: 'msg -> unit): 'msg dom_operations =
                  let open Node in
                  let doc = document () in
                  let el  = create_element tag doc in
+                 List.iter
+                     (fun (child, _) ->
+                          append child (node el))
+                     lst;
+                 node el, Some (el, Handler.EventHs.empty ()));
+
+        make_element_ns =
+            (fun namespace tag (lst: node list) ->
+                 let open Document in
+                 let open Element in
+                 let open Node in
+                 let doc = document () in
+                 let el  = create_element_ns namespace tag doc in
                  List.iter
                      (fun (child, _) ->
                           append child (node el))
@@ -190,29 +204,26 @@ let dom_operations (dispatch: 'msg -> unit): 'msg dom_operations =
 
 let rec dispatch (data: ('state, 'msg) data) (msg: 'msg): unit =
     let update_data state =
-        if state == data.state then
-            ()
-        else begin
+        let state_different = not (state == data.state)
+        in
+        data.dirty <- data.dirty || state_different;
+        if state_different then begin
             data.state <- state;
-            data.dirty <- true
+            update_subscriptions data
         end
     in
     match data.operations with
-    | Sandbox (_, update) ->
-        update_data (update data.state msg)
+    | Sandbox (_, _, update) ->
+        update_data (update data.state msg);
 
     | Element (_, _, update, post) ->
         let state, cmd = update data.state msg in
         update_data state;
-        if data.dirty then
-            update_subscriptions data;
         Command.execute post (dispatch_next data) cmd
 
     | App (_, _, update, post) ->
         let state, cmd = update data.state msg in
         update_data state;
-        if data.dirty then
-            update_subscriptions data;
         Command.execute post (dispatch_next data) cmd
 
 
@@ -224,12 +235,14 @@ and update_subscriptions (data: ('s, 'm) data): unit =
     (* create or update the subscriptions, i.e. install all necessary handlers. *)
     let update () =
         match data.operations, data.subs with
-        | App (_, sub, _, _), None
+        | Sandbox (_, sub, _),    None
+        | App (_, sub, _, _),     None
         | Element (_, sub, _, _), None ->
             data.subs <-
                 Some (Subscriptions.make (dispatch data) (sub data.state))
 
-        | App (_, sub, _, _), Some subs
+        | Sandbox (_, sub, _),    Some subs
+        | App (_, sub, _, _),     Some subs
         | Element (_, sub, _, _), Some subs
             when data.dirty ->
             data.subs <-
@@ -271,7 +284,7 @@ let put_below_root (data: ('state, 'msg) data) (dom: 'msg dom): unit =
 let vdom (data: ('s, 'm) data): 'm Vdom.t * (unit -> unit) =
     (* Get the virtual dom from the state and the title update function. *)
     match data.operations with
-    | Sandbox (view, _) ->
+    | Sandbox (view, _, _) ->
         view data.state, (fun () -> ())
     | Element (view, _, _, _) ->
         view data.state, (fun () -> ())
@@ -286,15 +299,17 @@ let update_dom (data: ('state, 'msg) data): unit =
     (* Create or update the real dom based on the state. First create a virtual
        dom from the state and then create or update the real dom. *)
     let update () =
-        let vdom, set_title = vdom data
+        let vdom data =
+            let vdom, set_title = vdom data in
+            set_title ();
+            vdom
         in
-        set_title ();
         match data.dom with
         | None ->
             let dom =
                 Vdom.make
                     (dom_operations (dispatch data))
-                    vdom
+                    (vdom data)
             in
             data.dom <- Some dom;
             put_below_root data dom;
@@ -304,7 +319,7 @@ let update_dom (data: ('state, 'msg) data): unit =
                 let dom, created =
                     Vdom.update
                         (dom_operations (dispatch data))
-                        vdom
+                        (vdom data)
                         dom
                 in
                 if created then
@@ -318,7 +333,8 @@ let update_dom (data: ('state, 'msg) data): unit =
         "Exception in 'update_dom' of Fmlib_browser"
         update
         cleanup;
-    cleanup ()
+    cleanup ();
+    assert (not data.dirty)
 
 
 let on_next_animation (f: float -> unit): unit =
@@ -328,7 +344,9 @@ let on_next_animation (f: float -> unit): unit =
 
 
 let rec animate (data: ('state, 'msg) data): float -> unit =
-    fun _ -> update_dom data;
+    fun _ ->
+    update_dom data;
+    assert (not data.dirty);
     on_next_animation (animate data)
 
 
@@ -442,6 +460,7 @@ let start_application
 let make_sandbox
         (state: 's)
         (view:   ('s, 'm) view1)
+        (sub:    'state -> 'msg Subscription.t)
         (update: ('s, 'm) update1)
         (_: 'a)
     : unit
@@ -457,12 +476,14 @@ let make_sandbox
         root       = Document.body (document ());
         dom        = None;
         subs       = None;
-        operations = Sandbox (wrap_view view, wrap_update update)
+        operations =
+            Sandbox (wrap_view view, wrap_subscription sub, wrap_update update)
     }
     in
-    update_dom data; (* Make the initial dom. *)
+    update_subscriptions data; (* Initial subscriptions *)
+    update_dom data;           (* Initial dom. *)
 
-    (* Processing for 'requestAnimationFrame *)
+    (* Processing for requestAnimationFrame *)
     on_next_animation (animate data)
 
 
@@ -475,7 +496,21 @@ let sandbox
     =
     Event_target.add
         "load"
-        (make_sandbox state view update)
+        (make_sandbox state view (fun _ -> Subscription.none) update)
+        Window.(event_target (get ()))
+
+
+
+let sandbox_plus
+        (state:  'state)
+        (view:   ('state, 'msg) view1)
+        (sub:    'state -> 'msg Subscription.t)
+        (update: ('state, 'msg) update1)
+    : unit
+    =
+    Event_target.add
+        "load"
+        (make_sandbox state view sub update)
         Window.(event_target (get ()))
 
 
@@ -663,3 +698,39 @@ let application
                  ; "post", receive_message app
                 |]
         )
+
+
+
+
+
+
+let basic_application
+        (state:   's)
+        (command: 'm Command.t)
+        (view:    ('s, 'm) view2)
+        (sub:     's -> 'm Subscription.t)
+        (update:  ('s, 'm) update2)
+    : unit
+    =
+    let post _ = ()
+    in
+    Event_target.add
+        "load"
+        (fun _ ->
+             let data = {
+                 state;
+                 dirty = false;
+                 root  = Document.body (document ());
+                 dom   = None;
+                 subs  = None;
+                 operations =
+                     App (
+                         wrap_view view,
+                         wrap_subscription sub,
+                         wrap_update update,
+                         post);
+             }
+             in
+             start_application data command post
+        )
+        Window.(event_target (get ()));

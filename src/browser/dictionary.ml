@@ -114,6 +114,14 @@ struct
         : unit
         =
         iter
+            (fun key _ ->
+                 match find_opt key d1 with
+                 | Some _ ->
+                     ()
+                 | None ->
+                     remove key)
+            d2;
+        iter
             (fun key value ->
                  match find_opt key d2 with
                  | None ->
@@ -124,15 +132,7 @@ struct
                          ()
                      else
                          set key value)
-            d1;
-        iter
-            (fun key _ ->
-                 match find_opt key d1 with
-                 | Some _ ->
-                     ()
-                 | None ->
-                     remove key)
-            d2
+            d1
 end
 
 

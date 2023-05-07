@@ -1,0 +1,260 @@
+{0 Overview}
+
+{{!page-doc} Up} {{!page-doc_getting_started} Getting Started}
+
+
+
+
+
+{1 Basics}
+
+The library {!module: Fmlib_browser} helps to write web applications which run
+in the browser in a pure functional style. It mimics the elm language in
+ocaml.
+
+The core of a functional web application is a system state and 2 main functions
+to describe the behaviour of a web application.
+
+{ol
+
+{- The system state: It contains all relevant data of the application. For a
+pure static page with no interaction with the user the state is just the [unit]
+value [()]. For an application representing a counter which can be increased or
+decreased by clicking on buttons the state is an [int] which represents the
+value of the counter.}
+
+{- A view function: This function maps the state into a virtual dom. The
+virtual dom is a description of what the user sees on the screen. Furthermore
+the virtual dom contains elements like buttons or text fields which produce
+messages. The messages are dispatched to the update function.}
+
+{- An update function: The update function maps the state of the application and
+a message to a new state.}
+}
+
+
+
+
+{1 Static webpage}
+
+
+If we just want to display a static page with a grocery list the functions are quite
+simple.
+
+{[
+    type message    (* no constructor, i.e. no message can be created. *)
+
+    let view (): unit Html.t =
+        let open Html in
+        let open Attribute in
+        ol [attribute "start" "51"] [
+            li [] [text "Milk"];
+            li [] [text "Honey"];
+            li [] [text "Meet"]
+        ]
+
+    let update () (_: message): unit =
+        assert false (* Function can never be called because [message] has no
+                        constructor *)
+]}
+
+The only interesting part of the example is the view function. The function uses
+the modules
+{{!module: Fmlib_browser.Html}Html}
+and
+{{!module: Fmlib_browser.Attribute} Attribute}
+to construct the virtual dom. The
+virtual dom is a tree describing the displayed page. The corresponding html
+markup looks like
+{v
+    <ol start="51">
+        <li> Milk </li>
+        <li> Honey </li>
+        <li> Meet </li>
+    </ol>
+v}
+and the rendered page would look like
+{v
+    51. Milk
+    52. Honey
+    53. Meet
+v}
+
+The module {{!module: Fmlib_browser.Html}Html} has two basic functions and a lot
+of abbreviations to construct a virtual dom. The two basic functions are
+{[
+    text: string -> 'a Html.t
+]}
+to construct a text node (i.e. a leaf in the virtual dom tree) and
+{[
+    node: string -> 'a Attribute.t list -> 'a Html.t list -> 'a Html.t
+]}
+
+where [node tag attrs children] constructs an element node with a tagname
+(div, h1, ...) a list of attributes and a list of children.
+
+
+The function call [li [] [text "Milk"]] is just an abbreviation for
+{[
+    node "li" [] [text "Milk"]
+]}
+
+
+
+
+
+
+
+{1 Webpage with user interaction}
+
+A simple webpage with user interaction is a page which looks like
+{v
+    -  10 +
+v}
+where [-] and [+] are buttons which can be clicked on. A mouse click on [-]
+decrements the counter and a mouse click on [+] increments the counter.
+
+The following code generates such an application:
+{[
+
+    type msg =
+        | Decrement
+        | Increment
+
+    let view (counter: int): msg Html.t =
+        div []
+            [
+              button [on_click Decrement] [text "-"]
+            ; text (string_of_int counter)
+            ; button [on_click Increment] [text "+"]
+            ]
+
+    let update (counter: int): msg -> int = function
+        | Decrement ->
+            counter - 1
+        | Increment ->
+            counter + 1
+]}
+
+The corresponding html markup looks like
+{v
+    <div>
+        <button> - </button>
+        5
+        <button> + </button>
+    </div>
+v}
+However the button elements get event listeners which, when pressed,
+either increment or decrement the state. The counter value changes on each click
+on one of the buttons dynamically.
+
+
+
+
+
+{1 Commands and Subscriptions}
+
+For practical web applications there are more interactions needed than just
+reactions to mouse clicks. A web application based on {!module: Fmlib_browser} is
+able to
+
+- send http requests
+
+- get the current time and the time zone
+
+- send and receive messages to and from the surrounding javascript
+
+- generate random values
+
+- get notifications at certain points in time
+
+- get notifications when the browser window is resized
+
+- focus and blur html elements (text input fields)
+
+- write to the console
+
+- get notifications on keyboard actions (keydown, keyup) and mouse actions
+  (down, up, move).
+
+- ...
+
+In order to make this possible the library {!module: Fmlib_browser} offers
+{{!module: Fmlib_browser.Command} commands}
+and
+{{!module: Fmlib_browser.Subscription} subscriptions}.
+
+Commands can be generated via the update function. A full blown update function
+has the signature
+{[
+    update: state -> msg -> state * msg Command.t
+]}
+i.e. based on the current state and the current message the update function
+computes a new state and a command (which can be a set of commands as well). An
+value of type [msg Command.t] represents a command which terminates with a
+message which will be dispatched to the update function after command
+completion.
+
+In order to generate notifications to the application the user writes a function
+with the signature
+{[
+    subscription: state -> msg Subscription.t
+]}
+I.e. depending on the state of the application several (or no) subscription can
+be activated.
+
+After each state change (i.e. execution of the update function) the library uses
+the new state and computes via the user supplied [subscription] the possibly
+new, changed or removed subscriptions and installs and/or removes the
+corresponding event listeners.
+
+
+
+
+
+
+{1 User and library code}
+
+All code provided by the user is and has to be purely functional. All user
+data like the state are immutable. The functions [view], [subscription] and
+[update] must not have side effects (at least no visible side effects). The
+library {!module: Fmlib_browser} handles all effectful commands and mutability
+needed in the resulting javascript code.
+
+The library functions hold the current user state and the current virtual dom.
+The library installs an event listener on the [requestAnimationFrame] event of
+the browser.
+
+If the state has changed since the last animation frame then the
+library uses the view function to generate the corresponding virtual dom. It
+does a dom diffing between the new virtual dom and the stored current dom and
+executes the minimal actions to make the real dom to look like requested in the
+new virtual dom.
+
+Since modifications of the real dom might be expensive the library tries to
+minimize accesses to the real dom.
+
+The library installs the necessary event listeners on the corresponding dom
+elements and on all event targets which are needed to get the required
+notifications.
+
+Each fired event of interest generates an object of the message type and is fed
+together with the state to the user supplied update function to generate an new
+state and an optional command.
+
+After receiving a new state and a command from the user supplied update function
+the library uses the user supplied subscription function to update event
+listeners (if necessary) and executes the command which might produce new
+messages.
+
+The new messages are dispatched to the update function on the next tick of the
+javascript event loop to avoid long blockings of the event loop.
+
+
+
+
+
+
+
+
+{{!page-doc} Up} {{!page-doc_getting_started} Getting Started}

@@ -191,7 +191,7 @@ sig
         Example:
         {[
             let* a = decoder1 in
-            decoder1 a
+            decoder2 a
         ]}
 
         First decode the javascript value with decoder [decoder1]. In case of
@@ -302,7 +302,7 @@ sig
         Examples:
         {[
             (option int) Value.null         ~>      Some None
-            (option int) (Value.int 6)      ~>      Some (Some 5)
+            (option int) (Value.int 5)      ~>      Some (Some 5)
             (option int) (Value.string "a") ~>      None
         ]}
     *)

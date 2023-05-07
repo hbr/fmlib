@@ -257,11 +257,18 @@ sig
 
 
     val create_element:   string -> t -> Element.t
-    (** [create_element tag] Create a new element with [tag]. *)
+    (** [create_element tag doc] Create a new element with [tag]. *)
 
     val create_text_node: string -> t -> Node.t
-    (** [create_text_node text] Create a new text node with content [text]. *)
+    (** [create_text_node text doc] Create a new text node with content [text]. *)
 
+
+    val create_element_ns: string -> string -> t -> Element.t
+    (** [create_element_ns namespace name doc]
+
+        Like [create_element], but creates the element within a namespace, e.g.
+        "http://www.w3.org/2000/svg".
+     *)
 
     val create_document_fragment: t -> Node.t
     (** Create a new document fragment.

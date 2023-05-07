@@ -8,9 +8,10 @@
 (documentation
   (mld_files
     index
-    browser
-    browser_overview
-    browser_getting_started
+    doc
+    doc_overview
+    doc_getting_started
+    doc_event_handler
   )
   (package fmlib_browser)
 )

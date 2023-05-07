@@ -1,13 +1,77 @@
 (executable
   (name webapp)
+  (modules webapp)
   (modes js)
   (libraries fmlib_browser)
 )
-
 
 (rule
     (targets webapp.js)
     (deps    webapp.bc.js)
     (mode   (promote (until-clean)))
     (action (copy %{deps} %{targets}))
+)
+
+
+
+
+(executable
+  (name temperature)
+  (modules temperature)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets temperature.js) (deps temperature.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy temperature.bc.js temperature.js))
+)
+
+
+
+
+(executable
+  (name timer)
+  (modules timer)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets timer.js) (deps timer.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy timer.bc.js timer.js))
+)
+
+
+
+
+(executable
+  (name flight)
+  (modules flight)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets flight.js) (deps flight.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy flight.bc.js flight.js))
+)
+
+
+
+
+(executable
+  (name circles)
+  (modules circles)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets circles.js) (deps circles.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy circles.bc.js circles.js))
 )

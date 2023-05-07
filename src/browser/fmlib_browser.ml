@@ -79,6 +79,17 @@ end
 
 
 
+let debug (str: string): unit =
+    let open Fmlib_js.Base.Main in
+    log_string str
+
+
+
+let debug_value (v: Value.t): unit =
+    let open Fmlib_js.Base.Main in
+    log_value v
+
+
 
 
 module Attribute =
@@ -147,7 +158,7 @@ struct
         attribute "title" value
 
     let value (value: string): 'm t =
-        attribute "value" value
+        property "value" Value.(string value)
 
     let placeholder (value: string): 'm t =
         attribute "placeholder" value
@@ -197,6 +208,9 @@ struct
     let ol attrs nodes  = node "ol" attrs nodes
     let ul attrs nodes  = node "ul" attrs nodes
     let li attrs nodes  = node "li" attrs nodes
+
+    let svg_node tag attrs nodes =
+        node_ns "http://www.w3.org/2000/svg" tag attrs nodes
 end
 
 
