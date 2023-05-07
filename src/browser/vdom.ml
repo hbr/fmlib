@@ -142,6 +142,8 @@ type ('msg, 'el) operations = {
     replace_child: 'el -> 'el -> 'el -> unit;
     remove_children: 'el -> unit;
 
+    set_text: 'el -> string -> unit;
+
     set_style:     'el -> string -> string -> unit;
     set_attribute: 'el -> string -> string -> unit;
     set_property:  'el -> string -> Value.t -> unit;
@@ -256,9 +258,14 @@ let rec update
     : ('msg, 'el) t1 * bool
     =
     match vdom, dom with
-    | (Text s1, ()), (Text s2, _) when s1 = s2 ->
+    | (Text s1, ()), (Text s2, el) ->
 
-        dom, false
+        if s1 = s2 then
+            dom, false
+        else begin
+            ops.set_text el s1;
+            (Text s1, el), false
+        end
 
     | (Node (tag1, attrs1, lst1), ()),
       (Node (tag2, attrs2, lst2), par) when tag1 = tag2 ->

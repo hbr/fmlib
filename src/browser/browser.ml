@@ -139,6 +139,10 @@ let dom_operations (dispatch: 'msg -> unit): 'msg dom_operations =
             (fun (old_child, _) (new_child, _) (par, _) ->
                  Node.replace new_child old_child par);
 
+        set_text =
+            (fun (node, _) text -> Node.set_node_value text node);
+
+
         set_style =
             (fun el key value ->
                 Style.set key value (Element.style (get_element el)));

@@ -90,6 +90,13 @@ sig
 
     val remove_children: t -> unit
     (** [remove_children parent] Remove all children from [parent]. *)
+
+
+    val node_value: t -> string
+    (** The value of the node. The text for text nodes. *)
+
+    val set_node_value: string -> t -> unit
+    (** Set the node value. *)
 end
 
 

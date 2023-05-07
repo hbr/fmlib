@@ -23,6 +23,7 @@ object
     method appendChild:  node Js.t -> unit Js.meth
     method removeChild:  node Js.t -> unit Js.meth
     method replaceChild: node Js.t -> node Js.t -> unit Js.meth
+    method nodeValue:    js_string Js.prop
 end
 
 
@@ -160,6 +161,12 @@ struct
             remove child parent;
             remove_children parent (* tail recursion, compiled to javascript
                                       loop. *)
+
+    let node_value (node: t): string =
+        Js.to_string node##.nodeValue
+
+    let set_node_value (value: string) (node: t): unit =
+        node##.nodeValue := (Js.string value)
 end
 
 
