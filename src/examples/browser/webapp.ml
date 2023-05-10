@@ -86,7 +86,6 @@ and msg =
     | Increment
     | Time of Time.t
     | Time_zone of Time.Zone.t
-    | Tick of Time.t
     | Roll
     | Die_face of string
     | Send of Value.t
@@ -109,7 +108,6 @@ and msg =
 let to_page page   = To_page page
 let time_msg time  = Time time
 let zone_msg zone  = Time_zone zone
-let tick time      = Tick time
 let die_face face  = Die_face face
 let send_msg value = Send value
 let receive_msg s  = Receive s
@@ -165,18 +163,16 @@ let digital_clock_page: page =
     let view state =
         let open Html in
         let open Attribute in
-        let str i =
-            Printf.sprintf "%02d" i
-        in
         let time tag zone time =
             div [margin "10px"; border_style "solid"; padding "5px"]
                 [ div [] [text tag]
                 ; div [] [
-                      text (Time.hour zone time |> str)
-                    ; text ":"
-                    ; text (Time.minute zone time |> str)
-                    ; text ":"
-                    ; text (Time.second zone time |> str)
+                      text (
+                          Printf.sprintf
+                              "%02d:%02d:%02d"
+                              (Time.hour   zone time)
+                              (Time.minute zone time)
+                              (Time.second zone time))
                   ]
                 ]
         in
@@ -188,9 +184,9 @@ let digital_clock_page: page =
             ; time "utc" state.time Time.Zone.utc
             ]
     and subs =
-        Subscription.every 1000 tick
+        Subscription.every 1000 time_msg
     and get_time =
-        Command.(perform Task.now |> map time_msg)
+        Command.(perform Task.now       |> map time_msg)
     and get_zone =
         Command.(perform Task.time_zone |> map zone_msg)
     in
@@ -625,10 +621,6 @@ let update (state: state): msg -> state * msg Command.t = function
 
     | Time_zone zone ->
         {state with zone},
-        Command.none
-
-    | Tick time ->
-        {state with time},
         Command.none
 
     | Roll ->

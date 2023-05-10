@@ -190,7 +190,7 @@ has the signature
     update: state -> msg -> state * msg Command.t
 ]}
 i.e. based on the current state and the current message the update function
-computes a new state and a command (which can be a set of commands as well). An
+computes a new state and a command (which can be a set of commands as well). A
 value of type [msg Command.t] represents a command which terminates with a
 message which will be dispatched to the update function after command
 completion.

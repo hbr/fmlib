@@ -24,7 +24,7 @@ In this section we write first a very simple application with a counter value
 and two buttons to decrease and increase the counter value. Here is the ocaml
 source file which implements the application.
 {[
-    (* file: webapp.ml *)
+    (* file: counter.ml *)
     open Fmlib_browser
 
     (* The type of the state is [int]. Therefore no type declaration is
@@ -70,28 +70,28 @@ The application in the file [webapp.ml] has to be compiled to javascript. This
 is done with the help of [js_of_ocaml]. The following dune file can be used:
 {v
     (executable
-      (name webapp)
+      (name counter)
       (modes js)                    ; Activate compilation to javascript
       (libraries fmlib_browser)     ; Use the library
     )
 
     (rule
-        (targets webapp.js)         ; Generate the file 'webapp.js'
-        (deps    webapp.bc.js)
+        (targets counter.js)         ; Generate the file 'counter.js'
+        (deps    counter.bc.js)
         (mode   (promote (until-clean)))
-        (action (copy %{deps} %{targets}))
+        (action (copy counter.bc.js counter.js))
     )
 v}
 
 The application is compiled via one of the commands
 {v
-    dune build ./webapp.js
+    dune build ./counter.js
 
-    dune build --profile release ./webapp.js
+    dune build --profile release ./counter.js
 v}
 
-The first one generates the file [webapp.js] with a lot of diagnostic
-information. The second one generates a much smaller file [webapp.js] with no
+The first one generates the file [counter.js] with a lot of diagnostic
+information. The second one generates a much smaller file [counter.js] with no
 diagnostic information.
 
 
@@ -108,7 +108,7 @@ Furthermore we need a html file.
     <!DOCTYPE html>
     <html>
         <head>
-            <script type="text/javascript" src="webapp.js">
+            <script type="text/javascript" src="counter.js">
             </script>
         </head>
         <body>
@@ -144,7 +144,7 @@ time has to be updated each second.
 The state of the application contains the posix time and the current time zone.
 
 {[
-    (* file: webapp.ml *)
+    (* file: clock.ml *)
 
     open Fmlib_browser
 
@@ -160,7 +160,6 @@ type contains the needed information.
 
 {[
     type msg =
-        | Tick of Time.t            (* message for each "second" tick *)
         | Time of Time.t            (* message for the current time   *)
         | Zone of Time.Zone.t       (* message for the current time zone *)
 ]}
@@ -192,8 +191,6 @@ The update function is quite straightforward.
 {[
     let update (state: state): msg -> state * msg Command.t =
     function
-        | Tick time ->
-            {state with time}, Command.none
         | Time time ->
             {state with time}, Command.none
         | Zone zone ->
@@ -207,54 +204,25 @@ We need a subscription function to get each second a notification of the new
 time.
 {[
     let subscription (_: state): msg Subscription.t =
-        Subscription.every 1000 (fun time -> Tick time)
+        Subscription.every 1000 (fun time -> Time time)
 ]}
-We need a message [Tick time] each second independently from the system state.
+We need a message [Time time] each second independently from the system state.
 The time for repeating timers is expressed in milliseconds.
 
 
-At the start of the application we need an initial state and commands to get the
-current time and the current time zone. For full blown applications there is an
-init constant with the polymorphic type
-{[
-    init: ('s * 'm Command.t) Decoder.t
-]}
-where ['s] is a type variable representing the state type and ['m] is a type
-variable representing the message type.
-
-In order to be generic the init constant
-has not just the type ['s * 'm Command.t] which is a pair of an initial state
-and an initial command. The application can be initialized from the javascript
-code with a javascript value and the init decoder (for details see
-{{!module: Fmlib_browser.Decoder} Decoder})
-has to decode the initial
-javascript value into the initial state and the initial command.
-
-In our case the init constant looks like
-{[
-    init: (state * msg Command.t) Decoder.t =
-        let get_time = (* see below *)
-        and get_zone = (* see below *)
-        in
-        Decoder.return (
-            {time = Time.zero; zone = Time.Zone.utc}
-            ,
-            Command.batch [get_time; get_zone]
-        )
-]}
-with the trivial decoder [Decode.return value] which just returns [value]
-independently of the supplied initial javascript object.
-
-The initial time and time zone are incorrect. Therefore we need commands which get
-the current time and time zone. The module
-{{!module: Fmlib_browser.Command} Command}
-is just a wrapper module which performs tasks
-({{!module: Fmlib_browser.Task} Task}).
-The needed commands are
+In order to start the application we need an initial state and an initial
+command.
 
 {[
-    let get_time = Command.perform Task.(map (fun time -> Time time) now)
-    let get_zone = Command.perform Task.(map (fun zone -> Zone zone) time_zone)
+    initial_state: state =
+        {time = Time.zero; zone = Time.Zone.utc}
+
+    initial_command: msg Command =
+        Command.batch [
+             Command.perform Task.(map (fun time -> Time time) now)
+             ;
+             Command.perform Task.(map (fun zone -> Zone zone) time_zone)
+        ]
 ]}
 
 The task [now] returns the current posix time and the task [time_zone] returns
@@ -263,54 +231,19 @@ into the update function. Therefore the results have to be mapped to messages.
 Unfortunately ocaml does not allow constructors to be used like functions,
 therefore two small anonymous function are needed to do the mapping.
 
+Initially we set the time to zero and the time zone to utc. This is evidently
+not correct. Therefore we immediately start commands which get the current
+time and the current time zone.
 
 The application is started by
 {[
     let _ =
-        application
-            "webapp"    (* name of the application on the javascript side *)
-            init
+        basic_application
+            initial_state
+            initial_command
             view
             subscription
             update
 ]}
 
-
-
-
-{1 Digital clock (html)}
-
-The application can be compiled with the same dune file as the counter example.
-The needed html file is a little bit more complicated for full blown
-applications because of the possibility to initialize application data from the
-javascript code and to pass messages between the application and the javascript
-code.
-
-{v
-    <!-- file: index.html -->
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <script type="text/javascript" src="webapp.js">
-            </script>
-            <script>
-                webapp.init ({
-                    data: null,             // no javascript initialisation needed
-                    onMessage: receive      // function to receive javascript
-                                            // values from the application
-                })
-                function receive (v) {
-                    // trivial function which just echoes back the value
-                    webapp.post (v)
-                }
-            </script>
-        </head>
-        <body>
-        </body>
-    </html>
-v}
-
-
-{{!page-doc_overview} Overview}
-{{!page-doc} Up}
-{{!page-doc_event_handler} Event Handler}
+The corresponding dune and html files are the same as for the counter example.
