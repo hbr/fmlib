@@ -51,6 +51,14 @@ struct
                 handlers = Dictionary.empty;
             }
             lst
+
+    let map (f: 'a -> 'b) (attrs: 'a t): 'b t =
+        {attrs with
+         handlers =
+             Dictionary.map
+                 (List.map (Handler.Virtual.map f))
+                 attrs.handlers
+        }
 end
 
 
@@ -120,6 +128,39 @@ let keyed
     Keyed (tag, Attributes.of_list attrs, Dictionary.of_list lst), ()
 
 
+let rec map (f: 'a -> 'b) ((vdom, ()): ('a, unit) t1): ('b, unit) t1 =
+    match vdom with
+    | Text _ as nd ->
+        nd, ()
+
+    | Node (tag, attrs, children) ->
+        Node (
+            tag,
+            Attributes.map f attrs,
+            List.map
+                (map f)
+                children
+        ),
+        ()
+
+    | Node_ns (ns, tag, attrs, children) ->
+        Node_ns (
+            ns,
+            tag,
+            Attributes.map f attrs,
+            List.map
+                (map f)
+                children
+        ),
+        ()
+
+    | Keyed (tag, attrs, children) ->
+        Keyed (
+            tag,
+            Attributes.map f attrs,
+            Dictionary.map (map f) children
+        ),
+        ()
 
 
 (*

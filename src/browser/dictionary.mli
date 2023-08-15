@@ -8,6 +8,8 @@ sig
 
     val empty: 'a t
 
+    val map: ('a -> 'b) -> 'a t -> 'b t
+
     val find_opt: key -> 'a t -> 'a option
 
     val add: key -> 'a -> 'a t -> 'a t

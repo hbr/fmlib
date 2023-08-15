@@ -8,6 +8,8 @@ sig
 
     val empty: 'a t
 
+    val map: ('a -> 'b) -> 'a t -> 'b t
+
     val find_opt: key -> 'a t -> 'a option
 
     val add: key -> 'a -> 'a t -> 'a t
@@ -39,10 +41,19 @@ struct
         map: int Map.t;
     }
 
+
     let empty: 'a t = {
         arr = [||];
         map = Map.empty;
     }
+
+
+    let map (f: 'a -> 'b) (d: 'a t): 'b t =
+        {
+            d with
+            arr = Array.map (fun (key, a) -> (key, f a)) d.arr
+        }
+
 
 
     let find_opt (key: Key.t) (d: 'a t): 'a option =

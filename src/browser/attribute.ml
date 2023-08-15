@@ -26,3 +26,13 @@ let handler
     : 'a t
     =
     Handler (key, (stop, prevent, decode))
+
+
+let map (f: 'a -> 'b): 'a t -> 'b t = function
+    | Style _
+    | Property _
+    | Attribute _ as attr ->
+        attr
+
+    | Handler (key, handler)  ->
+        Handler (key, Handler.Virtual.map f handler)

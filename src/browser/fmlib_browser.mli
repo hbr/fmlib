@@ -537,6 +537,12 @@ sig
      *)
 
 
+    val map: ('a -> 'b) -> 'a t -> 'b t
+    (** [map f a] Map an attribute creating messages of type ['a] to an
+        attribute creating messages of type ['b].
+    *)
+
+
     (** {1 Handler} *)
 
     val on: string -> 'msg Decoder.t -> 'msg t
@@ -747,6 +753,15 @@ sig
         Create an svg element with a tagname, a list of attributes and a list
         of children. An svg element is a node in the namespace
         "http://www.w3.org/2000/svg".
+    *)
+
+
+
+    val map: ('a -> 'b) -> 'a t -> 'b t
+    (** [map f vdom]
+
+        Map a virtual dom [vdom] creating messages of type ['a] to a virtual dom
+        creating messages of type ['b].
     *)
 
 
