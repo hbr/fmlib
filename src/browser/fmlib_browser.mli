@@ -124,6 +124,13 @@ sig
     (** [1.1.1970] in utc. *)
 
 
+
+    val of_float: float -> t
+
+    val to_float: t -> float
+
+
+
     (** In order to get a year, month, ... you need the utc time and the time
         zone you are in. *)
 
@@ -1123,6 +1130,14 @@ sig
     (** [every millis f] Subscribe to an event which is fired every [millis]
         milliseconds. Use [f] to map the posix time into a message for the
         update function. *)
+
+
+    val on_animation: (Time.t -> 'm) -> 'm t
+    (** [on_animation f]
+
+        Subscribe to the [requestAnimationFrame] event. The callback gets the
+        posix time at the event.
+    *)
 
 
     (** {1 Keyboard events} *)

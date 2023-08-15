@@ -21,6 +21,18 @@ type t = Date.t
 let zero: t =
     Date.of_value (0.0)
 
+
+
+let of_float (v: float): t =
+    Date.of_value v
+
+
+
+let to_float (t: t): float =
+    Date.value t
+
+
+
 let adapt (time: t) (zone: Zone.t): t =
     Date.(add (60000. *. float_of_int (zone_offset time - zone)) time)
         (* more westward is not yet that late *)

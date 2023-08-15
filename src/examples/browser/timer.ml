@@ -4,14 +4,15 @@ open Fmlib_browser
 
 type state = {
     elapsed: float;
+    start:   float;
     duration: float;
 }
 
 
 type msg =
-    | Tick
+    | Animate  of float
     | Duration of float
-    | Reset
+    | Restart
 
 let duration_value (str: string): msg =
     (* Convert floating point string value to the [Duration] message with
@@ -24,7 +25,7 @@ let duration_value (str: string): msg =
 
 
 let init: state =
-    {elapsed = 0.0; duration = 5.0}
+    {elapsed = 0.0; start = 0.0; duration = 2.0}
 
 
 
@@ -32,7 +33,8 @@ let view (state: state): msg Html.t =
     let open Html in
     let open Attribute in
     let open Printf in
-    let elapsed_string  = sprintf "%.1f" state.elapsed
+    let elapsed_string  = sprintf "%.3f" state.elapsed
+    and elapsed_string2 = sprintf "%.1f" state.elapsed
     and duration_string = sprintf "%.1f" state.duration
     in
     let elapsed =
@@ -41,10 +43,10 @@ let view (state: state): msg Html.t =
           ; node
                 "progress"
                 [ attribute "value" elapsed_string
-                ; attribute "max" duration_string
+                ; attribute "max"   duration_string
                 ]
                 []
-          ; text elapsed_string
+          ; text elapsed_string2
           ; text "s"
         ]
     and duration =
@@ -64,13 +66,13 @@ let view (state: state): msg Html.t =
     in
     div [] [ h2 [] [text "Timer"]
            ; p [] [text
-                   {|A timer runs for a duration. A click on the reset button
+                   {|A timer runs for a duration. A click on the restart button
                      restarts the timer. A change of the duration has an
                      immediate effect.
              |}]
            ; p [] [elapsed]
            ; p [] [duration]
-           ; p [] [button [on_click Reset] [text "Reset"]]
+           ; p [] [button [on_click Restart] [text "Restart"]]
            ]
 
 
@@ -79,7 +81,7 @@ let subs (state: state): msg Subscription.t =
     if state.duration <= state.elapsed then
         Subscription.none
     else
-        Subscription.every 100 (fun _ -> Tick)
+        Subscription.on_animation (fun ms -> Animate (Time.to_float ms))
 
 
 
@@ -88,12 +90,17 @@ let update (state: state): msg -> state =
     function
     | Duration duration ->
         {state with duration}
-    | Tick ->
-        {state with
-         elapsed =
-             min state.duration (state.elapsed +. 0.1)}
-    | Reset ->
-        {state with elapsed = 0.0}
+
+    | Animate ms ->
+        if state.start = 0.0 then
+            {state with start = ms}
+        else
+            {state with
+             elapsed =
+                 min state.duration ((ms -. state.start) /. 1000.0)
+            }
+    | Restart ->
+        {state with start = 0.0; elapsed = 0.0}
 
 
 let _ =

@@ -4,6 +4,7 @@ type 'm t =
     | None
     | Window of string * 'm Handler.Virtual.t
     | Interval_timer  of int * (Time.t -> 'm)
+    | Animation of (Time.t -> 'm)
     | Message of 'm Base.Decode.t
     | Url_request of (Url.t -> 'm)
     | Batch  of 'm t list
@@ -29,6 +30,11 @@ let every (ms: int) (callback: Time.t -> 'm): 'm t =
     Interval_timer (ms, callback)
 
 
+let on_animation (callback: Time.t -> 'm): 'm t =
+    Animation callback
+
+
+
 let on_message (decode: 'm Base.Decode.t): 'm t =
     Message decode
 
@@ -52,6 +58,9 @@ let map (f: 'a -> 'b) (sub:'a t): 'b t =
 
         | Interval_timer (millis, g) ->
             Interval_timer (millis, fun time -> f (g time))
+
+        | Animation g ->
+            Animation (fun time -> f (g time))
 
         | Message decode ->
             Message Base.Decode.(map f decode)

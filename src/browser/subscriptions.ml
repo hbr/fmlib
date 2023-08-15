@@ -16,6 +16,8 @@ struct
 
         timers: (Time.t -> 'm) list Intionary.t;
 
+        animation: (Time.t -> 'm) option;
+
         message: 'm Base.Decode.t option;
 
         url_request: (Url.t -> 'm) option
@@ -25,6 +27,7 @@ struct
     let empty: 'm t = {
         window      = Dictionary.empty;
         timers      = Intionary.empty;
+        animation   = None;
         message     = None;
         url_request = None;
     }
@@ -66,6 +69,12 @@ struct
                                  callback :: lst
                          )
                          subs.timers}
+
+
+            | Animation callback ->
+                {subs with
+                 animation = Some callback;
+                }
 
             | Message decode ->
                 {subs with

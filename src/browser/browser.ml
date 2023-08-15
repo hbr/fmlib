@@ -347,8 +347,20 @@ let on_next_animation (f: float -> unit): unit =
 
 
 
+
 let rec animate (data: ('state, 'msg) data): float -> unit =
-    fun _ ->
+    fun time ->
+    begin
+        match data.subs with
+        | None ->
+            ()
+        | Some subs ->
+            match subs.subs.animation with
+            | None ->
+                ()
+            | Some callback ->
+                dispatch data (callback (Time.of_float time))
+    end;
     update_dom data;
     assert (not data.dirty);
     on_next_animation (animate data)
