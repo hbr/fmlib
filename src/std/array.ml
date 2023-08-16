@@ -69,9 +69,13 @@ let replace (i: int) (x: 'a) (xs: 'a array): 'a array =
     (* 0 1 ... i ... (len-1)
                ^ replace
     *)
-    let arr = copy xs in
-    set arr i x;
-    arr
+    if get xs i == x then
+        xs
+    else begin
+        let arr = copy xs in
+        set arr i x;
+        arr
+    end
 
 
 
