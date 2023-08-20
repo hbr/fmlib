@@ -228,11 +228,18 @@ struct
 
 
 
-    let add_in_leaf (key: Key.t) (value: 'a) (pairs: 'a pairs): 'a insert =
+    let add_in_leaf
+            (key: Key.t) (value: 'a) (pairs: 'a pairs) (node: 'a t)
+        : 'a insert
+        =
         let len = Array.length pairs in
         let i, exact = bsearch key pairs in
         if exact then
-            Normal_insert (Leaf (Array.replace i (key, value) pairs))
+
+            if value == snd pairs.(i) then
+                Normal_insert node
+            else
+                Normal_insert (Leaf (Array.replace i (key, value) pairs))
 
         else if len < max_keys then
             (* Leaf is not full. *)
@@ -367,8 +374,8 @@ struct
 
     let rec add_aux (key: Key.t) (value: 'a) (map: 'a t): 'a insert =
         match map with
-        | Leaf pairs ->
-            add_in_leaf key value pairs
+        | Leaf pairs as node ->
+            add_in_leaf key value pairs node
 
         | Node (pairs, children) ->
             let i, exact = bsearch key pairs in
@@ -680,10 +687,12 @@ struct
         : 'a update
         =
         match map with
-        | Leaf pairs ->
+        | Leaf pairs as node ->
             let i, exact = bsearch key pairs in
             if exact then
-                match f (Some (snd pairs.(i))) with
+                let v_old = snd pairs.(i)
+                in
+                match f (Some v_old) with
                 | None ->
                     let pairs = Array.remove i pairs
                     and pair  = pairs.(i)
@@ -693,13 +702,19 @@ struct
                         pair;
                         underflow}
                 | Some value ->
-                    Insert (Normal_insert (Leaf (Array.replace i (key,value) pairs)))
+                    if value == v_old then
+                        Insert (Normal_insert node)
+                    else
+                        Insert (
+                            Normal_insert
+                                (Leaf (Array.replace i (key,value) pairs))
+                        )
             else begin
                 match f None with
                 | None ->
                     Insert (Normal_insert map)
                 | Some value ->
-                    Insert (add_in_leaf key value pairs)
+                    Insert (add_in_leaf key value pairs node)
             end
 
         | Node (pairs, children) ->
