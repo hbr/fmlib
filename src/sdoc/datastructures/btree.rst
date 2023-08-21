@@ -217,6 +217,7 @@ The search algorithm can be implemented by a straightforward recursive function
                 None
 
         | Node (pairs, children) ->
+            let i, exact = bsearch key pairs in
             if exact then
                 Some (snd pairs.(i))
             else
