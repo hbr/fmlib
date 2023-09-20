@@ -1,7 +1,11 @@
 (** A parser which works with two components: A lexer which splits up the input
     into a sequence of tokens and parser which parses the tokens.
 
-
+    The parser needs two components, a lexer and a parser. The lexer works on
+    streams of characters and produces tokens of type
+    [Position.range * Token.t]. The parser consumes tokens of type
+    [Position.range * Token.t] and produces the parsed constructs in case of
+    success.
 *)
 
 
@@ -11,8 +15,8 @@ module type ANY = Fmlib_std.Interfaces.ANY
 (** Generate the parser with a lexer and a token parser.
 
     The generated parser parses a stream of characters. The lexer is used to
-    convert the stream of characters into a stream of tokens which are fed into
-    the token parser.
+    convert the stream of characters into a stream of tokens of type
+    [Position.range * Token.t] which are fed into the token parser.
 *)
 module Make
         (State: ANY)

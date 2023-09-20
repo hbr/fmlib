@@ -83,7 +83,7 @@ v}
 {1 Syntax Errors}
 
 The module
-{{!module-Fmlib_parse.Character.Make.Error_reporter} [Error_reporter]}
+{{!module-Fmlib_parse.Error_reporter} [Error_reporter]}
 makes the generation of error messages easy.
 
 Let's assume that we have a failed parser [p] which has failed because of a

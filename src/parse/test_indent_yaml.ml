@@ -199,6 +199,7 @@ module Pretty = Fmlib_pretty.Print
 
 let write_errors (source: string) (p: Parser.t): unit =
     let open Parser in
+    let module Error_reporter = Error_reporter.Make (Parser) in
     let open Error_reporter
     in
     assert (has_result p);
