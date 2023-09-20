@@ -1,3 +1,8 @@
+(* This is an example of a parser recognizing a simplified json grammar by
+ * separating the lexer and the parser.
+ *)
+
+
 module Token =
 struct
     type tp =
@@ -97,19 +102,6 @@ struct
 
 
 
-    (* Lexeme
-     * ======
-     *
-     * A lexeme is a token preceeded by arbitary whitespace.
-     *)
-
-    let lexeme (p: 'a t): 'a t =
-        let* _ = whitespace in
-        p
-
-
-
-
 
 
     (* Specific tokens
@@ -172,32 +164,32 @@ struct
 
 
 
-    (* The token representing the end of input
-     * =======================================
-     *)
-
-    let end_token: Token.t t =
-        expect_end "end of input" (Token.End, "")
-
-
-
 
 
     (* Combinator recognizing an arbitary token
      * ========================================
      *
-     * Preceeding whitspace is stripped off and the token is equipped with its
+     * Preceeding whitespace is stripped off and the token is equipped with its
      * start position and its end position.
      *)
 
     let token: Token_plus.t t =
-        number </> string </> bool
-        </> lbrace </> rbrace
-        </> lbrack </> rbrack
-        </> comma  </> colon
-        </> end_token
-        |> located
-        |> lexeme
+        lexer
+            whitespace
+            (Token.End, "")
+            (
+                (* None of the tokens needs any backtracking, because all can be
+                 * recognized by looking at the first character. *)
+                number
+                </> string
+                </> bool
+                </> lbrace
+                </> rbrace
+                </> lbrack
+                </> rbrack
+                </> comma
+                </> colon
+            )
 
 
 
@@ -212,25 +204,15 @@ struct
     struct
         include CP.Parser
 
-        let make (pos: Position.t): t =
-            (* Make the lexer starting at [pos]. *)
-            make_parser pos () token
-
-
         let init: t =
             (* Lexer starting at the start of the input. *)
-            make Position.start
+            make_partial () token
 
         let restart (lex: t): t =
             (* Restart the lexer at the current position and replay the not yet
              * consumed input on the restarted parser.
              *)
-            assert (has_succeeded lex);
-            fold_lookahead
-                (make (position lex))
-                put
-                put_end
-                lex
+            restart_partial token lex
     end
 end
 

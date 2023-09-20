@@ -117,11 +117,24 @@ sig
     *)
 
 
-    val make_parser: State.t -> Final.t t -> Parser.t
-    (** [make_parser state p].
+    val make_partial: State.t -> Final.t t -> Parser.t
+    (** [make_partial state c].
 
         Makes a parser which starts in state [state] and parses a construct
-        defined by the combinator [p]. The parser can succeed, even if no end
+        defined by the combinator [c]. The parser can succeed, even if no end
         token is pushed to the parser.
+    *)
+
+
+    val restart_partial: Final.t t -> Parser.t -> Parser.t
+    (** [restart_partial c p]
+
+        Restart the partial parser [p] by using the combinator [c] to recognize
+        the next part of the input stream. The restarted parser starts with the
+        state of [p].
+
+        Preconditions:
+        - [has_succeeded p]
+        - [not (has_consumed_end p)]
     *)
 end

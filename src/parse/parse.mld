@@ -14,3 +14,5 @@
 - {{!page-parse_recursion} Recursion in Combinators}
 
 - {{!page-parse_indentation} Indentation Sensitivity}
+
+- {{!page-parse_lex} Separation of Parsing and Lexing}

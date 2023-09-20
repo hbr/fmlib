@@ -179,10 +179,6 @@ struct
 
 
 
-    type expect = string
-    type state  = User.t
-    type semantic = Semantic.t
-
 
     let expect_error (e: string) (_: State.t): Expect.t =
         e, None
@@ -193,7 +189,7 @@ struct
         Basic.( unexpected (e, None) )
 
 
-    let (<?>) (p: 'a t) (e: expect): 'a t =
+    let (<?>) (p: 'a t) (e: string): 'a t =
         Basic.(
             update_expectations
                 (fun state -> function
@@ -492,7 +488,7 @@ struct
         parse 0
 
 
-    let one_of_chars (str:string) (e: expect): char t =
+    let one_of_chars (str:string) (e: string): char t =
         let p c = String.has (fun d -> c = d)  0 str
         in
         charp p e
@@ -539,6 +535,32 @@ struct
         return a
 
 
+
+
+
+
+
+    (* Lexer support *)
+
+    let lexer
+            (ws:        'a t)
+            (end_token: 'tok)
+            (tok:      'tok t)
+        : (Position.range * 'tok) t
+        =
+        let* _ = ws in
+        located (
+            tok
+            </>
+            expect_end "end of input" end_token
+        )
+
+
+
+
+
+
+
     (* Make the final parser *)
 
     let make (user: User.t) (p: Final.t t): Parser.t =
@@ -548,13 +570,12 @@ struct
             (expect_error "end of input")
 
 
-    let make_parser
-            (pos: Position.t)
+    let make_partial
             (user: User.t)
             (p: Final.t t)
         : Parser.t
         =
-        Basic.make_parser
-            (State.make pos user)
+        Basic.make_partial
+            (State.make Position.start user)
             p
 end

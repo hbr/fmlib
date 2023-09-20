@@ -1,0 +1,113 @@
+
+{0 Separation of Parsing and Lexing}
+
+
+{{!page-parse} Up}
+
+
+{1 Overview}
+
+In many cases it is appropriate to separate parsing and lexing. A lexer breaks
+up the input stream into tokens like identifiers, parentheses, numbers, strings
+etc. Furthermore usually the lexer strips off whitespace. The parser handles the
+grammar of the language by using the tokens as primitives.
+
+This approach has several advantages:
+
+- For a real language the complexity of parsing a source file is separated into
+  two managable sized parts.
+
+- Handling whitespace in the parser makes the parser unnecessarily complex.
+
+- As soon as a language has identifiers and keywords where the keywords look
+  syntactically like identifiers, a parser handling characters directly requires
+  a lot of backtracking which makes the parser inefficient. A lexer can
+  recognize identifiers and after successful recognition of an identifier it
+  checks by using an efficient lookup table if the identifier is a keyword.
+
+However many combinator libraries do not offer the possibility to split up the
+parsing task into a lexer and a parser. `Fmlib_parse` supports the splitting up
+of lexing and parsing with a lot of functionality.
+
+
+
+{1 How to write a lexer}
+
+A lexer analyzes the input stream consisting of characters in the following way:
+
+{v
+    WS Token WS Token WS .... WS EOF
+v}
+
+where [WS] is a possibly empty sequence of whitespace like blanks, tabs,
+newlines, comments etc. [Token] is a lexically correct token. [EOF] represents
+the end of the input stream.
+
+Since the lexer has to succeed immediately after recognizing a syntactically correct
+token it is not a normal parser which succeeds only after having seen the end of
+input. Therefore a lexer is a partial parser. After having successfully
+recognized a token the lexer must be restartable to recognize the next token or
+to recognize the end of input.
+
+The easiest way to write a lexer with the help of [Fmlib_parse] is to use
+{!module:Fmlib_parse.Character} by doing the following steps:
+
+- Define a module [Token] and [Token_plus] of the following form:
+  {[
+    module Token = struct
+        type t =
+            T1 of ...
+            T2 of ...
+            ...
+            End (* end of input *)
+        ...
+    end
+
+    module Token_plus = struct
+        type t = Position.range * Token
+    end
+  ]}
+
+- Write a combinator [whitespace] which recogizes zero or more occurrences of
+  whitespace. The definition of whitespace depends on the language.
+
+- Write a combinator for each token which recognizes the token e.g. [tok1],
+  [tok2], ...
+
+- Use {!Fmlib_parse.Character.Make.lexer} with the definition
+  {[
+    let token: Token_plus.t t =
+        lexer
+            whitespace
+            Token.End
+            (
+                tok1 </> tok2 </> tok3 </> ...
+            )
+  ]}
+  to have a combinator which recognizes tokens and strips off whitespace.
+
+- Use {!Fmlib_parse.Character.Make.make_partial} and
+  {!Fmlib_parse.Character.Make.restart_partial} to make the lexer satisfying the
+  interface {!module-type:Fmlib_parse.Interfaces.LEXER}
+
+Look into {{:https://github.com/hbr/fmlib/blob/master/src/parse/test_json.ml}}
+to see an example with a simple json parser on how it works.
+
+
+
+
+{1 How to write a parser}
+
+Write the parser using {!Fmlib_parse.Token_parser} to write the parser which
+uses [Token.t] as the primitive tokens. Look into the same example as above.
+
+
+{1 How to wire the lexer and the parser}
+
+Use {!Fmlib_parse.Parse_with_lexer} to generate the final parser which scans a
+stream of characters breaks the input up into tokens by using the lexer and
+analyzes the grammar by using the token parser. See same example as above.
+
+
+
+{{!page-parse} Up}

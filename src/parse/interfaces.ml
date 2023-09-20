@@ -48,7 +48,7 @@ sig
         with type token = char
          and type expect = string * Indent.expectation option
 
-    val first_lookahead_token: t -> token option
+    val has_consumed_end: t -> bool
     val position: t -> Position.t
 
     val restart: t -> t

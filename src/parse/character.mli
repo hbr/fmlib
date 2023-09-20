@@ -162,9 +162,9 @@ sig
 
     include Interfaces.COMBINATOR
         with
-            type state = State.t
-            and type expect = string
-            and type semantic = Semantic.t
+            type state := State.t
+            and type expect := string
+            and type semantic := Semantic.t
     (** @inline *)
 
 
@@ -307,7 +307,7 @@ sig
     (** [char c] Parse the character [c]. *)
 
 
-    val one_of_chars: string -> expect -> char t
+    val one_of_chars: string -> string -> char t
     (** [one_of_chars str expect]
 
         Parse one of the characters in the string [str]. In case of failure,
@@ -383,21 +383,77 @@ sig
 
 
 
+
+
+
+    (** {1 Lexer support} *)
+
+    val lexer: 'a t -> 'tok ->'tok t -> (Position.range * 'tok) t
+    (** [lexer whitespace end_token tok]
+
+        A lexer combinator.
+
+        - The [whitespace] combinator recognizes a possibly empty sequence of
+        whitespace (usually blanks, tabs, newlines, comments, ...).
+
+        - [end_token] is a token which the lexer returns when it has successfully
+        consumed the end of input.
+
+        - [tok] is a combinator recognizing tokens
+        (usually [tok1 </> tok2 </> ... </> tokn]).
+
+        The lexer combinator recognizes tokens in an input stream of the form
+        {v
+           WS Token WS Token .... WS EOF
+        v}
+
+        Note: If a combinator fails to recognize a token and having
+        consumed some input, then the subsequent combinators are not used
+        anymore as alternatives. Therefore if there are tokens which can begin
+        with the same prefix, then it is necessary to make the recognition of
+        the common prefixes backtrackable in all but the last combinator
+        recognizing a token with the same prefix. The same applies to whitespace
+        if part of the whitespace can begin like a token.
+
+        Examples:
+        - comment: "// ...."
+        - division operator: "/"
+
+        In this case the recognition at least of the first slash of the comment
+        has to be backtrackable.
+    *)
+
+
+
     (** {1 Make the Final Parser} *)
 
     val make: State.t -> Final.t t -> Parser.t
-    (** [make state p]
+    (** [make state c]
 
         Make a parser which starts in state [state] and parses a construct
-        defined by the combinator [p]. The token stream must be ended by
+        defined by the combinator [c]. The token stream must be ended by
         [put_end], otherwise the parse won't succeed.
     *)
 
-    val make_parser: Position.t -> State.t -> Final.t t -> Parser.t
-    (** [make_parser pos state p]
+    val make_partial: State.t -> Final.t t -> Parser.t
+    (** [make_partial state c]
 
-        Make a parser which starts at position [pos] and state [state] and
-        parses a construct defined by the combinator [p]. The parser can succeed
-        even if no end token is pushed into the parser.
+        Make parser which analyzes a part of the input stream.
+        The parser starts in state [state] and
+        parses a construct defined by the combinator [c]. The parser can succeed
+        even if no end token has been pushed into the parser.
+    *)
+
+
+    val restart_partial: Final.t t -> Parser.t -> Parser.t
+    (** [restart_partial c p]
+
+        Restart the partial parser [p] by using the combinator [c] to recognize
+        the next part of the input stream. The restarted parser starts with the
+        state and the file position of [p].
+
+        Preconditions:
+        - [has_succeeded p]
+        - [not (has_consumed_end p)]
     *)
 end

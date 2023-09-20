@@ -70,6 +70,12 @@ sig
 end
 
 
+
+
+
+
+
+
 (** A normal parser parses a stream of tokens like a {!MINIMAL_PARSER}. In
     addition it can have a state and semantic errors.
 *)
@@ -99,6 +105,14 @@ sig
     val state: t -> state
     (** The state of the parser. *)
 end
+
+
+
+
+
+
+
+
 
 
 (** A full parser parses a stream of tokens like a {!MINIMAL_PARSER}. In
@@ -136,9 +150,54 @@ sig
 end
 
 
-(** A lexer is a restartable parser where the tokens are characters. *)
+
+
+
+
+
+
+
+(** A lexer is a restartable parser where the tokens are characters.
+ *)
 module type LEXER =
 sig
+    (**
+
+        A lexer analyses a stream of characters and groups the stream of
+        characters into tokens. It usually strips off whitespace. I.e. a lexer
+        expects a stream of characters of the form
+        {v
+            WS Token WS Token ... WS Token WS EOS
+         v}
+        [WS] is a possibly empty sequence of whitespace characters like
+        blanks, tabs and newlines and comments. [Token] represents a legal
+        token. [EOS] represents the end of the stream.
+
+
+        A lexer is in one of three states:
+
+        - {!needs_more}: The lexer needs more characters from the stream of
+        characters in order to decide the next correct token or the end of
+        input. The lexer is ready to receive more characters via {!put} or to
+        receive the end of input via {!put_end}.
+
+       - {!has_succeeded}: The lexer has found a correct token or detected the
+       end of input. In this state (except at the end of inpute) the lexer can
+       be restarted to find the next token.
+
+       - {!has_failed_syntax}: The lexer has detected a character (or the end of
+       intput) which cannot be part of a legal token.
+
+       In the state {!has_succeeded} the lexer signals via {!has_consumed_end}
+       that the end of input has been reached.
+
+       A module conforming to the module type [LEXER] can be used in the module
+       {!module:Parse_with_lexer} to create a two stage parser where the lexer
+       handles tokens and a combinator parser handles the higher level
+       constructs.
+
+     *)
+
     include MINIMAL_PARSER
         with type token = char
          and type expect = string * Indent.expectation option
@@ -146,9 +205,8 @@ sig
 
     (** {1 Lookahead} *)
 
-    val first_lookahead_token: t -> token option
-    (** The first lookahead character or [None] if there is no character in the
-        lookahead buffer. *)
+    val has_consumed_end: t -> bool
+    (** Has the lexer consumed the end of input? *)
 
 
     (** {1 Position} *)
@@ -167,10 +225,16 @@ sig
     *)
 
     val restart: t -> t
-    (** Next lexer, ready to recognize the next token of the input stream.
+    (** [restart p]
+
+        Next lexer, ready to recognize the next token of the input stream.
 
         All lookaheads from the previous lexer are pushed onto the new lexer
         which starts a the position where the previous lexer finished.
+
+        Preconditions:
+        - [has_succeeded p]
+        - [not (has_consumed_end p)]
     *)
 end
 

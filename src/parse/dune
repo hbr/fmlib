@@ -16,6 +16,7 @@
       parse_recursion
       parse_error
       parse_format
-      parse_indentation)
+      parse_indentation
+      parse_lex)
     (package fmlib_parse)
 )

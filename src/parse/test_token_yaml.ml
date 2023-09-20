@@ -116,11 +116,6 @@ struct
         |> detach
 
 
-    let lexeme (p: 'a t): 'a t =
-        let* a = p in
-        let* _ = whitespace in
-        return a
-
     let colon: Token.t t =
         let* _ = char ':' in
         return Token.Colon
@@ -128,6 +123,7 @@ struct
     let dash: Token.t t =
         let* _ = char '-' in
         return Token.Dash
+
 
     let raw_string: Token.t t =
         let expect  = "chars not containing colon and newline" in
@@ -137,46 +133,40 @@ struct
         (word first inner expect)
         |> map (fun str -> String.trim str |> Token.string)
 
+
     let quoted_string: Token.t t =
         let expect = "chars except newline and dquote" in
         let ok c = c <> '\n' && c <> '"'
         in
         let* _   = char '"' in
         let* str = (word ok ok expect) </> return "" in
-        let* _   = char '"'|> lexeme
+        let* _   = char '"'
         in
         return (Token.string str)
 
 
-    let end_token: Token.t t =
-        expect_end "end of input" Token.End
-
 
     let token: Token_plus.t t =
-        let* _ = whitespace in
-        let* tok =
-            colon </> dash </> raw_string </> quoted_string </> end_token
-            |> located
-        in
-        return tok
+        lexer
+            whitespace
+            Token.End
+            (
+                colon
+                </> dash
+                </> raw_string
+                </> quoted_string
+            )
+
 
     module Parser =
     struct
         include CP.Parser
 
-        let make (pos: Position.t): t =
-            make_parser pos () token
-
         let init: t =
-            make Position.start
+            make_partial () token
 
         let restart (lex: t): t =
-            assert (has_succeeded lex);
-            fold_lookahead
-                (make (position lex))
-                put
-                put_end
-                lex
+            restart_partial token lex
     end
 end
 
