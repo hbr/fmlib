@@ -1,7 +1,7 @@
 module Token =
 struct
     type tp =
-        | Eos
+        | End
         | String
         | Number
         | Bool
@@ -172,6 +172,17 @@ struct
 
 
 
+    (* The token representing the end of input
+     * =======================================
+     *)
+
+    let end_token: Token.t t =
+        expect_end "end of input" (Token.End, "")
+
+
+
+
+
     (* Combinator recognizing an arbitary token
      * ========================================
      *
@@ -184,6 +195,7 @@ struct
         </> lbrace </> rbrace
         </> lbrack </> rbrack
         </> comma  </> colon
+        </> end_token
         |> located
         |> lexeme
 
@@ -269,7 +281,7 @@ struct
             sprintf "%b" b
 
         | String s ->
-            let dquote = {|"|} in
+            let dquote = "\"" in
             dquote ^ s ^ dquote
 
         | List lst ->
@@ -285,7 +297,7 @@ struct
             String.concat
                 ", "
                 (List.map
-                     (fun (key, y) -> {|"|} ^ key ^ {|": |} ^ to_string y)
+                     (fun (key, y) -> "\"" ^ key ^ "\": " ^ to_string y)
                     lst
                 )
             ^
@@ -344,9 +356,6 @@ struct
         </>
         return []
 
-
-    let eos (a: 'a): 'a t =
-        step "end of input" Token.Eos (const a)
 
     let string: string t =
         step "string" Token.String Fun.id

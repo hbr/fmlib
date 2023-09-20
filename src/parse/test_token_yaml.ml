@@ -73,6 +73,7 @@ struct
         | String of string
         | Colon
         | Dash
+        | End
 
     let string str = String str
 
@@ -80,6 +81,7 @@ struct
         | String str -> "<" ^ str ^ ">"
         | Colon -> "':'"
         | Dash -> "'-'"
+        | End -> "end of input"
 end
 
 
@@ -146,12 +148,16 @@ struct
         return (Token.string str)
 
 
+    let end_token: Token.t t =
+        expect_end "end of input" Token.End
+
+
     let token: Token_plus.t t =
         let* _ = whitespace in
         let* tok =
-            colon </> dash </> raw_string </> quoted_string |> located
+            colon </> dash </> raw_string </> quoted_string </> end_token
+            |> located
         in
-        let* _ = whitespace in
         return tok
 
     module Parser =
@@ -369,12 +375,13 @@ module Pretty = Fmlib_pretty.Print
 
 let write_error (str: string) (p: PL.t): unit =
     let module Reporter = Error_reporter.Make (PL) in
-    Reporter.(
-        make_syntax p
-        |> run_on_string str
-        |> Pretty.layout 50
-        |> Pretty.write_to_channel stdout
-    )
+    if PL.has_failed_syntax p then
+        Reporter.(
+            make_syntax p
+            |> run_on_string str
+            |> Pretty.layout 50
+            |> Pretty.write_to_channel stdout
+        )
 
 
 let%test _ =
@@ -386,11 +393,15 @@ let%test _ =
         |}
     in
     let p = run_on_string str start in
+    write_error str p;
     has_succeeded p
     &&
-    (final p |> Yaml.to_json)
-    =
-    {|{"names": ["Alice", "Bob:#"], "category": "encryption"}|}
+    let res = final p |> Yaml.to_json
+    in
+    let exp =
+        {|{"names": ["Alice", "Bob:#"], "category": "encryption"}|}
+    in
+    res = exp
 
 
 

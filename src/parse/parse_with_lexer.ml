@@ -98,7 +98,9 @@ struct
 
 
     let rec check_token (p: t): t =
-        if Lex.has_succeeded p.lex then
+        if
+            Lex.(has_succeeded p.lex && not (has_consumed_end p.lex))
+        then
             check_token {
                 lex =
                     Lex.restart p.lex;
@@ -116,11 +118,13 @@ struct
         let p =
             check_token {p with lex = Lex.put_end p.lex}
         in
-        assert (not (Lex.has_succeeded p.lex));
-        match Lex.first_lookahead_token p.lex with
-        | None ->
+        assert Lex.(not (has_succeeded p.lex) || has_consumed_end p.lex);
+        if Lex.has_succeeded p.lex then
+            (* The lexer has succeeded and has consumed the end of input.
+             * Therefore it has encountered the end token.
+             *)
             {p with parse = Parse.put_end p.parse}
-        | Some _ ->
+        else
             p
 
 
