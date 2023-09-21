@@ -1,3 +1,35 @@
+Release 0.5.5
+================================================================================
+
+- `Fmlib_parse`:
+
+    - Fix: In a parser with a separate lexer a syntax error in the lexer
+      immedately before the end of input had not been reported correctly.
+
+    - More documentation on parsers with lexers.
+
+    - More functionality in the module `Character` to support writing of lexers.
+      E.g. `make_partial`, `restart_partial`, `lexer`.
+
+    - Removed duplicate module `Error_reporter`.
+
+
+- `Fmlib_browser`:
+
+    - Added subscription `on_animation`.
+
+    - Added `Html.map` and `Attribute.map`.
+
+    - Text in textnodes is now overwritten instead of creating a new node.
+
+- `Fmlib_std`:
+
+    - Improved `Array` and `Btree` to exploit physical identity. An update
+      operation where the new element is the same as the original element can be
+      ignored.
+
+
+
 Release 0.5.4
 ================================================================================
 
