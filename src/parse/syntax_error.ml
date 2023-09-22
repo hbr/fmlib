@@ -96,6 +96,13 @@ let document
         (es: (string * Indent.expectation option) list)
     : Pretty.doc
     =
+    let one_or_more: string =
+        match es with
+        | [_] ->
+            ""
+        | _ ->
+            " one of"
+    in
     let open Pretty
     in
     let ps =
@@ -104,7 +111,8 @@ let document
         |> List.concat
     in
     wrap_words
-        "I have encountered something unexpected. I was expecting one of"
+        ("I have encountered something unexpected. I was expecting"
+             ^ one_or_more)
     <+> cut <+> cut
     <+>
     (paragraphs ps |> nest 4)

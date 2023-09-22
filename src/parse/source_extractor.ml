@@ -44,7 +44,7 @@ type t = {
                                    be extracted as well *)
     number_width: int;          (* width of the line numbers *)
 
-    pos:   Position.t;
+    nline: int;                 (* the current line number *)
 
     line:  string;              (* the current line *)
 
@@ -70,9 +70,9 @@ let of_range
         range;
         extra;
         number_width;
-        pos  = Position.start;
-        line = "";
-        doc  = Pretty.empty;
+        nline = 0;
+        line  = "";
+        doc   = Pretty.empty;
     }
 
 
@@ -90,7 +90,7 @@ let of_position
 
 let needs_more (ext: t): bool =
     let _, p2 = ext.range in
-    Position.(line ext.pos <= line p2)
+    ext.nline <= Position.line p2
 
 
 
@@ -100,9 +100,9 @@ let is_in_range (p: t): bool =
      * extra lines + error range)? *)
     let open Position in
     let pos1, pos2 = p.range in
-    line pos1 <= line p.pos + p.extra
+    line pos1 <= p.nline + p.extra
     &&
-    line p.pos <= line pos2
+    p.nline <= line pos2
 
 
 
@@ -111,7 +111,7 @@ let is_start_line (p: t): bool =
      *)
     let open Position in
     let pos1, pos2 = p.range in
-    line p.pos = line pos1
+    p.nline = line pos1
     &&
     line pos1 < line pos2
 
@@ -121,9 +121,9 @@ let is_end_line (p: t): bool =
      *)
     let open Position in
     let pos1, pos2 = p.range in
-    line pos1 < line p.pos
+    line pos1 < p.nline
     &&
-    line p.pos = line pos2
+    p.nline = line pos2
 
 
 
@@ -131,7 +131,7 @@ let is_one_line (p: t): bool =
     (* Is the current line the only line of the error? *)
     let open Position in
     let pos1, pos2 = p.range in
-    line p.pos = line pos1
+    p.nline = line pos1
     &&
     line pos1 = line pos2
 
@@ -160,7 +160,7 @@ let source_line (p: t): Pretty.doc =
 
     *)
     let str =
-        Position.line p.pos + 1 |> string_of_int
+        p.nline + 1 |> string_of_int
     in
     let n = p.number_width - String.length str
     in
@@ -241,6 +241,8 @@ let one_line_marker (is_last: bool) (p: t): Pretty.doc =
        If the marker marks a nonprintable ascii character it is displayed e.g. as
 
           ^ nonprintable ascii '\xFA'
+
+       Furthermore end of input and end of line are annotated.
     *)
 
     let open Position in
@@ -282,37 +284,41 @@ let one_line_marker (is_last: bool) (p: t): Pretty.doc =
 
 
 let receive_char (is_last: bool) (c: char) (p: t): t =
-    let pos = Position.next c p.pos in
-    if c <> '\n' then
-        {
-            p with
-            pos;
-            line = p.line ^ String.make 1 c;
-        }
-    else if is_in_range p then
+    let in_range = is_in_range p
+    in
+    if c = '\n' then
         let open Pretty in
         let doc =
-            if is_start_line p then
-                start_line_marker p <+> source_line p
-            else if is_one_line p then
-                source_line p <+> one_line_marker is_last p
-            else if is_end_line p then
-                source_line p <+> end_line_marker p
+            if in_range then
+                p.doc
+                <+>
+                if is_start_line p then
+                    start_line_marker p <+> source_line p
+                else if is_one_line p then
+                    source_line p <+> one_line_marker is_last p
+                else if is_end_line p then
+                    source_line p <+> end_line_marker p
+                else
+                    source_line p
             else
-                source_line p
+                p.doc
         in
         {
             p with
-            pos;
-            line = "";
-            doc  = p.doc <+> doc;
+            nline = p.nline + 1;
+            doc
         }
-    else
+    else (* c <> '\n' *)
         {
             p with
-            pos;
-            line = "";
+            line =
+                if in_range then
+                    p.line ^ String.make 1 c
+                else
+                    p.line;
         }
+
+
 
 
 let put: char -> t -> t =

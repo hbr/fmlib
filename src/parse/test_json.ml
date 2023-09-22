@@ -77,7 +77,7 @@ struct
              * the rest has been a '*'.
              *)
             let* c =
-                charp (fun _ -> true) "any character"
+                charp (fun _ -> true) "any character in a comment"
             in
             if not star && c = '*' then
                 rest  true
