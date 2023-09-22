@@ -56,12 +56,17 @@ gh-pages-webapp:
 
 
 
+#----------------------------------------------------------------------
+# opam support
+#----------------------------------------------------------------------
 
 
 # Write 'opam' files to the opam repository
 .PHONY: opam opam_rm
 
-version     = 0.5.4
+
+version     = 0.5.6		# current release 0.5.5
+# ---------------------------------------------
 opam_repo   = ../opam-repository/packages
 dir0        = $(opam_repo)/fmlib/fmlib.$(version)
 dir_std     = $(opam_repo)/fmlib_std/fmlib_std.$(version)
@@ -70,6 +75,13 @@ dir_parse   = $(opam_repo)/fmlib_parse/fmlib_parse.$(version)
 dir_js      = $(opam_repo)/fmlib_js/fmlib_js.$(version)
 dir_browser = $(opam_repo)/fmlib_browser/fmlib_browser.$(version)
 
+
+
+# Don't forget to update the version and the 'url' file
+#                            ^^^^^^^         ^^^^^
+# In the 'url' file the version and the md5sum have to
+# be updated!!
+# -----------------------------------------------------
 opam:
 	mkdir $(dir0); \
 	cat fmlib.opam url >$(dir0)/opam; \
@@ -91,3 +103,25 @@ opam_rm:
 	rm -rf $(dir_parse); \
 	rm -rf $(dir_js);    \
 	rm -rf $(dir_browser)
+
+
+
+
+.PHONY: opam_pin_remove opam_remove
+
+opam_pin_remove:
+	opam pin remove -n fmlib;         \
+	opam pin remove -n fmlib_std;     \
+	opam pin remove -n fmlib_pretty;  \
+	opam pin remove -n fmlib_parse;   \
+	opam pin remove -n fmlib_js;      \
+	opam pin remove -n fmlib_browser
+
+
+opam_remove:
+	opam -y remove fmlib;         \
+	opam -y remove fmlib_std;     \
+	opam -y remove fmlib_pretty;  \
+	opam -y remove fmlib_parse;   \
+	opam -y remove fmlib_js;      \
+	opam -y remove fmlib_browser
