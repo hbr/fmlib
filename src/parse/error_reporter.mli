@@ -6,6 +6,61 @@
 
     For semantic errors, the module needs support from the user to convert a
     semantic error into a pretty print document.
+
+    The error reporter generates a pretty print document (details about pretty
+    print documents see {!module:Fmlib_pretty.Print}) of the form
+    {v
+
+       code snippet containing the error with markers at the error
+
+       description of the error
+
+     v}
+
+    The description of the error is in case of a syntax error a description of
+    what might have been expected at the error position and in case of a
+    semantic error whatever the user provides as an error description.
+
+    The generated error report has one of the following forms:
+
+    - Syntax error:
+      {v
+        25 |      xxxx
+        26 |
+        27 |    line with error
+                          ^
+
+        I have encountered something unexpected. I was expecting one of
+
+            - xxx
+            - yyy
+            - zzz
+            ...
+       v}
+
+    - Semantic error on one line:
+      {v
+        25 |      xxxx
+        26 |
+        27 |    line with error
+                          ^^^^^
+
+        User supplied description of the semantic error
+       v}
+
+    - Semantic error spanning several lines
+      {v
+        25 |      xxxx
+        26 |
+                          v----------
+        27 |    xxx yyy   error start
+        28 |      err err err err err
+        29 |          err err err
+        30 |       err error end zzz
+              -----------------^
+
+        User supplied description of the semantic error
+       v}
 *)
 
 

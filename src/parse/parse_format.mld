@@ -86,11 +86,19 @@ The module
 {{!module-Fmlib_parse.Error_reporter} [Error_reporter]}
 makes the generation of error messages easy.
 
-Let's assume that we have a failed parser [p] which has failed because of a
+Let's assume that we have a failed parser [p:Parser.t] which has failed because of a
 syntax error.  An error reporter can be generated from [p] by
-[Error_reporter.make_syntax p].
+{[
+    module Reporter = Error_reporter.Make (Parser)
 
-Let's call the error reporter [r]. The error reporter needs some form of the
+    let r = Reporter.make_syntax p
+}
+
+Now we have an error reporter [r] which can report the error of the parser [p].
+Obviously this is allowed only of the parser [p] is in an error state
+[not (needs_more p) && not (has_succeeded p)].
+
+The error reporter needs some form of the
 input stream to extract the relevant source snippet. If the parser has read the
 input from an input channel [ic] then we can generate the error message by
 
@@ -98,7 +106,7 @@ input from an input channel [ic] then we can generate the error message by
     seek_in ic 0;   (* Reposition the input channel to the start. *)
 
     let doc =
-        Error_reporter.run_on_channel ic r
+        Reporter.run_on_channel ic r
 ]}
 
 The generated [doc] has type {!Fmlib_pretty.Print.doc}. [doc] is a
