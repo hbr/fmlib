@@ -188,6 +188,13 @@ sig
 
         In case of failure return the syntax error with the error string
         [error].
+
+        {b CAUTION}: There is usually no need to use this combinator! This
+        combinator is needed only for partial parsers which are not based on a
+        combinator constructed with {!lexer}. A combinator constructed by
+        {!lexer} handles the end of input internally.
+
+        {b Never ever} backtrack over this combinator.
     *)
 
 
@@ -334,6 +341,9 @@ sig
         Make a parser which starts in state [state] and parses a construct
         defined by the combinator [c]. The token stream must be ended by
         [put_end], otherwise the parse won't succeed.
+
+        {b CAUTION}: [c] must not be a combinator containing [expect_end].
+        Moreover it must not have been constructed by {!lexer}.
     *)
 
     val make_partial: State.t -> Final.t t -> Parser.t

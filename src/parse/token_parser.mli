@@ -83,6 +83,8 @@ sig
     *)
 
 
+
+
     (** {1 End of Input} *)
 
     val expect_end: 'a -> 'a t
@@ -93,6 +95,12 @@ sig
         If [p] is a parser which parses some construct then [p >>= expect_end]
         succeeds if [p] succeeds and is immediately followed by the end of
         input.
+
+        {b CAUTION}: This combinator should almost never be used. In some rare
+        occasions it might be useful. But usually the [Token_parser] handles the
+        end of input internally.
+
+        {b Never ever} backtrack over this combinator.
     *)
 
 
