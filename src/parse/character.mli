@@ -206,7 +206,7 @@ sig
 
 
     val range: char -> char -> char t
-    (** [range c1 c2] Parses a charager in the range between [c1] and [c2], i.e.
+    (** [range c1 c2] Parses a character in the range between [c1] and [c2], i.e.
         a character [c] which satisfies [c1 <= c && c <= c2].*)
 
 
