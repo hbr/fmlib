@@ -16,3 +16,5 @@
 - {{!page-parse_indentation} Indentation Sensitivity}
 
 - {{!page-parse_lex} Separation of Parsing and Lexing}
+
+- {{!page-parse_op} Parsing of Operator Expressions}

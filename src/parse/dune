@@ -17,6 +17,7 @@
       parse_error
       parse_format
       parse_indentation
-      parse_lex)
+      parse_lex
+      parse_op)
     (package fmlib_parse)
 )

@@ -1,0 +1,309 @@
+
+{0 Parsing of Operator Expressions}
+
+
+{{!page-parse} Up}
+
+
+{1 Overview}
+
+Operator expressions usually have operators with precedence and associativity.
+Therefore it is quite natural to omit parentheses in many cases.
+
+{[
+  (* expression                             interpreted as           *)
+     a + b + c                              (a + b) + c
+
+     a * b + c                              (a * b) + c
+
+     a + b * c                              a + (b * c)
+
+     a ^ b ^ c                              a ^ (b ^ c)
+]}
+
+This is possible because addition ([+]) and multiplication ([*]) are left
+associative, exponentiation ([^]) is right associative, exponentiation binds
+stronger than multiplication and multiplication binds stronger than addition.
+
+In order to set the implicit paretheses correctly we have to decide if we see
+two operators [o1] and [o2] in an expression like [e o1 e1 o2 e2] if the right
+operator [o2] binds stronger than the left operator [o1].
+
+Such a boolean function [right_stronger o1 o2] can be used as well to make the
+correct decisions on associativity. E.g. [right_stronger '+' '+'] is false,
+because addition is left associative as opposed to [right_stronger '^' '^'] is
+true, because exponentiation is right associative.
+
+In the following we show how operator expressions with binary operators can be
+parsed with the help of [Fmlib_parse].
+
+For more complex operator expressions having unary operators or mixfix operators
+a similar approach (although more complex) is usually possible.
+
+
+
+
+
+{1 Prerequisites}
+
+We have the types
+
+{[
+  type exp  (* represents an expression *)
+  type op   (* represents an operator *)
+]}
+
+the functions
+
+{[
+  let right_stronger (o1: op) (o2: op): bool =
+    (* Does in an expression of the form [e1 o1 e2 o2 e3] the operator [o2] bind
+       stronger than the operator [o1]? If yes, the expression has to be parsed
+       as [e1 o1 (e2 o2 e3)]. Otherwise it has to be parsed as
+       [(e1 o1 e2) o2 e3].
+    *)
+    ...
+
+  let binary (e1: exp) (o: op) (e2: exp): exp =
+    (* construct the binary expression [e1 o e2]. *)
+    ...
+]}
+
+and the combinators
+
+{[
+  let primary (): exp t =
+    (* Parse a primary expression. Usually a number, an identifier, a function
+       call, a parenthesized expression. *)
+    ...
+
+  let operator: op t =
+    (* Parse an operator. *)
+    ...
+]}
+
+
+
+
+
+
+
+
+{1 Goal}
+
+We want to write a combinator of the form
+
+{[
+   let operator_expression (): exp t =
+     (* Parse an operator expression of the form [e o e o ... o e] where the
+        precedence and the associativity of the operators are interpreted
+        correctly. An operator expression of the form [e] is an allowed corner
+        case.
+    *)
+]}
+
+If explicitly parenthesized expressions are allowed, then we have to make
+[primary] and [operator_expression] mutually recursive
+
+{[
+
+  let rec operator_expression (): exp t =
+    ...
+
+  and primary (): exp t =
+    (
+        let* _ = left_paren in
+        let* e = operator_expression () in
+        let* _ = right_paren in
+        return e
+    )
+    </>
+    atomic ()  (* parse an atomic expression *)
+]}
+
+Note that [atomic] might internally call [operator_expression] as well e.g. in
+parsing function arguments. In that case a combinator parsing function calls has
+to be part of the mutually recursive functions. Remember that recursive calls
+have to be guarded as described in the section {{!page-parse_recursion}
+Recursion in combinators}. In the above case the guardedness is satisfied,
+because [left_paren] is guaranteed to consume input. I.e. input is consumed
+before the recursive call.
+
+
+In the following we concentrate on how to write the combinator
+[operator_expression] correctly.
+
+
+
+
+
+
+{1 Analysis of the Problem}
+
+Since operator expressions can be deeply nested (parentheses, function calls
+etc.) we try to avoid backtracking in parsing an operator expression.
+Backtracking can be used in non recursive parts of the expressions. But we want
+to avoid backtracking over an arbitrarly long expression, because this can
+make our parser highly inefficient.
+
+Therefore we try to make decisions as soon as possible and leave decisions open
+as long as needed without the need to backtrack.
+
+Assume we have found on the input stream the following situation
+{[
+    a * b + c . rest
+]}
+where [rest] represents the not yet parsed part of the input. In this case we
+can immediately convert [a * b] into a binary expression
+{[
+    (a * b) + c . rest
+]}
+because multiplication binds stronger that addition. Unfortunately the same is
+not possible, if the stronger operator is the second one.
+{[
+    a + b * c . rest
+]}
+In this case it is {b not} possible to convert [b * c] into a binary expression
+because the actual situation might look like
+{[
+    a + b * c . ^ d ...
+    (*          ^^^^^^^^^^^^ not yet analyzed part of the remaining input *)
+]}
+
+We have to buffer [a + b * c] and analyze the input stream for more operators
+until we can make a decision.
+
+If the actual situation looks like
+{[
+    a + b * c . * d ...
+    (*          ^^^^^^^^^^^^ not yet analyzed part of the remaining input *)
+]}
+i.e. the next operator in the input stream does not bind stronger than the last
+operator we can convert [b * c] into a binary expression getting
+{[
+    a + (b * c) . * d ...
+    (*            ^^^^^^^^^^^^ not yet analyzed part of the remaining input *)
+]}
+
+
+In general we have the situation
+{[
+    e o1 e1 o2 e2 ... on en . rest
+]}
+as long as the as in the operator pairs [(o_i, o_(i+1))] the second
+operator binds stronger than the first. This condition is kept as an invariant.
+We only push [o e] into the buffer if [o] binds stronger than all previous
+operators.
+
+The following cases are interesting:
+
+1. [. e rest ]: continue in the state [e . rest].
+
+2. [e . o1 e1 rest]: Continue in state [e o1 e1 . rest].
+
+3. [... o1 e1 . o2 e2 rest] where [o2] binds stronger than [o1]: Continue in
+state [ ... o1 e1 o2 e2 . rest]. We have to push [o2 e2] into the buffer. The
+invariant is kept. All right operators bind stronger than the left operators.
+
+4. [... o1 e1 o2 e2 . o3 e3 rest] where [o2] binds stronger than [o3]: Continue in
+state [ ... o1 (e1 o2 e2) . o3 e3 . rest].
+
+
+
+
+{1 The Solution}
+
+
+The buffer can be represented by the following data structure.
+{[
+    type buffer =
+        | First of exp
+        | Add   of buffer * op * exp
+            (* Invariant: In [Add (b, o, e)] the operator binds stronger than
+               all previous operators in the buffer [b].
+             *)
+]}
+
+The combinator [operator_expression] is implemented with 4 mutually recursive
+functions.
+
+{[
+  let rec operator_expression () =
+        let rec start (): exp t =
+            let* e = primary () in
+            more (First e)
+
+        and more (b: buffer): exp t =
+            (* Look for more operations in the remaining input *)
+            (
+                let* o = operator () in
+                let* e = primary () in
+                next b o e
+            )
+            </>
+            (* If there is no more operator input then reduce the buffer. *)
+            reduce b
+
+        and next (b: buffer) (o_new: op) (e_new: exp): exp t =
+            (* Check the next operator, expression pair. *)
+
+        and reduce: buffer -> exp t =
+            (* Reduce the buffer in case that there is no more input for the
+               operator expression. *)
+        in
+        start ()
+]}
+
+
+Most complexity is handled in the function [next].
+{[
+    and next (b: buffer) (o_new: op) (e_new: exp): exp t =
+        (* Check the next operator, expression pair. *)
+        match b with
+        | First _ as b ->
+            (* Not yet any operator present in the buffer *)
+            more (Add (b, o_new, e_new))
+
+        | Add (b1, o2, e2) as b2 ->
+            (* At least one operator expression pair in the buffer. *)
+            if
+                right_stronger o2 o_new
+            then
+                more (Add (b2, o_new, e_new))
+            else begin
+                match b1 with
+                | First e1 ->
+                    (* buffer: e1 o2 e2 and o2 binds stronger than o_new *)
+                    more (Add (First (binary e1 o2 e2), o_new, e_new))
+
+                | Add (b0, o1, e1) ->
+                    (* buffer: ... o1 e1 o2 e2 and o2 binds stronger than
+                       o_new.
+
+                       In this case we can reduce the buffer to
+                       ... o1 (e1 o2 e2) and recheck the pair o_new e_new in
+                       this buffer.
+                    *)
+                    next (Add (b0, o1, binary e1 o2 e2)) o_new e_new
+            end
+]}
+
+If finally there is no more input for the operator expression, then the buffer
+is converted to an expression.
+{[
+    and reduce: buffer -> exp t =
+        (* Reduce the buffer in case that there is no more input for the
+           operator expression. *)
+        function
+        | First e ->
+            return e
+
+        | Add (First e, o1, e1) ->
+            return (binary e o1 e1)
+
+        | Add (Add (b, o1, e1), o2, e2) ->
+            assert (right_stronger o1 o2);
+            reduce (Add (b, o1,  binary e1 o2 e2))
+]}
+
+{{!page-parse} Up}
