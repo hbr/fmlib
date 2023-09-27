@@ -1,10 +1,41 @@
 (** Represent a position in a text file. *)
 
 
+(**
+
+    A position in a text file is represented by a line number and a column
+    number, both starting with zero. So the first line is line number zero and
+    the first column is column number zero.
+
+    Sometimes the absolute byte offset since the beginning of the file is
+    important. Therefore the absolute byte offset for the last newline is
+    included as well.
+
+    Furthermore it is important to distinguish between the byte position and the
+    character position within a line. Therefore a correction offset is needed
+    which is added to the byte column to get the character column.
+
+    By default all bytes between space and ascii 126 and between decimal 128 and
+    decimal 255 are treated as one character. The tab character is treated as 4
+   characters and the newline character increments the line number and resets
+   the column number. All other bytes between decimal 0 and before the space are
+   treated as zero characters.
+
+    This default handling is done by the function {!next}. For more special
+    treatments (e.g. unicode characters) there is the function {!correct} to
+    adapt the character position with respect to the by position.
+*)
+
+
+
+
+
+(** {1 Basics} *)
+
+
+
 type t (** Position in a text file. *)
 
-
-type range = t * t (* A range in a text file. *)
 
 
 
@@ -15,16 +46,64 @@ val start: t
 
 
 
+
+
+
+
+(** {1 Line and column number} *)
+
+
 val line: t -> int
 (** [line pos] The line number corresponding to the position [p]. Note: The
     first line is line 0. *)
 
 
-
 val column: t -> int
-(** [column pos] The column number corresponding to the position [p]. Note: The
-    first column is column 0. *)
+(** [column pos] The character position within the current line of [pos].
 
+    For differences between [column] and [byte_column] see {!byte_column}.
+
+    Note: The
+    first column is column 0.
+*)
+
+
+
+
+
+(** {1 Byte offsets} *)
+
+
+
+
+val byte_offset_bol: t -> int
+(** [byte_offset_bol pos] The byte offset since the beginning of the file at the
+    last newline. *)
+
+
+val byte_column: t -> int
+(** [byte_column pos] The byte column number corresponding to the position [p].
+
+    Note: If the line up to the position has only printable ascii or latin-1
+    characters, then the [byte_column p] is the same as [column p]. If the line
+    has some multibyte unicode characters, then both columns might be different.
+    Notprintable ascii characters i.e. characters before the space character
+    increase the byte column, but not the column.
+*)
+
+
+
+val byte_offset: t -> int
+(** [byte_offset pos] The byte offset of the current position since the
+    beginning of the file.
+ *)
+
+
+
+
+
+
+(** {1 Increment position} *)
 
 
 val next: char -> t -> t
@@ -34,20 +113,35 @@ val next: char -> t -> t
 *)
 
 
-
-val next_line: t -> t
-(** [next_line pos] Advance the position to the start of the next line. *)
-
-
-
-val next_column: t -> t
-(** [next_column pos] Advance the column position by 1. *)
+val correct: int -> t -> t
+(** [correct n pos] Correct the column by [n]. In case of multibyte characters
+    like unicode characters the correction must be negative.
+ *)
 
 
+
+
+
+
+
+(** {1 Compare positions} *)
 
 val is_less_equal: t -> t -> bool
 (** [is_less_equal p1 p2] Are [p1] and [p2] in the correct order i.e. [p2] is
     not before [p1]. *)
+
+
+
+
+
+
+
+
+
+(** {1 Ranges (i.e. pairs of positions)} *)
+
+
+type range = t * t (* A range in a text file. *)
 
 
 
