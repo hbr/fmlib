@@ -1,3 +1,14 @@
+Release 0.5.6
+================================================================================
+
+
+- `Fmlib_parse`:
+
+    - module `Position` distinguishes byte and character position. The absolute
+      byte offset from the beginning of the file is included.
+
+
+
 Release 0.5.5
 ================================================================================
 
