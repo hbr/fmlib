@@ -85,12 +85,24 @@ struct
 
 
     let position (p: t): Position.t =
-        match Parse.first_lookahead_token p.parse with
+        match
+            Parse.first_lookahead_token p.parse
+        with
         | None ->
             Lex.position p.lex
         | Some ((p1, _), _) ->
             p1
 
+
+    let range (p: t): Position.range =
+        match
+            Parse.first_lookahead_token p.parse
+        with
+        | None ->
+            let pos = Lex.position p.lex in
+            pos, pos
+        | Some (range, _) ->
+            range
 
 
     let state (p: t): State.t =
@@ -128,5 +140,6 @@ struct
             p
 
 
-    let run_on_string = Run_on.string needs_more put put_end
+    let run_on_string  = Run_on.string  needs_more put put_end
+    let run_on_channel = Run_on.channel needs_more put put_end
 end

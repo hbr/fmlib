@@ -51,6 +51,8 @@ sig
         and  type state = State.t
     (* * @inline *)
 
+
+
     (** {1 Lexer and Parser} *)
 
     val make: Lex.t -> Parse.t -> t
@@ -63,15 +65,28 @@ sig
     (** The parser part of the parser. *)
 
 
+
+
     (** {1 Position} *)
 
     val position: t -> Position.t
     (** The current position in the input. *)
 
 
+    val range: t -> Position.range
+    (** The current range in the input; usually the range of the first lookahead
+        token. In case of a syntax error this is the unexpected token i.e. the
+        token which caused the syntax error.
+    *)
 
-    (** {1 Run on a String} *)
+
+
+
+    (** {1 Run the Parser} *)
 
     val run_on_string: string -> t -> t
     (** [run_on_string str p] Run the parser [p] on the string [str]. *)
+
+    val run_on_channel: Stdlib.in_channel -> t -> t
+    (** [run_on_channel ch p] Run the parser [p] on the channel [ch]. *)
 end
