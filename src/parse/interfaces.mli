@@ -486,7 +486,10 @@ sig
 
     val unexpected: expect -> 'a t
     (** [unexpected expect] triggers a syntax error signalling the expectation
-        [expect]. *)
+        [expect].
+        @deprecated Don't use this function. It will be removed in future
+        versions.
+    *)
 
 
     val clear_last_expectation: 'a -> 'a t

@@ -1,3 +1,15 @@
+Release 0.5.7
+================================================================================
+
+- `Fmlib_parse:`:
+
+    Fix: Bug in `Source_extractor`, introduced in the previous release.
+
+    Added `Parse_with_lexer.range` to return the range of the token which caused
+    a syntax error.
+
+
+
 Release 0.5.6
 ================================================================================
 
