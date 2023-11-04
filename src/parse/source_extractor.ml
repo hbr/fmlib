@@ -305,6 +305,7 @@ let receive_char (is_last: bool) (c: char) (p: t): t =
         in
         {
             p with
+            line  = "";
             nline = p.nline + 1;
             doc
         }
