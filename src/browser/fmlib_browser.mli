@@ -907,19 +907,96 @@ sig
     (** Task succeeding with a value of type ['a] or failing with
          an error object of type ['e] *)
 
+
     val succeed: 'a -> ('a, 'e) t
+    (** [succeed a] Task which immediately succeeds with value [a]. *)
+
 
     val return:  'a -> ('a, 'e) t
+    (** Same as {!succeed}. *)
+
 
     val fail: 'e -> ('a, 'e) t
+    (** [fail e] Task which immediately fails with the error [e]. *)
+
 
     val result: ('a, 'e) result -> ('a, 'e) t
+    (** [result res] Task which immediately succeeds or fails depending on [res]
+
+        The effect of the function is described by the code
+
+        {[
+            match res with
+            | Ok a    -> succeed a
+            | Error e -> fail e
+        ]}
+    *)
+
 
     val (>>=): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+    (** [task >>= f]
+
+        First execute [task]. If it fails then the function fails. If [task]
+        succeeds with the result [a] then execute the task [f a].
+    *)
+
 
     val ( let* ): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+    (** More convenient syntax for the monadic bind operator {!(>>=)}.
+
+        The code
+        {[
+            let* a = task in
+            f a
+        ]}
+
+        is equivalent to
+        {[
+            task >>= f
+        ]}
+
+        With the [let*] operator it is more convenient to chain tasks.
+
+        {[
+            let* a = t1 in
+            let* b = t2 a in
+            let* c = t3 a b in
+            ...
+            return f a b c ...
+        ]}
+    *)
+
 
     val map: ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
+    (** [map f task] Map the success result of [task] via the function [f]. *)
+
+
+
+    val make_succeed: (('a, 'e) result -> 'b) -> ('a, 'e) t -> ('b, empty) t
+    (** [make_succeed f task]
+
+        Convert the task which might fail into a task which always succeeds by
+        converting the positive or negative result via the function [f] into a
+        new result.
+    *)
+
+
+
+
+    val parallel:
+        'accu -> ('a -> 'accu -> 'accu)
+        -> ('a, empty) t list
+        -> ('accu, empty) t
+    (** [parallel accu_start accumulate task_list]
+
+        Run all the tasks in the task list in parallel. Collect the results of
+        the individual tasks via the function [accumulate] into the accumulator.
+        If all tasks of the list have finished, return the accumulator.
+
+        Note that the tasks of the list do not return errors. If they can have
+        errors then {!make_succeed} can be used to encode the error into the
+        result type ['a].
+    *)
 
 
 

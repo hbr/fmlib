@@ -77,9 +77,40 @@ let map (f: 'a -> 'b) (m: ('a, 'e) t): ('b, 'e) t =
     return (f a)
 
 
+
 let make_succeed (f: ('a, 'e) result -> 'b) (m: ('a, 'e) t): ('b, empty) t =
     fun post k ->
     m post (fun res -> continue k (Ok (f res)))
+
+
+
+let parallel
+        (start: 'accu)
+        (next: 'a -> 'accu -> 'accu)
+        (lst: ('a, empty) t list)
+    : ('accu, empty) t
+    =
+    let n_ref    = ref (List.length lst)
+    and accu_ref = ref start
+    in
+    fun post k ->
+        let terminate () =
+            if !n_ref = 0 then
+                k (Ok !accu_ref)
+        in
+        let k0 = function
+            | Ok a ->
+                assert (!n_ref <> 0);
+                n_ref := !n_ref - 1;
+                accu_ref := next a !accu_ref;
+                terminate ()
+            | Error e ->
+                absurd e
+        in
+        terminate ();
+        List.iter
+            (fun task -> task post k0)
+            lst
 
 
 
