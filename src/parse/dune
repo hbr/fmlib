@@ -18,6 +18,7 @@
       parse_format
       parse_indentation
       parse_lex
-      parse_op)
+      parse_op
+      parse_partial)
     (package fmlib_parse)
 )

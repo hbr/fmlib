@@ -84,8 +84,8 @@ sig
         end of input) then compute via [error] the syntax error from the state.
 
         WARNING: This combinator only makes sense if you generate your parser
-        with [make_parser]. If you generate your parser with [make] then the end
-        of input is automatically expected after the toplevel construct.
+        with [make_partial]. If you generate your parser with [make] then the
+        end of input is automatically expected after the toplevel construct.
     *)
 
 
@@ -124,6 +124,16 @@ sig
         defined by the combinator [c]. The parser can succeed, even if no end
         token is pushed to the parser.
     *)
+
+
+    val make_with_optional_end:
+        State.t -> Final.t t -> (State.t -> Expect.t) -> Parser.t
+    (** [make_optional_end s p e]
+
+        Make a parser which starts in state [s], parses a construct defined by
+        the combinator [p] optionally followed by the end of input. The function
+        [e] applied to the state returns the expectation of the end of input.
+     *)
 
 
     val restart_partial: Final.t t -> Parser.t -> Parser.t

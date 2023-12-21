@@ -18,3 +18,5 @@
 - {{!page-parse_lex} Separation of Parsing and Lexing}
 
 - {{!page-parse_op} Parsing of Operator Expressions}
+
+- {{!page-parse_partial} Partial Parsing}

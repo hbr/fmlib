@@ -292,7 +292,11 @@ struct
 
 
 
-    (* Basic Combinators *)
+    (* Basic Combinators
+       ----------------------------------------
+     *)
+
+
 
     let step
             (f: State.t -> Token.t option -> ('a * State.t, Expect.t) result)
@@ -326,35 +330,6 @@ struct
                      Ok (a, state)
                  | Some _ ->
                      Error (e state))
-
-
-
-    let make_partial (s: State.t) (c: Final.t t): Parser.t =
-        c
-            (B.init s)
-            (fun res b -> Done (b, res))
-
-
-    let restart_partial (c: Final.t t) (p: Parser.t): Parser.t =
-        let open Parser
-        in
-        assert (has_succeeded p);
-        assert (not (has_consumed_end p));
-        fold_lookahead
-            (make_partial (state p) c)
-            put
-            put_end
-            p
-
-
-
-    let make (state: State.t) (p: Final.t t) (e: State.t -> Expect.t)
-        : Parser.t
-        =
-        make_partial
-            state
-            (p >>= expect_end e)
-
 
 
 
@@ -470,6 +445,70 @@ struct
                      k None (B.end_backtrack_fail (Some exp) b0 b)
                  | Some a ->
                      k (Some a) (B.end_backtrack_fail None b0 b))
+
+
+
+
+
+
+    (* Making Final Parsers
+       ----------------------------------------
+     *)
+
+
+
+
+    let make_partial (s: State.t) (c: Final.t t): Parser.t =
+        c
+            (B.init s)
+            (fun res b -> Done (b, res))
+
+
+    let restart_partial (c: Final.t t) (p: Parser.t): Parser.t =
+        let open Parser
+        in
+        assert (has_succeeded p);
+        assert (not (has_consumed_end p));
+        fold_lookahead
+            (make_partial (state p) c)
+            put
+            put_end
+            p
+
+
+
+    let make (state: State.t) (p: Final.t t) (e: State.t -> Expect.t)
+        : Parser.t
+        =
+        make_partial
+            state
+            (p >>= expect_end e)
+
+
+    let make_with_optional_end
+            (state: State.t)
+            (p: Final.t t)
+            (e: State.t -> Expect.t)
+        : Parser.t
+        =
+        make_partial
+            state
+            (
+                let* a = p in
+                expect_end e a
+                </>
+                return a
+            )
+
+
+
+
+
+
+    (* Convenience Combinators
+       ----------------------------------------
+     *)
+
 
 
 

@@ -293,4 +293,17 @@ struct
             (State.make user)
             p
             (fun _ -> "end of input", None)
+
+
+    let make_with_optional_end (user: User.t) (p: Final.t t): Parser.t =
+        Basic.make_with_optional_end
+            (State.make user)
+            p
+            (fun _ -> "end of input", None)
+
+
+    let make_partial (user: User.t) (p: Final.t t): Parser.t =
+        Basic.make_partial
+            (State.make user)
+            p
 end

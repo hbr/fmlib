@@ -1,0 +1,118 @@
+{0 Partial Parsing}
+
+
+{{!page-parse} Up}
+
+
+{1 Overview}
+
+A partial parser is a parser which parses a part of the input stream and not the
+whole input stream until the end of input is reached. Some examples where a
+partial parser is useful:
+
+- Convert a character input stream into a stream of tokens i.e. a lexer: A lexer
+  usually strips off whitespace, recognizes one token (an identifier, an
+  operator, a semicolon, ...) and in case of success returns the token even if
+  there are more tokens to come.
+
+- The language to be parsed has some constructs which require to parse another
+  file before resume parsing (e.g. the C's famous [#include file] or Ocaml's
+  [open]. The reading of another file is I/O which cannot be done within a
+  parsing combinator.
+
+- REPLs (read evaluate print loops): REPLs usually parse a construct and
+  evaluate it immediately before parsing the next construct. The evaluation might
+  need to do I/O which is not possible within a parsing combinator.
+
+
+The input stream for partial parsing might look like
+
+{v
+    C1 C2 .... Cn end of input
+v}
+
+or
+
+{v
+    C C ... C end of input
+v}
+
+or a mixture of both
+where [C] and [Ci] are certain grammatical construct.
+
+{{!page-parse} Up}
+
+
+
+
+
+{1 Pasting together Partial Parsers}
+
+Let [c] and [ci] be combinators describing the grammatical constructs.
+
+In all modules of the library which generate parses (e.g.
+{!module: Fmlib_parse.Character},
+{!module:Fmlib_parse.Token_parser})
+there are two functions
+to make a parser from a combinator:
+
+- [make s c] which makes a parser starting in state [s], parses a construct
+described by the combinator [c] immediately followed by the end of input
+
+- [make_partial s c] which makes a parser starting in state [s], parses a
+  construct described by the combinator [c] not necessarily followed by the end
+  of input. If the end of input has been reached after the construct it is not
+  consumed.
+
+- [make_with_optional_end s c] which makes a parser starting in state [s],
+  parses a construct described by the combinator [c] not necessarily followed by
+  the end of input. If the end of input has been reached after the construct it
+  is consumed.
+
+If the input file has the structure [C1 C2 ... Cn] then we generate all
+parsers except the last one by [make_partial si ci] and the last one by [make sn
+cn] where [si] is the state after successful parsing of construct [Ci].
+
+All parsers in [Fmlib_parse] give access to the parsing state so the
+corresponding parsing states can be handed over to the next parser.
+
+Furthermore it is important that a partial parser might have some lookahead in
+its buffer which is not part of the parsed construct and has to be handed over
+to the next parser. In order to achieve this the parser have to the function
+[fold_lookahead] which allows to pass unconsumed lookahead over to the next
+parser before the next parser is fed with input from the source file.
+
+
+
+
+
+{1 Optional End of Input}
+
+If the input file has the structure
+{v
+    C C C ... C end of input
+v}
+or ends with this structure we have the special situation that each construct
+[C] might be followed by the end of input which indicates that it is the last
+construct in the file.
+
+This is usually the case in REPLs. Let [c] be the combinator which describes
+the grammar of the construct [C].
+
+The parser
+{[
+    let p = make_with_optional_end s c
+]}
+
+is a parser which parses a construct [C] followed by an optional end of input.
+If the parser [p] indicates that it has successfully parsed a construct [C] the
+function [has_consumed_end] indicates if the end of input has been reached after
+parsing the construct [C].
+
+If the end of input has not been reached we can do whatever we want to do with
+[C] and after that create a new partial parser and hand over to the new partial
+parser the state and the unconsumed lookahead of the previous parse and continue
+to parse the remaining part of the input stream.
+
+If the end of input has been reached then parsing of the input stream is
+finished.

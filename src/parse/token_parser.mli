@@ -96,9 +96,10 @@ sig
         succeeds if [p] succeeds and is immediately followed by the end of
         input.
 
-        {b CAUTION}: This combinator should almost never be used. In some rare
-        occasions it might be useful. But usually the [Token_parser] handles the
-        end of input internally.
+        {b CAUTION}: This combinator should almost never be used. It might be
+        useful in partial parsers (see {{!page-parse_partial} Partial Parsing}
+        for details).  Usually the [Token_parser] handles the end of input
+        internally.
 
         {b Never ever} backtrack over this combinator.
     *)
@@ -169,10 +170,44 @@ sig
         requirements. *)
 
 
+
+
+
     (** {1 Make the Parser} *)
 
     val make: State.t -> Final.t t -> Parser.t
     (** [make s p] Make the parser from the combinator [p] and start it in state
         [s].
+
+        The parser parses a construct described by the combinator [p] followed
+        by the end of input. Note that there must not be any combinator
+        generated from {!expect_end} within the combinator [p]. The function
+        {!make} adds the corresponding [expect_end] for you.
     *)
+
+
+    val make_partial: State.t -> Final.t t -> Parser.t
+    (** [make_partial s p] Make a partial parser from the combinator [p] and
+        start it in state [s].
+
+        The generated partial parser ends whenever it encounters an error or it
+        has recognized a construct described by the combinator [p] even if after
+        the construct the input does not end. An end of input after the
+        construct is not consumed by the parser. See section
+        {{!page-parse_partial} Partial Parsing} for details.
+    *)
+
+
+    val make_with_optional_end: State.t -> Final.t t -> Parser.t
+    (** [make_with_optional_end s p] Make a partial parser from the combinator
+        [p] which expects an optional end of input after the construct and
+        start it in state [s].
+
+        The generated partial parser ends whenever it encounters an error or it
+        has recognized a construct described by the combinator [p] even if after
+        the construct the input does not end. If the end of input is encountered
+        after the construct it is cosumed. See section
+        {{!page-parse_partial} Partial Parsing} for details.
+    *)
+
 end
