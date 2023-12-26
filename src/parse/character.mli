@@ -54,6 +54,11 @@ sig
         (** [run_on_string str p] Run the parser [p] on the string [str]. *)
 
 
+        val run_on_string_at: int -> string -> t -> int * t
+        (** [run_on_string str start p] Run the parser [p] on the string [str]
+            starting at index [start] Return the parser and the index next to be
+            pushed in. *)
+
         val run_on_channel: in_channel -> t -> t
         (** [run_on_channel ic p] Run the parser [p] on input channel [ic]. *)
     end

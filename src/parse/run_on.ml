@@ -1,3 +1,27 @@
+let string_at
+        (needs_more: 'a -> bool)
+        (put: char -> 'a -> 'a)
+        (put_end: 'a -> 'a)
+        (start: int)
+        (str: string)
+        (p: 'a)
+    : int * 'a
+    =
+    let len = String.length str
+    in
+    assert (start <= len);
+    let rec run i p =
+        if not (needs_more p) then
+            i, p
+        else if i = len then
+            i, put_end p
+        else
+            run (i + 1) (put str.[i] p)
+    in
+    run start p
+
+
+
 let string
         (needs_more: 'a -> bool)
         (put: char -> 'a -> 'a)
@@ -6,17 +30,11 @@ let string
         (p: 'a)
     : 'a
     =
-    let len = String.length str
-    in
-    let rec run i p =
-        if not (needs_more p) then
-            p
-        else if i = len then
-            put_end p
-        else
-            run (i + 1) (put str.[i] p)
-    in
-    run 0 p
+    string_at needs_more put put_end 0 str p |> snd
+
+
+
+
 
 let channel
         (needs_more: 'a -> bool)

@@ -85,6 +85,8 @@ struct
 
         let run_on_string  = Run_on.string  needs_more put put_end
 
+        let run_on_string_at = Run_on.string_at needs_more put put_end
+
         let run_on_channel = Run_on.channel needs_more put put_end
     end
 
