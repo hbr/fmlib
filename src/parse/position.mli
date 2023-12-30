@@ -15,6 +15,18 @@
     character position within a line. Therefore a correction offset is needed
     which is added to the byte column to get the character column.
 
+    An object of type [Position.t] has the following content:
+
+    - Byte offset from the beginning of the stream to the beginning of the
+    previous line.
+
+    - Number of the current line (zero based)
+
+    - Byte position within the current line (zero based)
+
+    - Correction between the byte position and the visible character position on
+   the current line.
+
     By default all bytes between space and ascii 126 and between decimal 128 and
     decimal 255 are treated as one character. The tab character is treated as 4
    characters and the newline character increments the line number and resets
@@ -23,7 +35,9 @@
 
     This default handling is done by the function {!next}. For more special
     treatments (e.g. unicode characters) there is the function {!correct} to
-    adapt the character position with respect to the by position.
+    adapt the character position with respect to the by position and the
+    functions {!advance} and {!newline} for find granular control of the
+    position.
 *)
 
 
@@ -113,10 +127,34 @@ val next: char -> t -> t
 *)
 
 
+val nextu: Uchar.utf_decode -> t -> t
+(** [nextu uchar pos]: Advance the position by using the next unicode character.
+
+    Unicode characters which are ascii characters with a code below [0x20] (i.e.
+    space) are treated as zero width except newline and tab. Tabs are treated as
+    character width 4 and a newline increments the line number and resets the
+    positions within the current line. For more fine grained control use
+    {!advance} and {!newline} or correct the default behaviour by {!correct}.
+*)
+
+
 val correct: int -> t -> t
 (** [correct n pos] Correct the column by [n]. In case of multibyte characters
     like unicode characters the correction must be negative.
  *)
+
+
+val advance: int -> int -> t -> t
+(** [advance byte_width width pos]
+
+*)
+
+
+
+val newline: int -> t -> t
+(** [newline byte_width pos] Start a new line i.e. set the character position
+    and byte position to zero and increment the line number.
+*)
 
 
 

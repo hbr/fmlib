@@ -45,6 +45,27 @@ let start: t = {
 
 
 
+
+
+let advance (byte_width: int) (width: int) (p: t): t =
+    {
+        p with
+        byte_col   = p.byte_col + byte_width;
+        correction = p.correction + width - byte_width;
+    }
+
+
+
+let newline (byte_width: int) (p: t): t =
+    {
+        line       = p.line + 1;
+        byte_col   = 0;
+        byte_bol   = p.byte_bol + p.byte_col + byte_width;
+        correction = 0;
+    }
+
+
+
 let next (c: char) (p: t): t =
     if c = '\n' then
         {
@@ -66,6 +87,29 @@ let next (c: char) (p: t): t =
                 else
                     p.correction
         }
+
+
+
+let nextu (dec: Uchar.utf_decode) (p: t): t =
+    let scalar     = Uchar.(utf_decode_uchar dec |> to_int)
+    and byte_width = Uchar.utf_decode_length dec
+    in
+    if scalar = Char.code '\n' then
+
+        newline byte_width p
+
+    else if scalar = Char.code '\t' then
+
+        advance byte_width 4 p
+
+    else if scalar < Char.code ' ' then
+
+        advance byte_width 0 p
+
+    else
+
+        advance byte_width 1 p
+
 
 
 let correct (cor: int) (p: t): t =
