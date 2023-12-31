@@ -351,25 +351,13 @@ sig
         Moreover it must not have been constructed by {!lexer}.
     *)
 
-    val make_partial: State.t -> Final.t t -> Parser.t
-    (** [make_partial state c]
+
+    val make_partial: Position.t -> State.t -> Final.t t -> Parser.t
+    (** [make_partial pos state c]
 
         Make parser which analyzes a part of the input stream.
-        The parser starts in state [state] and
+        The parser starts at position [pos] in state [state] and
         parses a construct defined by the combinator [c]. The parser can succeed
         even if no end token has been pushed into the parser.
-    *)
-
-
-    val restart_partial: Final.t t -> Parser.t -> Parser.t
-    (** [restart_partial c p]
-
-        Restart the partial parser [p] by using the combinator [c] to recognize
-        the next part of the input stream. The restarted parser starts with the
-        state and the file position of [p].
-
-        Preconditions:
-        - [has_succeeded p]
-        - [not (has_consumed_end p)]
     *)
 end

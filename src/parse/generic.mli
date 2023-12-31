@@ -124,27 +124,4 @@ sig
         defined by the combinator [c]. The parser can succeed, even if no end
         token is pushed to the parser.
     *)
-
-
-    val make_with_optional_end:
-        State.t -> Final.t t -> (State.t -> Expect.t) -> Parser.t
-    (** [make_optional_end s p e]
-
-        Make a parser which starts in state [s], parses a construct defined by
-        the combinator [p] optionally followed by the end of input. The function
-        [e] applied to the state returns the expectation of the end of input.
-     *)
-
-
-    val restart_partial: Final.t t -> Parser.t -> Parser.t
-    (** [restart_partial c p]
-
-        Restart the partial parser [p] by using the combinator [c] to recognize
-        the next part of the input stream. The restarted parser starts with the
-        state of [p].
-
-        Preconditions:
-        - [has_succeeded p]
-        - [not (has_consumed_end p)]
-    *)
 end

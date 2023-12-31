@@ -162,11 +162,13 @@ struct
     struct
         include CP.Parser
 
-        let init: t =
-            make_partial () token
+        let start: t =
+            make_partial Position.start () token
 
         let restart (lex: t): t =
-            restart_partial token lex
+            assert (has_succeeded lex);
+            assert (not (has_consumed_end lex));
+            make_partial (position lex) () token |> transfer_lookahead lex
     end
 end
 
@@ -358,7 +360,7 @@ module PL = struct
     include Parse_with_lexer.Make (Unit) (Token) (Yaml) (Void) (Lex) (Parse)
 
     let start: t =
-        make Lex.init Combinator.parse
+        make Lex.start Combinator.parse
 end
 
 module Pretty = Fmlib_pretty.Print

@@ -488,11 +488,12 @@ struct
 
 
     let make_partial
+            (pos: Position.t)
             (user: User.t)
             (p: Final.t t)
         : Parser.t
         =
         Basic.make_partial
-            (State.make Position.start user)
+            (State.make pos user)
             p
 end

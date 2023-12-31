@@ -246,7 +246,7 @@ let%test _ =
     let p =
         Parser.run_on_string
             "abcdef"
-            (make_partial () p)
+            (make_partial Position.start () p)
     in
     Parser.has_succeeded p
     &&
@@ -266,7 +266,7 @@ let%test _ =
     let p =
         Parser.run_on_string
             "abcdez"
-            (make_partial () p)
+            (make_partial Position.start () p)
     in
     Parser.has_failed_syntax p
     &&
@@ -287,7 +287,7 @@ let%test _ =
     let p =
         Parser.run_on_string
             "abcdez"
-            (make_partial () p)
+            (make_partial Position.start () p)
     in
     Parser.has_succeeded p
     &&
@@ -308,7 +308,7 @@ let%test _ =
     let p =
         Parser.run_on_string
             "abcdef"
-            (make_partial () p)
+            (make_partial Position.start () p)
     in
     Parser.has_failed_syntax p
     &&

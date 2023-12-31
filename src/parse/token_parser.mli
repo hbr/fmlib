@@ -196,18 +196,4 @@ sig
         construct is not consumed by the parser. See section
         {{!page-parse_partial} Partial Parsing} for details.
     *)
-
-
-    val make_with_optional_end: State.t -> Final.t t -> Parser.t
-    (** [make_with_optional_end s p] Make a partial parser from the combinator
-        [p] which expects an optional end of input after the construct and
-        start it in state [s].
-
-        The generated partial parser ends whenever it encounters an error or it
-        has recognized a construct described by the combinator [p] even if after
-        the construct the input does not end. If the end of input is encountered
-        after the construct it is cosumed. See section
-        {{!page-parse_partial} Partial Parsing} for details.
-    *)
-
 end

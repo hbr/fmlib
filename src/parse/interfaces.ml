@@ -52,6 +52,7 @@ sig
     val has_consumed_end: t -> bool
     val position: t -> Position.t
 
+    val start:   t
     val restart: t -> t
 end
 

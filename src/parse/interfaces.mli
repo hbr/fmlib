@@ -223,12 +223,18 @@ sig
 
     *)
 
+    (** {1 Start} *)
+
+    val start: t
+    (** The lexer for the first token. *)
+
+
     (** {1 Restart}
 
         A lexer does not consume the entire input stream. It just consumes
         characters until a token has been recognized. In case of the successful
-        recognition of a token, it returns the token (see {!type-final}). Then it can
-        be restarted to recognize the next token.
+        recognition of a token, it returns the token (see {!type-final}). Then
+        it can be restarted to recognize the next token.
     *)
 
     val restart: t -> t
@@ -409,6 +415,12 @@ sig
     (** [transfer_lookahead p_old p_new]
 
         Transfer the lookahead tokens from [p_old] to [p_new]
+
+        Preconditions:
+        {[
+            has_succeeded p_old
+            not (has_consumed_end p_old)
+        ]}
     *)
 
 

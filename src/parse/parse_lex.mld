@@ -76,7 +76,7 @@ The easiest way to write a lexer with the help of [Fmlib_parse] is to use
 
 - Use {!Fmlib_parse.Character.Make.lexer} with the definition
   {[
-    let token: Token_plus.t t =
+    let token: Token_plus.t t =    (* [t] is the type of the combinator *)
         lexer
             whitespace
             Token.End
@@ -86,9 +86,19 @@ The easiest way to write a lexer with the help of [Fmlib_parse] is to use
   ]}
   to have a combinator which recognizes tokens and strips off whitespace.
 
-- Use {!Fmlib_parse.Character.Make.make_partial} and
-  {!Fmlib_parse.Character.Make.restart_partial} to make the lexer satisfying the
-  interface {!module-type:Fmlib_parse.Interfaces.LEXER}
+- Make the lexer for the first token by
+  {[
+    let init: t =               (* [t] is the type of the final parser *)
+        make_partial Position.start () token
+  ]}
+
+- Make the lexers for the subsequent tokens by
+  {[
+    let restart (lex: t): t =
+        make_partial (position lex) () token
+        |>
+        transfer_lookahead lex
+  ]}
 
 Look into {{:https://github.com/hbr/fmlib/blob/master/src/parse/test_json.ml}}
 to see an example with a simple json parser on how it works.

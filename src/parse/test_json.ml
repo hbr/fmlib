@@ -204,15 +204,17 @@ struct
     struct
         include CP.Parser
 
-        let init: t =
+        let start: t =
             (* Lexer starting at the start of the input. *)
-            make_partial () token
+            make_partial Position.start () token
 
         let restart (lex: t): t =
             (* Restart the lexer at the current position and replay the not yet
              * consumed input on the restarted parser.
              *)
-            restart_partial token lex
+            assert (has_succeeded lex);
+            assert (not (has_consumed_end lex));
+            make_partial (position lex) () token |> transfer_lookahead lex
     end
 end
 
@@ -430,7 +432,7 @@ struct
     include Parse_with_lexer.Make (Unit) (Token) (Json) (Void) (Lex) (Parse)
 
     let start: t =
-        make Lex.init Combinator.parse
+        make Lex.start Combinator.parse
 end
 
 

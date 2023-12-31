@@ -469,41 +469,12 @@ struct
             (fun res b -> Done (b, res))
 
 
-    let restart_partial (c: Final.t t) (p: Parser.t): Parser.t =
-        let open Parser
-        in
-        assert (has_succeeded p);
-        assert (not (has_consumed_end p));
-        fold_lookahead
-            (make_partial (state p) c)
-            put
-            put_end
-            p
-
-
-
     let make (state: State.t) (p: Final.t t) (e: State.t -> Expect.t)
         : Parser.t
         =
         make_partial
             state
             (p >>= expect_end e)
-
-
-    let make_with_optional_end
-            (state: State.t)
-            (p: Final.t t)
-            (e: State.t -> Expect.t)
-        : Parser.t
-        =
-        make_partial
-            state
-            (
-                let* a = p in
-                expect_end e a
-                </>
-                return a
-            )
 
 
 
