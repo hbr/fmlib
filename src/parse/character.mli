@@ -186,13 +186,13 @@ sig
 
     (** {1 Character Combinators} *)
 
-    val expect_end: string -> 'a -> 'a t
-    (** [expect_end error a] Expect the end of token stream.
+    val expect_end: 'a -> 'a t
+    (** [expect_end a] Expect the end of token stream.
 
         In case of success return [a].
 
-        In case of failure return the syntax error with the error string
-        [error].
+        In case of failure return the syntax error with the expectation "end of
+        input".
 
         {b CAUTION}: There is usually no need to use this combinator! This
         combinator is needed only for partial parsers which are not based on a

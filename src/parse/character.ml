@@ -232,8 +232,8 @@ struct
 
     (* Character Combinators *)
 
-    let expect_end (error: string) (a: 'a): 'a t =
-        Basic.expect_end (fun _ -> error, None) a
+    let expect_end (a: 'a): 'a t =
+        Basic.expect_end (fun _ -> "end of input", None) a
 
 
     let char (expected: char): char t =
@@ -469,7 +469,7 @@ struct
         located (
             tok
             </>
-            expect_end "end of input" end_token
+            expect_end end_token
         )
 
 
