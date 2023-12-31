@@ -38,6 +38,7 @@ sig
     val has_received_end: t -> bool
     val has_consumed_end: t -> bool
     val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
+    val transfer_lookahead: t -> t -> t
 end
 
 
@@ -81,6 +82,7 @@ sig
     val has_lookahead: t -> bool
     val first_lookahead_token: t -> token option
     val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
+    val transfer_lookahead: t -> t -> t
     val lookaheads: t -> token array * bool
 end
 

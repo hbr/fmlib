@@ -60,6 +60,7 @@ struct
         let has_lookahead       = P.has_lookahead
         let first_lookahead_token = P.first_lookahead_token
         let fold_lookahead      = P.fold_lookahead
+        let transfer_lookahead  = P.transfer_lookahead
         let lookaheads          = P.lookaheads
 
         let put                 = P.put

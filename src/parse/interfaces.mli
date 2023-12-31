@@ -147,6 +147,13 @@ sig
         function [ftok]. At the end of the lookahead tokens, call [fend] if
         there is an unconsumed end.
     *)
+
+
+    val transfer_lookahead: t -> t -> t
+    (** [transfer_lookahead p_old p_new]
+
+        Transfer the lookahead tokens from [p_old] to [p_new]
+    *)
 end
 
 
@@ -395,6 +402,13 @@ sig
         Fold the lookahead tokens with the start value [a] and the folding
         function [ftok]. At the end of the lookahead tokens, call [fend] if
         there is an unconsumed end.
+    *)
+
+
+    val transfer_lookahead: t -> t -> t
+    (** [transfer_lookahead p_old p_new]
+
+        Transfer the lookahead tokens from [p_old] to [p_new]
     *)
 
 

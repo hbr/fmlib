@@ -164,6 +164,11 @@ struct
             buffer p |> B.fold_lookahead a ftok fend
 
 
+
+        let transfer_lookahead (p_old: t) (p_new: t): t =
+            fold_lookahead p_new put put_end p_old
+
+
         let lookaheads (p: t): Token.t array * bool =
             let b = buffer p in
                 B.lookaheads b,
