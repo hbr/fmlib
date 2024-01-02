@@ -46,6 +46,10 @@ sig
     (** [has_succeeded p] Has the parser [p] succeeded? *)
 
 
+    val has_consumed_end: t -> bool
+    (** Has the parser consumed the end of input? *)
+
+
     val final: t -> final
     (** [final p] The final object constructed by the parser [p] in case of
         success.

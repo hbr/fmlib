@@ -10,6 +10,7 @@ sig
 
     type final
     val has_succeeded: t -> bool
+    val has_consumed_end: t -> bool
     val final: t -> final
 
     type expect
