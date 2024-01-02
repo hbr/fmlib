@@ -11,12 +11,18 @@ let string_at
     in
     assert (start <= len);
     let rec run i p =
-        if not (needs_more p) then
+        if i > len || not (needs_more p) then
+
             i, p
-        else if i = len then
-            i, put_end p
-        else
+
+        else if i < len then
+
             run (i + 1) (put str.[i] p)
+
+        else (* i = len *)
+
+            run (i + 1) (put_end p)
+
     in
     run start p
 
