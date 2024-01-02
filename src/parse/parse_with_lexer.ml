@@ -34,6 +34,13 @@ struct
         {lex; parse}
 
 
+    let make_next (p: t) (parse: Parse.t): t =
+        {
+            lex = p.lex;
+            parse = Parse.transfer_lookahead p.parse parse;
+        }
+
+
     let lex (p: t): Lex.t =
         p.lex
 
@@ -49,6 +56,9 @@ struct
 
     let has_succeeded (p: t): bool =
         Parse.has_succeeded p.parse
+
+    let has_consumed_end (p: t): bool =
+        Parse.has_consumed_end p.parse
 
 
     let has_failed_syntax (p:t): bool =
@@ -140,7 +150,7 @@ struct
             p
 
 
-    let run_on_string    = Run_on.string  needs_more put put_end
+    let run_on_string    = Run_on.string     needs_more put put_end
     let run_on_string_at = Run_on.string_at  needs_more put put_end
-    let run_on_channel   = Run_on.channel needs_more put put_end
+    let run_on_channel   = Run_on.channel    needs_more put put_end
 end

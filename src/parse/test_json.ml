@@ -235,6 +235,7 @@ end
 module Json =
 struct
     type t =
+        | Null
         | Number of int         (* make the tests simpler *)
         | String of string
         | Bool   of bool
@@ -258,6 +259,9 @@ struct
         let open Printf
         in
         function
+        | Null ->
+            "null"
+
         | Number i ->
             sprintf "%d" i
 
@@ -406,6 +410,13 @@ struct
 
     let parse: Parser.t =
         make () (json ())
+
+    let parse_partial: Parser.t =
+        make_partial () (
+            json ()
+            </>
+            expect_end Json.Null
+        )
 end
 
 
@@ -426,6 +437,8 @@ module Parse = Combinator.Parser
 
 
 module Void = Fmlib_std.Void
+
+
 
 module PL =
 struct
@@ -571,3 +584,84 @@ let%test _ =
 
 let%test _ =
     check_failures failure_cases
+
+
+
+
+
+
+
+
+
+
+
+(* ============================================================
+ * Partial Parsing
+ * ============================================================
+ *)
+
+module Pwl_partial =
+struct
+    include Parse_with_lexer.Make (Unit) (Token) (Json) (Void) (Lex) (Parse)
+
+
+    let start: t =
+        make Lex.start Combinator.parse_partial
+
+    let next (p: t): t =
+        assert (has_succeeded p);
+        assert (not (has_consumed_end p));
+        make_next p Combinator.parse_partial
+
+
+    let run_on_string (str: string): int * string list * t =
+        let len = String.length str
+        in
+        let rec run i lst p =
+            if PL.has_succeeded p && (i > len || PL.has_consumed_end p) then
+
+                i, List.rev lst, p
+
+            else if PL.has_succeeded p then
+
+                let lst = (PL.final p |> Json.to_string) :: lst
+                and p   = next p
+                in
+                run i lst p
+
+            else if needs_more p then
+
+                let i, p = run_on_string_at i str p in
+                run i lst p
+
+            else begin
+
+                write_error str p;
+                i, List.rev lst, p
+
+            end
+        in
+        run 0 [] start
+
+end
+
+let%test _ =
+    let str =
+        {| 100 200 []  [{"a":{}}] {"a":10,"b" : [1,2,3]}|}
+    and res = [
+        "100"
+      ; "200"
+      ; "[]"
+      ; {|[{"a": {}}]|}
+      ; {|{"a": 10, "b": [1, 2, 3]}|}
+    ]
+    in
+    let open Pwl_partial in
+    let len       = String.length str
+    and i, lst, p = run_on_string str
+    in
+    i = len + 1
+    &&
+    has_succeeded p
+    &&
+    lst = res

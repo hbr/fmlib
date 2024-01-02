@@ -58,6 +58,23 @@ sig
     val make: Lex.t -> Parse.t -> t
     (** [make lex parse] Make the parser from a lexer and a parser. *)
 
+
+    val make_next: t -> Parse.t -> t
+    (** [make_next p tp]
+
+        This function assumes that [p] has been made with a partial token parser
+        and has already successfully consumed a part of the input stream and
+        [tp] is the token parser which shall be used to parse the next part of
+        the input stream.
+
+        Since the token parser contained in [p] might have unconsumed lookahead
+        tokens, these tokens must be transferred to the new token parser [tp].
+
+        The call [make_next p tp] makes a new parser with lexer using the old
+        lexer and the new token parser [tp] with all the lookaheads transferred
+        to it.
+    *)
+
     val lex: t -> Lex.t
     (** The lexer part of the parser. *)
 
