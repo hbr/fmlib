@@ -32,70 +32,68 @@ end
 
 module Lexer =
 struct
-    module CP = Character.Make (Unit) (Token_plus) (Fmlib_std.Void)
+    module C =
+    struct
+        module CP = Character.Make (Unit) (Token_plus) (Fmlib_std.Void)
+        include CP
 
-    open CP
-
-
-
-
-    (* Whitespace
-     * ==========
-     *   - blanks
-     *   - newlines
-     *   - comments of the form "// xxxxx" until the end of line or end of
-     *     input
-     *   - multline comments of the form
-     *        /* xxxx
-     *           xxxxxx */
-     *)
+        (* Whitespace
+         * ==========
+         *   - blanks
+         *   - newlines
+         *   - comments of the form "// xxxxx" until the end of line or end of
+         *     input
+         *   - multline comments of the form
+         *        /* xxxx
+         *           xxxxxx */
+        *)
 
 
 
-    let blank_or_newline: unit t =
-        let* _ = char ' ' </> char '\n' </> char '\r' in
-        return ()
+        let blank_or_newline: unit t =
+            let* _ = char ' ' </> char '\n' </> char '\r' in
+            return ()
 
 
-    let line_comment: unit t =
-        let* _ =
-            backtrack (string "//") {|"//"|}
-        in
-        let* _ =
-            skip_zero_or_more
-                (charp
-                     (fun c -> c <> '\n')
-                     "any char except newline")
-        in
-        return ()
-
-
-    let multi_line_comment: unit t =
-        let rec rest star =
-            (* parse the remaining part of a multiline comment after the initial
-             * "/*". The flag [star] indicates that the previous character of
-             * the rest has been a '*'.
-             *)
-            let* c =
-                charp (fun _ -> true) "any character in a comment"
+        let line_comment: unit t =
+            let* _ =
+                backtrack (string "//") {|"//"|}
             in
-            if not star && c = '*' then
-                rest  true
-            else if star && c = '/' then
-                return ()
-            else
-                rest  false
-        in
-        let* _ =
-            backtrack (string "/*") {|"/*"|}
-        in
-        rest false
+            let* _ =
+                skip_zero_or_more
+                    (charp
+                         (fun c -> c <> '\n')
+                         "any char except newline")
+            in
+            return ()
 
 
-    let whitespace: int t =
-        skip_zero_or_more
-            (blank_or_newline </> line_comment </> multi_line_comment)
-        |> no_expectations
+        let multi_line_comment: unit t =
+            let rec rest star =
+                (* parse the remaining part of a multiline comment after the
+                 * initial "/*". The flag [star] indicates that the previous
+                 * character of the rest has been a '*'.
+                *)
+                let* c =
+                    charp (fun _ -> true) "any character in a comment"
+                in
+                if not star && c = '*' then
+                    rest  true
+                else if star && c = '/' then
+                    return ()
+                else
+                    rest  false
+            in
+            let* _ =
+                backtrack (string "/*") {|"/*"|}
+            in
+            rest false
+
+
+        let whitespace: int t =
+            skip_zero_or_more
+                (blank_or_newline </> line_comment </> multi_line_comment)
+            |> no_expectations
 
 
 
@@ -104,94 +102,94 @@ struct
 
 
 
-    (* Specific tokens
-     * ===============
-     *)
+        (* Specific tokens
+         * ===============
+        *)
 
-    let colon: Token.t t =
-        let* _ = char ':' in
-        return (Token.Colon, ":")
+        let colon: Token.t t =
+            let* _ = char ':' in
+            return (Token.Colon, ":")
 
-    let comma: Token.t t =
-        let* _ = char ',' in
-        return (Token.Comma, ",")
+        let comma: Token.t t =
+            let* _ = char ',' in
+            return (Token.Comma, ",")
 
-    let lbrace: Token.t t =
-        let* _ = char '{' in
-        return (Token.Lbrace, "{")
+        let lbrace: Token.t t =
+            let* _ = char '{' in
+            return (Token.Lbrace, "{")
 
-    let rbrace: Token.t t =
-        let* _ = char '}' in
-        return (Token.Rbrace, "}")
+        let rbrace: Token.t t =
+            let* _ = char '}' in
+            return (Token.Rbrace, "}")
 
-    let lbrack: Token.t t =
-        let* _ = char '[' in
-        return (Token.Lbrack, "[")
+        let lbrack: Token.t t =
+            let* _ = char '[' in
+            return (Token.Lbrack, "[")
 
-    let rbrack: Token.t t =
-        let* _ = char ']' in
-        return (Token.Rbrack, "]")
+        let rbrack: Token.t t =
+            let* _ = char ']' in
+            return (Token.Rbrack, "]")
 
-    let string: Token.t t =
-        let* _    = char '"' <?> "string" in
-        let* lst  =
-            zero_or_more
-                (map
-                     (fun c -> String.make 1 c)
-                     (charp
-                          (fun c -> ' ' <= c && c <= '~' && c <> '"')
-                          "printable character")
+        let string: Token.t t =
+            let* _    = char '"' <?> "string" in
+            let* lst  =
+                zero_or_more
+                    (map
+                         (fun c -> String.make 1 c)
+                         (charp
+                              (fun c -> ' ' <= c && c <= '~' && c <> '"')
+                              "printable character")
+                    )
+            in
+            let* _ = char '"' in
+            return (Token.String, String.concat "" lst)
+
+
+        let number: Token.t t =
+            let is_digit c = '0' <= c && c <= '9'
+            in
+            map
+                (fun str -> Token.Number, str)
+                (word is_digit is_digit "number")
+
+
+        let bool: Token.t t =
+            map
+                (fun str -> Token.Bool, str)
+                (CP.string "true" </> CP.string "false" <?> "bool")
+
+
+
+
+
+
+
+        (* Combinator recognizing an arbitary token
+         * ========================================
+         *
+         * Preceeding whitespace is stripped off and the token is equipped with
+         * its start position and its end position.
+        *)
+
+        let token: Token_plus.t t =
+            lexer
+                whitespace
+                (Token.End, "")
+                (
+                    (* None of the tokens needs any backtracking, because all
+                     * can be recognized by looking at the first character. *)
+                    number
+                    </> string
+                    </> bool
+                    </> lbrace
+                    </> rbrace
+                    </> lbrack
+                    </> rbrack
+                    </> comma
+                    </> colon
                 )
-        in
-        let* _ = char '"' in
-        return (Token.String, String.concat "" lst)
 
-
-    let number: Token.t t =
-        let is_digit c = '0' <= c && c <= '9'
-        in
-        map
-            (fun str -> Token.Number, str)
-            (word is_digit is_digit "number")
-
-
-    let bool: Token.t t =
-        map
-            (fun str -> Token.Bool, str)
-            (CP.string "true" </> CP.string "false" <?> "bool")
-
-
-
-
-
-
-
-    (* Combinator recognizing an arbitary token
-     * ========================================
-     *
-     * Preceeding whitespace is stripped off and the token is equipped with its
-     * start position and its end position.
-     *)
-
-    let token: Token_plus.t t =
-        lexer
-            whitespace
-            (Token.End, "")
-            (
-                (* None of the tokens needs any backtracking, because all can be
-                 * recognized by looking at the first character. *)
-                number
-                </> string
-                </> bool
-                </> lbrace
-                </> rbrace
-                </> lbrack
-                </> rbrack
-                </> comma
-                </> colon
-            )
-
-
+    end
 
 
 
@@ -200,22 +198,19 @@ struct
      * ===============
      *)
 
-    module Parser =
-    struct
-        include CP.Parser
+    include C.Parser
 
-        let start: t =
-            (* Lexer starting at the start of the input. *)
-            make_partial Position.start () token
+    let start: t =
+        (* Lexer starting at the start of the input. *)
+        C.make_partial Position.start () C.token
 
-        let restart (lex: t): t =
-            (* Restart the lexer at the current position and replay the not yet
-             * consumed input on the restarted parser.
-             *)
-            assert (has_succeeded lex);
-            assert (not (has_consumed_end lex));
-            make_partial (position lex) () token |> transfer_lookahead lex
-    end
+    let restart (lex: t): t =
+        (* Restart the lexer at the current position and replay the not yet
+         * consumed input on the restarted parser.
+        *)
+        assert (has_succeeded lex);
+        assert (not (has_consumed_end lex));
+        C.make_partial (position lex) () C.token |> transfer_lookahead lex
 end
 
 
@@ -307,116 +302,119 @@ end
  *)
 
 
-module Combinator =
+module Parser =
 struct
-    module TP = Token_parser.Make (Unit) (Token) (Json) (Fmlib_std.Void)
-
-    module Parser = TP.Parser
-
-    open TP
-
-
-    let const (a: 'a) (_: 'b): 'a =
-        a
-
-    let step
-            (expect: string)
-            (etp: Token.tp)
-            (f: string -> 'a)
-        : 'a t
-        =
-        TP.step
-            expect
-            (fun state _ (tp, str) ->
-                 if tp = etp then
-                     Some (f str, state)
-                 else
-                     None)
-
-    let zero_or_more_separated (p: 'a t) (sep: 'b t): 'a list t =
-        map
-            List.rev
-            (one_or_more_separated
-                 (fun x -> return [x])
-                 (fun lst _ x -> return (x :: lst))
-                 p
-                 sep)
-        </>
-        return []
+    module C =
+    struct
+        include
+            Token_parser.Make
+                (Unit)
+                (Token)
+                (Json)
+                (Fmlib_std.Void)
 
 
-    let string: string t =
-        step "string" Token.String Fun.id
+        let const (a: 'a) (_: 'b): 'a =
+            a
 
-    let colon: _ t =
-        step {|":"|} Token.Colon (const "")
+        let step
+                (expect: string)
+                (etp: Token.tp)
+                (f: string -> 'a)
+            : 'a t
+            =
+            step
+                expect
+                (fun state _ (tp, str) ->
+                     if tp = etp then
+                         Some (f str, state)
+                     else
+                         None)
 
-    let comma: _ t =
-        step {|","|} Token.Comma (const "")
-
-    let lbrace: _ t =
-        step {|"{"|} Token.Lbrace (const "")
-
-    let rbrace: _ t =
-        step {|"}"|} Token.Rbrace (const "")
-
-    let lbrack: _ t =
-        step {|"["|} Token.Lbrack (const "")
-
-    let rbrack: _ t =
-        step {|"]"|} Token.Rbrack (const "")
-
-    let number: Json.t t =
-        step "number" Token.Number (fun s -> Json.number (int_of_string s))
-
-    let bool: Json.t t =
-        step "bool" Token.Bool (fun s -> Json.bool (bool_of_string s))
-
-
-
-
-    let rec json (): Json.t t =
-        map Json.string string
-        </>
-        number
-        </>
-        bool
-        </>
-        (record () <?> "{ <key>: <value>, ... }")
-        </>
-        (list () <?> "[ <value>, ... ]")
-
-    and record (): Json.t t =
-        let* _     = lbrace in
-        let* pairs =
-            zero_or_more_separated
-                (key_value_pair () <?> "<key>: <value>")
-                comma
-        in
-        let* _     = rbrace in
-        return Json.(Record pairs)
-
-    and key_value_pair (): (string * Json.t) t =
-        let* key = string in
-        let* _   = colon  in
-        let* value = json () in
-        return (key, value)
-
-    and list (): Json.t t =
-        let* _   = lbrack in
-        let* lst = zero_or_more_separated (json ()) comma in
-        let* _   = rbrack in
-        return (Json.List lst)
-
-    let parse: Parser.t =
-        make () (json ())
-
-    let parse_partial: Parser.t =
-        make_partial () (
-            json ()
+        let zero_or_more_separated (p: 'a t) (sep: 'b t): 'a list t =
+            map
+                List.rev
+                (one_or_more_separated
+                     (fun x -> return [x])
+                     (fun lst _ x -> return (x :: lst))
+                     p
+                     sep)
             </>
-            expect_end Json.Null
-        )
+            return []
+
+
+        let string: string t =
+            step "string" Token.String Fun.id
+
+        let colon: _ t =
+            step {|":"|} Token.Colon (const "")
+
+        let comma: _ t =
+            step {|","|} Token.Comma (const "")
+
+        let lbrace: _ t =
+            step {|"{"|} Token.Lbrace (const "")
+
+        let rbrace: _ t =
+            step {|"}"|} Token.Rbrace (const "")
+
+        let lbrack: _ t =
+            step {|"["|} Token.Lbrack (const "")
+
+        let rbrack: _ t =
+            step {|"]"|} Token.Rbrack (const "")
+
+        let number: Json.t t =
+            step "number" Token.Number (fun s -> Json.number (int_of_string s))
+
+        let bool: Json.t t =
+            step "bool" Token.Bool (fun s -> Json.bool (bool_of_string s))
+
+
+
+
+        let rec json (): Json.t t =
+            map Json.string string
+            </>
+            number
+            </>
+            bool
+            </>
+            (record () <?> "{ <key>: <value>, ... }")
+            </>
+            (list () <?> "[ <value>, ... ]")
+
+        and record (): Json.t t =
+            let* _     = lbrace in
+            let* pairs =
+                zero_or_more_separated
+                    (key_value_pair () <?> "<key>: <value>")
+                    comma
+            in
+            let* _     = rbrace in
+            return Json.(Record pairs)
+
+        and key_value_pair (): (string * Json.t) t =
+            let* key = string in
+            let* _   = colon  in
+            let* value = json () in
+            return (key, value)
+
+        and list (): Json.t t =
+            let* _   = lbrack in
+            let* lst = zero_or_more_separated (json ()) comma in
+            let* _   = rbrack in
+            return (Json.List lst)
+    end
+
+
+    include C.Parser
+
+    let parse: t =
+        C.(make () (json ()))
+
+    let parse_partial: t =
+        C.(make_partial () ( json () </> expect_end Json.Null))
 end
 
 
@@ -431,9 +429,7 @@ end
  *)
 
 
-module Lex = Lexer.Parser
 
-module Parse = Combinator.Parser
 
 
 module Void = Fmlib_std.Void
@@ -442,10 +438,10 @@ module Void = Fmlib_std.Void
 
 module PL =
 struct
-    include Parse_with_lexer.Make (Unit) (Token) (Json) (Void) (Lex) (Parse)
+    include Parse_with_lexer.Make (Unit) (Token) (Json) (Void) (Lexer) (Parser)
 
     let start: t =
-        make Lex.start Combinator.parse
+        make Lexer.start Parser.parse
 end
 
 
@@ -602,16 +598,16 @@ let%test _ =
 
 module Pwl_partial =
 struct
-    include Parse_with_lexer.Make (Unit) (Token) (Json) (Void) (Lex) (Parse)
+    include Parse_with_lexer.Make (Unit) (Token) (Json) (Void) (Lexer) (Parser)
 
 
     let start: t =
-        make Lex.start Combinator.parse_partial
+        make Lexer.start Parser.parse_partial
 
     let next (p: t): t =
         assert (has_succeeded p);
         assert (not (has_consumed_end p));
-        make_next p Combinator.parse_partial
+        make_next p Parser.parse_partial
 
 
     let run_on_string (str: string): int * string list * t =

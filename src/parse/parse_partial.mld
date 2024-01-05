@@ -28,19 +28,137 @@ partial parser is useful:
 The input stream for partial parsing might look like
 
 {v
-    C1 C2 .... Cn end of input
+    A B C EOS
 v}
 
-or
+where [A], [B], [C] are certain grammatical constructs and [EOS]
+marks the end of input. In that case we split the input stream into three
+different parts. The parsers parsing the constructs [A] and [B] have to be
+partial parsers. They can terminate successfully without consuming the end of
+input. Then parser for [C] is a complete parser, it terminates successfully only
+if followed by the end of input.
+
+Furthermore it is possible that the input stream looks like
 
 {v
-    C C ... C end of input
+    A A A ... EOS
 v}
 
-or a mixture of both
-where [C] and [Ci] are certain grammatical construct.
+i.e. the stream consist of zero or more (or one or more) grammatical constructs
+[A].
 
-{{!page-parse} Up}
+In order to parse [A*] i.e. zero ore more repetitions of the construct [A] we
+need a partial parser which parses either an [A] or the end of input.
+
+In order to parse [A+] i.e. one or more repetitions of the construct [A] we need
+a partial parser which parses an [A] with an optional end of input at its end.
+
+
+The structure of the stream suited for partial parsing can have arbitrary loops.
+
+{v
+    A B+ C* D* EOS
+v}
+
+But the structure must be linear. It is not possible to nest partial parsers.
+
+
+
+
+
+
+{1 Combinators suited for Partial Parsing}
+
+
+{2 Complete Parsing}
+
+Usually you have a combinator [final: Final.t] which parses a grammatical
+construct [A]. If the structure of the stream is [A EOS] i.e. the structure [A]
+is ended by the end of input, then you make the final parser by
+{[
+    make start_state final
+]}
+
+
+The function [make] converts a combinator and adds to it the expectation of the
+end of input after the construct. Therefore the parser cannot succeed unless the
+construct [A] fills the complete input stream to the end.
+
+
+{2 Partial Parsing}
+
+In order to make partial parser there is the function
+{[
+    make_partial start_state final
+]}
+This function makes a partial parser parsing a grammatical construct [A] without
+expecting the end of input after [A].
+
+The function [make] is implemented by the function [make_partial] in the
+following way:
+
+{[
+    let make (state: State.t) (final: Final.t t): Parser.t =
+        make_partial state (final >>= expect_end)
+]}
+
+
+{2 A Loop of One or More}
+
+Now suppose we want to write a parser which parse an input stream of the form
+
+{v
+    A+ EOS
+v}
+
+and we have a combinator [final: Final.t t] which parses a construct [A]. We
+construct a partial parser by
+
+{[
+    make_partial
+        state
+        (
+            let* a = final in
+            expect_end a
+            </>
+            return a
+        )
+]}
+
+This parser parse a construct [A] followed by an optional end of input. In both
+cases (with or without end of input) the parser can succeed and return an object
+of type [Final.t]. The function [has_consumed_end] can be used to decide if the
+parsing has ended of if there is a next partial parser needed to parse the
+remainder of the input stream.
+
+
+
+{2 A Loop Of Zero or More}
+
+Now let the input stream look like
+{v
+    A* EOS
+v}
+
+and let [final: Final.t t] be the combinator which parses the construct [A].
+
+In that case we need an object [eos: Final.t] which the parser returns if the
+end of input has been reached. We can construct the parser by
+
+{[
+    make_partial
+        state
+        (final </> expect_end eos)
+]}
+
+This parser in case of success has either parsed successfully a construct [A] or
+has reached the end of input.
+
+The termination of the loop can be detected either by looking at
+[has_consumed_end] or by comparing the final result of the parser with [eos].
+
+
+
 
 
 
@@ -48,71 +166,78 @@ where [C] and [Ci] are certain grammatical construct.
 
 {1 Pasting together Partial Parsers}
 
-Let [c] and [ci] be combinators describing the grammatical constructs.
+{2 Same Types}
 
-In all modules of the library which generate parses (e.g.
-{!module: Fmlib_parse.Character},
-{!module:Fmlib_parse.Token_parser})
-there are two functions
-to make a parser from a combinator:
-
-- [make s c] which makes a parser starting in state [s], parses a construct
-described by the combinator [c] immediately followed by the end of input
-
-- [make_partial s c] which makes a parser starting in state [s], parses a
-  construct described by the combinator [c] not necessarily followed by the end
-  of input. If the end of input has been reached after the construct it is not
-  consumed.
-
-- [make_with_optional_end s c] which makes a parser starting in state [s],
-  parses a construct described by the combinator [c] not necessarily followed by
-  the end of input. If the end of input has been reached after the construct it
-  is consumed.
-
-If the input file has the structure [C1 C2 ... Cn] then we generate all
-parsers except the last one by [make_partial si ci] and the last one by [make sn
-cn] where [si] is the state after successful parsing of construct [Ci].
-
-All parsers in [Fmlib_parse] give access to the parsing state so the
-corresponding parsing states can be handed over to the next parser.
-
-Furthermore it is important that a partial parser might have some lookahead in
-its buffer which is not part of the parsed construct and has to be handed over
-to the next parser. In order to achieve this the parser have to the function
-[fold_lookahead] which allows to pass unconsumed lookahead over to the next
-parser before the next parser is fed with input from the source file.
-
-
-
-
-
-{1 Optional End of Input}
-
-If the input file has the structure
+Let's assume our input stream has the structure
 {v
-    C C C ... C end of input
+    A B EOS
 v}
-or ends with this structure we have the special situation that each construct
-[C] might be followed by the end of input which indicates that it is the last
-construct in the file.
 
-This is usually the case in REPLs. Let [c] be the combinator which describes
-the grammar of the construct [C].
+and [pa:P.t] is a parser parsing [A] without consuming the end of input.
+Furthermore assume that [pa] has finished successfully without consuming the end
+of input.
 
-The parser
 {[
-    let p = make_with_optional_end s c
+    assert (P.has_succeeded pa);
+    assert (not (P.has_consumed_end pa));
 ]}
 
-is a parser which parses a construct [C] followed by an optional end of input.
-If the parser [p] indicates that it has successfully parsed a construct [C] the
-function [has_consumed_end] indicates if the end of input has been reached after
-parsing the construct [C].
+At this point we can extract the construct representing [A] and the current
+state
+{[
+    let state = P.state pa
+    and a     = P.final pa
+]}
 
-If the end of input has not been reached we can do whatever we want to do with
-[C] and after that create a new partial parser and hand over to the new partial
-parser the state and the unconsumed lookahead of the previous parse and continue
-to parse the remaining part of the input stream.
+Now we can do anything we want (make I/O etc.) using this information.
 
-If the end of input has been reached then parsing of the input stream is
-finished.
+After that we want to finish parsing with the next parser. For that we need a
+combinator recognizing the construct [B], say [b_combi], and a new state
+(might be the same as [state]) and make a complete parser
+(the parser has to consume the end of input) by
+
+{[
+    let pb = make new_state b_combi
+]}
+
+This is not yet enough, because the parser [pa] might have loaded some lookahead
+which is part of the construct [B], clearly without consuming it. We have to
+transfer the lookahead of [pa] to [pb] by
+
+{[
+    let pb = P.transfer_lookahead pa pb
+]}
+
+In extreme cases this might put the parser [pb] into a success state. You have
+to check that before continue with the parsing. If this is not yet the case i.e.
+the parser [pb] needs more, then you can continue the parsing.
+
+
+
+{2 Different Types}
+
+The description in the previous section only works, if the parsers [pa] and [pb]
+have the same type. In this section we assume that the types are different
+[pa: PA.t]  and [pb: PB.t]. In order to transfer the lookaheads from [pa] to [pb]
+there is a generic function [fold_lookahead] which can be called by
+{[
+    let pb = PA.fold_lookahead pb PB.put PB.put_end pa
+]}
+
+Then, as above, check if [pb] has_succeeded or failed. If it needs more tokens
+the parsing can continue.
+
+
+
+
+{2 Parsing with Lexers}
+
+For two stage parsers i.e. parsers with lexers the pasting together of
+subsequent parser works in principle in the same way. The user of the library
+only has to paste the token parser together. For details see the documentation
+{!Fmlib_parse.Parse_with_lexer.Make}
+
+
+
+
+{{!page-parse} Up}

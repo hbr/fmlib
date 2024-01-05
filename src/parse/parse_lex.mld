@@ -36,11 +36,11 @@ of lexing and parsing with a lot of functionality.
 A lexer analyzes the input stream consisting of characters in the following way:
 
 {v
-    WS Token WS Token WS .... WS EOF
+    WS Token WS Token WS .... WS EOS
 v}
 
 where [WS] is a possibly empty sequence of whitespace like blanks, tabs,
-newlines, comments etc. [Token] is a lexically correct token. [EOF] represents
+newlines, comments etc. [Token] is a lexically correct token. [EOS] represents
 the end of the input stream.
 
 Since the lexer has to succeed immediately after recognizing a syntactically correct
@@ -68,37 +68,74 @@ The easiest way to write a lexer with the help of [Fmlib_parse] is to use
     end
   ]}
 
-- Write a combinator [whitespace] which recogizes zero or more occurrences of
-  whitespace. The definition of whitespace depends on the language.
-
-- Write a combinator for each token which recognizes the token e.g. [tok1],
-  [tok2], ...
-
-- Use {!Fmlib_parse.Character.Make.lexer} with the definition
+- Write a module which satisfies the interface {!Fmlib_parse.Interfaces.LEXER}.
   {[
-    let token: Token_plus.t t =    (* [t] is the type of the combinator *)
-        lexer
-            whitespace
-            Token.End
-            (
-                tok1 </> tok2 </> tok3 </> ...
-            )
-  ]}
-  to have a combinator which recognizes tokens and strips off whitespace.
+    module Lexer =
+    struct
+        module C =
+        struct
+            include
+                Character.Make
+                    (Unit)              (* Trivial user state *)
+                    (Token_plus)
+                    (Fmlib_std.Void)    (* No semantic error possible *)
 
-- Make the lexer for the first token by
-  {[
-    let init: t =               (* [t] is the type of the final parser *)
-        make_partial Position.start () token
-  ]}
+            let ws: _ t =
+                ... (* combinator recognizing optional but arbitrarily long
+                       whitespace *)
+                Basic.skip_zero_or_more
+                    (...)
 
-- Make the lexers for the subsequent tokens by
+            let tok: Token.t t =
+                ... (* Combinator recognizing tokens. *)
+
+
+            let final: Token_plus.t t =
+                C.lexer ws eos tok
+        end
+
+        (* Public Functions *)
+
+        include C.Parser
+
+        let start: t =
+            (* Recognize the first token *)
+            C.make_partial Position.start () C.final
+
+        let restart (lex: t): t =
+            (* Recognize subsequent tokens *)
+            assert (has_succeeded lex);
+            assert (not (has_consumed_end lex));
+
+            C.make_partial (position lex) () C.final
+            |>
+            transfer_lookahead lex
+    end
+    ]}
+
+
+- Note that the function {!Fmlib_parse.Character.Make.lexer} has the following
+  definition
   {[
-    let restart (lex: t): t =
-        make_partial (position lex) () token
-        |>
-        transfer_lookahead lex
+    let lexer
+            (ws: _ t) (eos: Token.t) (tok: Token.t t)
+        : Token_plus.t
+        =
+        let* _ = ws
+        in
+        located (
+            tok
+            </>
+            expect_end eos
+        )
   ]}
+  It first strips off whitespace and then it expects either a token or the end
+  of input. The token or the end of input is returned with the corresponding
+  position information. This functionality is usually expected from a lexer.
+  However you can write your own combinator if you want to have a different
+  behaviour. When you write your own function, be careful where to put
+  {!Fmlib_parse.Character.Make.expect_end}.
+
 
 Look into {{:https://github.com/hbr/fmlib/blob/master/src/parse/test_json.ml}}
 to see an example with a simple json parser on how it works.
@@ -108,13 +145,69 @@ to see an example with a simple json parser on how it works.
 
 {1 How to write a parser}
 
-Write the parser using {!Fmlib_parse.Token_parser} to write the parser which
-uses [Token.t] as the primitive tokens. Look into the same example as above.
+- Write a module [State] where [State.t] represents the state of your parser. If
+  you don't need a state, then use [Unit].
+
+- Write a module [Semantic] where [Semantic.t] it the type of semantic errors.
+  If your parser issues only syntax errors, then use [Fmlib_std.Void].
+
+- Write a module [Final] where [Final.t] represents the structure you want to
+  parse.
+
+- Finally write the module representing the parser using
+  {!Fmlib_parse.Token_parser} which uses [Token.t] as the primitive tokens. Look
+  into the same example as above.
+    {[
+        module Parser =
+        struct
+            module C =
+            struct
+                include
+                    Token_parser.Make
+                        (State)
+                        (Token)
+                        (Final)
+                        (Semantic)
+
+                ...
+
+                let final: Final.t t =
+                    ...
+            end
+
+            (* Public Functions *)
+
+            include C.Parser
+
+            let token_parser: t =
+                make State.start final
+        end
+
+    ]}
+
 
 
 {1 How to wire the lexer and the parser}
 
-Use {!Fmlib_parse.Parse_with_lexer} to generate the final parser which scans a
+The final parse looks like
+{[
+    module Parse_lex =
+    struct
+        include
+            Parse_with_lexer
+                (State)
+                (Token)
+                (Final)
+                (Semantic)
+                (Lexer)
+                (Parser)
+
+        let start: t =
+            make Lexer.start Parser.token_parser
+    end
+]}
+
+using {!Fmlib_parse.Parse_with_lexer} to generate the final parser which scans a
 stream of characters breaks the input up into tokens by using the lexer and
 analyzes the grammar by using the token parser. See same example as above.
 
