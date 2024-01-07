@@ -9,7 +9,7 @@ let string_at
     =
     let len = String.length str
     in
-    assert (start <= len);
+    assert (start <= len + 1);
     let rec run i p =
         if i > len || not (needs_more p) then
 
