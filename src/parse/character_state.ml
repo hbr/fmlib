@@ -59,6 +59,26 @@ struct
         }
 
 
+    let newline (byte_width: int) (s: t): t =
+        {
+            s with
+            pos =
+                Position.newline byte_width s.pos;
+            indent =
+                Indent.token (Position.column s.pos) s.indent
+        }
+
+
+    let advance (byte_width: int) (width: int) (s: t): t =
+        {
+            s with
+            pos =
+                Position.advance byte_width width s.pos;
+            indent =
+                Indent.token (Position.column s.pos) s.indent
+        }
+
+
     let check_position (s: t): Indent.violation option =
         Indent.check_position
             (Position.column s.pos)
