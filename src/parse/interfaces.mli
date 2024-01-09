@@ -643,6 +643,10 @@ sig
     *)
 
 
+
+
+
+
     (** {2 Repetition} *)
 
 
@@ -700,6 +704,15 @@ sig
         accumulate the results.
     *)
 
+
+
+    val counted: int -> int -> 'r -> (int -> 'e -> 'r -> 'r) -> 'e t -> 'r t
+    (** [counted min max start next p]
+
+        Collect between [min] and [max] numbers if elements recognized by the
+        combinator [p] and accumulate them with the folding function [next] into
+        the start value [start].
+    *)
 
 
 

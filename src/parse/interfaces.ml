@@ -138,13 +138,14 @@ sig
 
     val skip_one_or_more:  'a t -> int t
 
-
     val one_or_more_separated:
         ('item -> 'r t)
         -> ('r -> 'sep -> 'item -> 'r t)
         -> 'item t
         -> 'sep t
         -> 'r t
+
+    val counted: int -> int -> 'r -> (int -> 'e -> 'r -> 'r) -> 'e t -> 'r t
 
     val parenthesized:
         ('lpar -> 'a -> 'rpar -> 'b t)

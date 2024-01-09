@@ -583,6 +583,34 @@ struct
         many res
 
 
+    let counted
+            (min: int)
+            (max: int)
+            (start: 'r)
+            (next: int -> 'item -> 'r -> 'r)
+            (p: 'item t)
+        : 'r t
+        =
+        assert (0 <= min);
+        assert (min <= max);
+        let rec many i r =
+            if i = max then
+                return r
+            else
+                let pp =
+                    let* a = p in
+                    many (i + 1) (next (i + 1) a r)
+                in
+                if min <= i then
+                    pp </> return r
+                else
+                    pp
+        in
+        many 0 start
+
+
+
+
 
     (* Parenthesized
      * -------------
