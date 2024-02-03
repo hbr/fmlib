@@ -1101,7 +1101,7 @@ sig
 
         Method is one of [GET, POST, DELETE, ... ].
 
-        Then headers and the body can be empty.
+        The headers and the body can be empty.
     *)
 
 
@@ -1112,6 +1112,10 @@ sig
         -> string
         -> 'a Decoder.t
         -> ('a, http_error) t
+    (** [http_json method url headers body decoder] Same as {!http_text} but the
+        response is expected as a valid json string which is converted to a
+        javascript object and decoded by [decoder].
+     *)
 end
 
 
