@@ -1,3 +1,25 @@
+Release 0.5.8
+================================================================================
+
+- `Fmlib_browser`:
+
+    Added parallel execution of tasks.
+
+
+- `Fmlib_parse`:
+
+    Added unicode parsing
+
+    Added `byte_position` and `byte_offset` to module `Position`
+
+    Added and streamlined support for partial parsing. In particular the parsers
+    with lexers support fully partial parsers. Glueing of partial parsers now
+    works with `fold_lookahead` or `transfer_lookahead`.
+
+
+
+
+
 Release 0.5.7
 ================================================================================
 
