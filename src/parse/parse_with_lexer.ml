@@ -1,15 +1,62 @@
 module type ANY = Fmlib_std.Interfaces.ANY
 
 
+module type RUN =
+sig
+    type ch
+
+    val string_at:
+        ('a -> bool)
+        -> (ch -> 'a -> 'a)
+        -> ('a -> 'a)
+        -> int
+        -> string
+        -> 'a
+        -> int * 'a
+
+    val string:
+        ('a -> bool)
+        -> (ch -> 'a -> 'a)
+        -> ('a -> 'a)
+        -> string ->
+        'a
+        -> 'a
+
+    val channel:
+        ('a -> bool)
+        -> (ch -> 'a -> 'a)
+        -> ('a -> 'a)
+        -> in_channel
+        -> 'a
+        -> 'a
+end
 
 
 
-module Make
+module Run_char =
+struct
+    type ch = char
+    include Run_on
+end
+
+
+
+module Run_utf8 =
+struct
+    type ch = Utf8.Decoder.t
+    include Run_on.Make (Utf8.Decoder)
+end
+
+
+
+module Make_basic
+        (Run: RUN)
         (State: ANY)
         (Token: ANY)
         (Final: ANY)
         (Semantic: ANY)
-        (Lex: Interfaces.LEXER with type final = Position.range * Token.t)
+        (Lex: Interfaces.LEXER with type final = Position.range * Token.t
+                                and type token = Run.ch)
         (Parse: Interfaces.FULL_PARSER with
                 type state = State.t
             and type token = Position.range * Token.t
@@ -18,7 +65,7 @@ module Make
             and type semantic = Semantic.t)
 =
 struct
-    type token    = char
+    type token    = Run.ch
     type item     = token
     type final    = Final.t
     type expect   = string * Indent.expectation option
@@ -56,6 +103,9 @@ struct
 
     let has_succeeded (p: t): bool =
         Parse.has_succeeded p.parse
+
+    let has_ended (p: t): bool =
+        Parse.has_ended p.parse
 
     let has_consumed_end (p: t): bool =
         Parse.has_consumed_end p.parse
@@ -133,7 +183,7 @@ struct
             p
 
 
-    let put (c: char) (p: t): t =
+    let put (c: Run.ch) (p: t): t =
         check_token {p with lex = Lex.put c p.lex}
 
     let put_end (p: t): t =
@@ -150,7 +200,49 @@ struct
             p
 
 
-    let run_on_string    = Run_on.string     needs_more put put_end
-    let run_on_string_at = Run_on.string_at  needs_more put put_end
-    let run_on_channel   = Run_on.channel    needs_more put put_end
+    let run_on_string    = Run.string     needs_more put put_end
+    let run_on_string_at = Run.string_at  needs_more put put_end
+    let run_on_channel   = Run.channel    needs_more put put_end
 end
+
+
+
+
+
+
+module Make
+        (State: ANY)
+        (Token: ANY)
+        (Final: ANY)
+        (Semantic: ANY)
+        (Lex: Interfaces.LEXER with type final = Position.range * Token.t
+                                and type token = char)
+        (Parse: Interfaces.FULL_PARSER with
+                type state = State.t
+            and type token = Position.range * Token.t
+            and type expect= string * Indent.expectation option
+            and type final = Final.t
+            and type semantic = Semantic.t)
+    =
+    Make_basic (Run_char) (State) (Token) (Final) (Semantic) (Lex) (Parse)
+
+
+
+
+
+
+module Make_utf8
+        (State: ANY)
+        (Token: ANY)
+        (Final: ANY)
+        (Semantic: ANY)
+        (Lex: Interfaces.LEXER with type final = Position.range * Token.t
+                                and type token = Utf8.Decoder.t)
+        (Parse: Interfaces.FULL_PARSER with
+                type state = State.t
+            and type token = Position.range * Token.t
+            and type expect= string * Indent.expectation option
+            and type final = Final.t
+            and type semantic = Semantic.t)
+    =
+    Make_basic (Run_utf8) (State) (Token) (Final) (Semantic) (Lex) (Parse)

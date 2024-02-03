@@ -31,7 +31,7 @@ sig
     *)
     module Parser:
     sig
-        include Interfaces.PARSER
+        include Interfaces.FULL_PARSER
             with type token    = Token.t
              and type final    = Final.t
              and type expect   = Expect.t

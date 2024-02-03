@@ -44,6 +44,21 @@ module Character = Character
 
 
 
+
+
+(** {2 Unicode Parsers}
+
+ *)
+
+module Ucharacter = Ucharacter
+
+module Utf8  = Utf8
+module Utf16 = Utf16
+
+
+
+
+
 (** {2 Parsing with lexers}
 
     Sometimes pure character parser are not very efficient if a lot of

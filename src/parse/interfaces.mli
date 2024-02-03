@@ -9,6 +9,17 @@
 module type MINIMAL_PARSER =
 sig
     (** *)
+    (**
+        A parser [p] is a sink of token. As long as it signals [needs_more p]
+        more token can be pushed into the parser via [put token p] or the input
+        stream can be ended via [put_end p].
+
+        [has_ended  p] is equivalent to [not (needs_more p)]. [has_ended  p]
+        signals that the parser has either succeeded or failed.
+
+        If it has succeeded the final value is available via [final p].
+    *)
+
 
     type t          (** Type of the parser. *)
 
@@ -44,6 +55,14 @@ sig
 
     val has_succeeded: t -> bool
     (** [has_succeeded p] Has the parser [p] succeeded? *)
+
+
+    val has_ended: t -> bool
+    (** [has_ended p] Has the parser [p] ended parsing and either succeeded or
+        failed?
+
+        [has_ended p] is the same as [not (needs_more p)]
+    *)
 
 
     val has_consumed_end: t -> bool
@@ -131,6 +150,12 @@ sig
 
     (** {1 Lookaheads} *)
 
+
+    val has_lookahead: t -> bool
+    (** [has_lookahead p] Are there any unconsumed lookahead tokens in the buffer
+        or has the end token not yet been consumed? *)
+
+
     val first_lookahead_token: t -> token option
     (** The first lookahead token (or [None] in case there is none). *)
 
@@ -157,6 +182,14 @@ sig
     (** [transfer_lookahead p_old p_new]
 
         Transfer the lookahead tokens from [p_old] to [p_new]
+    *)
+
+
+    val lookaheads: t -> token array * bool
+    (** [lookaheads p] The lookahead token and and end flag of the parser [p].
+
+        The end flag indicates that the end token has already been received via
+        [put_end p].
     *)
 end
 
@@ -210,8 +243,7 @@ sig
      *)
 
     include MINIMAL_PARSER
-        with type token = char
-         and type expect = string * Indent.expectation option
+        with type expect = string * Indent.expectation option
     (** @inline *)
 
     (** {1 Lookahead} *)
@@ -257,185 +289,6 @@ end
 
 
 
-module type PARSER =
-sig
-
-    (**  *)
-
-    (**
-        A parser [p] is a sink of token. As long as it signals [needs_more p]
-        more token can be pushed into the parser via [put token p] or the input
-        stream can be ended via [put_end p].
-
-        [has_result p] is equivalent to [not (needs_more p)]. [has_result p]
-        signals that the parser has either succeeded or failed.
-
-        If it has succeeded the final value is available via [final p].
-
-        There are two types of failure:
-
-        - Syntax error: In that case [failed_expectations p] returns the list of
-        failed expectations.
-
-        - Semantic error: In that case [failed_semantic p] returns the
-        encountered semantic error.
-
-
-       The function [state] returns the user state.
-
-       The function [lookaheads] returns a pair. The first part of the pair is
-       an array of unprocessed lookahead token and the second part is a flag
-       indicating if the endtoken has been received via [put_end].
-    *)
-
-    type token
-    (** Token type. *)
-
-
-    type item = token
-    (** In order to conform to the interface {!Fmlib_std.Interfaces.SINK}. *)
-
-
-    type state
-    (** User state. *)
-
-
-    type final
-    (** Type of the final object constructed in case of success. *)
-
-
-    type expect
-    (** Type of a failed expectation. *)
-
-
-    type semantic
-    (** Type a semantic error. *)
-
-
-    type t
-    (** Type of the final parser. *)
-
-
-    val needs_more: t -> bool
-    (** [needs_more p] Does the parser [p] need more token? *)
-
-
-    val has_result: t -> bool
-    (** [has_result p] Has the parser [p] ended parsing and either succeeded or
-        failed?
-
-        [has_result p] is the same as [not (needs_more p)]
-    *)
-
-
-
-    val has_ended: t -> bool
-    (** @deprecated Use [has_result]. *)
-
-
-    val has_received_end: t -> bool
-    (** [has_received_end p] Has the parser [p] already received the end of
-        token stream via [put_end]?
-     *)
-
-
-    val has_consumed_end: t -> bool
-    (** [has_consumed_end p] Has the parser [p] already received the end of
-        token stream via [put_end] and consumed it?
-     *)
-
-    val put: token -> t -> t
-    (** [put token p] Push [token] into the parser [p].
-
-        Even if the parser has ended, more token can be pushed into the parser.
-        The parser stores the token as lookahead token.
-
-        If the parser has already received the end of the token stream via
-        {!put_end}, then all subsequent tokens are ignored.
-    *)
-
-
-    val put_end: t -> t
-    (** [put_end p] Push and end token into the parser [p].
-
-    *)
-
-
-    val has_succeeded: t -> bool
-    (** [has_succeeded p] Has the parser [p] succeeded? *)
-
-    val has_failed_syntax: t -> bool
-    (** [has_failed_syntax p] Has the parser [p] failed with a syntax error? *)
-
-    val has_failed_semantic: t -> bool
-    (** [has_failed_semantic p] Has the parser [p] failed with a semantic error?
-    *)
-
-
-    val final: t -> final
-    (** [final p] The final object constructed by the parser [p] in case of
-        success.
-
-        Precondition: [has_succeeded p]
-    *)
-
-
-    val failed_expectations: t -> expect list
-    (** [failed_expectations p] The failed expectations due to a syntax error.
-
-        Precondition: [has_failed_syntax p]
-    *)
-
-
-    val failed_semantic: t -> semantic
-    (** [failed_semantic p] The failed semantic error.
-
-        Precondition: [has_failed_semantic p]
-    *)
-
-    val state: t -> state
-    (** [state p] The user state of the parser [p].
-
-        Can be called at any time.
-    *)
-
-    val has_lookahead: t -> bool
-    (** [has_lookahead p] Are there any unconsumed lookahead tokens in the buffer
-        or has the end token not yet been consumed? *)
-
-    val first_lookahead_token: t -> token option
-    (** The first lookahead token. *)
-
-    val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
-    (** [fold_lookahead a  ftok fend p]
-
-        Fold the lookahead tokens with the start value [a] and the folding
-        function [ftok]. At the end of the lookahead tokens, call [fend] if
-        there is an unconsumed end.
-    *)
-
-
-    val transfer_lookahead: t -> t -> t
-    (** [transfer_lookahead p_old p_new]
-
-        Transfer the lookahead tokens from [p_old] to [p_new]
-
-        Preconditions:
-        {[
-            has_succeeded p_old
-            not (has_consumed_end p_old)
-        ]}
-    *)
-
-
-
-    val lookaheads: t -> token array * bool
-    (** [lookaheads p] The lookahead token and and end flag of the parser [p].
-
-        The end flag indicates that the end token has already been received via
-        [put_end p].
-    *)
-end
 
 
 
@@ -628,6 +481,7 @@ sig
         where [a] is the returned value in case of success and [s1] is the final
         state after executing [p].
     *)
+
 
     (** {2 Optional Elements} *)
 
@@ -835,4 +689,95 @@ sig
 
     (** [followed_by] and [not_followed_by] can be used to peek into the token
         stream without consuming token. *)
+end
+
+
+
+
+
+
+(** Decoder for unicode characters. *)
+module type CHAR_DECODER =
+sig
+    type t  (** Partially or completely scanned unicode character. *)
+
+    val is_complete: t -> bool
+    (** Has the unicode character been completely scanned? *)
+
+    val has_error:   t -> bool
+    (** Has the scanning of the unicode character encountered an encoding
+        error? *)
+
+
+    val uchar:       t -> Uchar.t
+    (** The unicode character. In case of an error or a not yet completed scan,
+        the unicode character [rep = U+FFFD] is returned.
+     *)
+
+
+    val scalar:      t -> int
+    (** The scalar value of the unicode character. *)
+
+
+    val width:       t -> int
+    (** The width of the unicode character. The width is either 0, 1, or 4.
+
+        A tab has width 4.
+
+        Other ascii control characters (below space) have witdh 0 (not visible).
+
+    *)
+
+
+    val byte_width:  t -> int
+    (** Number of bytes used during decoding. *)
+
+
+
+    val is_newline:  t -> bool
+    (** Is the decoded character a newline character.
+
+        Valid newline characters are line feed (LF), vertical tab (VT), form
+        feed (FF), next line (NEL), line separator (LS) and paragraph separator
+        (PS).
+    *)
+
+
+
+    val init: t
+    (** Initial value representing the completely scanned unicode character
+       [U+0000].
+     *)
+
+
+
+    val put: char -> t -> t
+    (** [put byte dec] Feed the scanner with the next byte of the encoded
+        unicode character.
+     *)
+end
+
+
+
+(** Encoder for unicode characters. *)
+module type CHAR_ENCODER =
+sig
+    type t = Uchar.t
+
+    val to_internal: t -> string
+    (** Internal representation in Ocaml is utf-8 *)
+
+    val to_external: t -> string
+    (** The external representation in the corresponding encoding. *)
+end
+
+
+
+
+(** Encoder and decoder for unicode characters. *)
+module type CHAR_CODEC =
+sig
+    module Encoder: CHAR_ENCODER
+
+    module Decoder: CHAR_DECODER
 end

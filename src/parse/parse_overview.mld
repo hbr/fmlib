@@ -41,6 +41,9 @@ All parsers in this library are combinator parsers.
 
 - {!module:Fmlib_parse.Character.Make} A parser where the tokens are characters.
 
+- {!module:Fmlib_parse.Ucharacter} A parser where the tokens are unicode
+  characters.
+
 - {!module:Fmlib_parse.Generic.Make} A generic parser where all is customizable.
 
 

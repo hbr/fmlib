@@ -10,6 +10,7 @@ sig
 
     type final
     val has_succeeded: t -> bool
+    val has_ended : t -> bool
     val has_consumed_end: t -> bool
     val final: t -> final
 
@@ -17,6 +18,11 @@ sig
     val has_failed_syntax: t -> bool
     val failed_expectations: t -> expect list
 end
+
+
+
+
+
 
 module type NORMAL_PARSER =
 sig
@@ -35,20 +41,23 @@ module type FULL_PARSER =
 sig
     include NORMAL_PARSER
 
+    val has_lookahead: t -> bool
     val first_lookahead_token: t -> token option
     val has_received_end: t -> bool
     val has_consumed_end: t -> bool
     val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
     val transfer_lookahead: t -> t -> t
+    val lookaheads: t -> token array * bool
 end
+
+
 
 
 
 module type LEXER =
 sig
     include MINIMAL_PARSER
-        with type token = char
-         and type expect = string * Indent.expectation option
+        with type expect = string * Indent.expectation option
 
     val has_consumed_end: t -> bool
     val position: t -> Position.t
@@ -58,35 +67,7 @@ sig
 end
 
 
-module type PARSER =
-sig
-    type token
-    type item = token
-    type state
-    type final
-    type expect
-    type semantic
-    type t
-    val needs_more: t -> bool
-    val has_result: t -> bool
-    val has_ended: t -> bool
-    val has_received_end: t -> bool
-    val has_consumed_end: t -> bool
-    val put: token -> t -> t
-    val put_end: t -> t
-    val has_succeeded: t -> bool
-    val has_failed_syntax: t -> bool
-    val has_failed_semantic: t -> bool
-    val final: t -> final
-    val failed_expectations: t -> expect list
-    val failed_semantic: t -> semantic
-    val state: t -> state
-    val has_lookahead: t -> bool
-    val first_lookahead_token: t -> token option
-    val fold_lookahead: 'a -> (token -> 'a -> 'a) -> ('a -> 'a) -> t -> 'a
-    val transfer_lookahead: t -> t -> t
-    val lookaheads: t -> token array * bool
-end
+
 
 
 
@@ -168,4 +149,48 @@ sig
     val followed_by: 'a t -> expect -> 'a t
 
     val not_followed_by: 'a t -> expect -> unit t
+end
+
+
+
+
+
+
+
+
+
+module type CHAR_DECODER =
+sig
+    type t
+
+    val is_complete: t -> bool
+    val has_error:   t -> bool
+    val uchar:       t -> Uchar.t
+    val scalar:      t -> int
+    val width:       t -> int
+    val byte_width:  t -> int
+    val is_newline:  t -> bool
+
+    val init: t
+    val put: char -> t -> t
+end
+
+
+
+module type CHAR_ENCODER =
+sig
+    type t = Uchar.t
+
+    val to_internal: t -> string
+    val to_external: t -> string
+end
+
+
+
+
+module type CHAR_CODEC =
+sig
+    module Encoder: CHAR_ENCODER
+
+    module Decoder: CHAR_DECODER
 end

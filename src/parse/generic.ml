@@ -41,11 +41,7 @@ struct
                 false
 
 
-        let has_result (p: t): bool =
-            not (needs_more p)
-
-
-        let has_ended (p: t): bool =
+        let has_ended  (p: t): bool =
             not (needs_more p)
 
 

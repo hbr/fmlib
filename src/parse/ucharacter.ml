@@ -1,20 +1,26 @@
-open Fmlib_std
 open Interfaces
 
 
+
+module type ANY = Fmlib_std.Interfaces.ANY
+
+module String = Fmlib_std.String
+
+
+
+
 module Make
-         (User:        ANY)
-         (Final:       ANY)
-         (Semantic:    ANY)
+        (Codec: CHAR_CODEC)
+        (User:  ANY)
+        (Final: ANY)
+        (Semantic: ANY)
 =
 struct
-    module Token =
-      struct
-        type t = char
-      end
-
-
     module State = Character_state.Make (User)
+
+    module Dec = Codec.Decoder
+
+    module Enc = Codec.Encoder
 
 
 
@@ -26,18 +32,19 @@ struct
 
     module Basic =
         Generic.Make
-            (Token)
+            (Dec)
             (State)
             (Expect)
             (Semantic)
             (Final)
+
     include  Basic
+
 
     module Parser =
     struct
         module P = Basic.Parser
-
-        type token    = Token.t
+        type token    = Dec.t
         type item     = token
         type final    = Final.t
         type state    = User.t
@@ -85,13 +92,13 @@ struct
         let state (p: t): User.t =
             P.state p |> State.user
 
+        module Run = Run_on.Make (Dec)
 
+        let run_on_string    = Run.string    needs_more put put_end
 
-        let run_on_string  = Run_on.string  needs_more put put_end
+        let run_on_string_at = Run.string_at needs_more put put_end
 
-        let run_on_string_at = Run_on.string_at needs_more put put_end
-
-        let run_on_channel = Run_on.channel needs_more put put_end
+        let run_on_channel   = Run.channel   needs_more put put_end
     end
 
 
@@ -100,9 +107,17 @@ struct
 
 
 
+
+    (* General Combinators
+       ============================================================
+     *)
+
+
+
+
     let expect_error (e: string) (_: State.t): Expect.t =
         e, None
-        (*e, State.indent st*)
+    (*e, State.indent st*)
 
 
     let unexpected (e: string): 'a t =
@@ -179,40 +194,8 @@ struct
         Basic.( not_followed_by p (e, None) )
 
 
-    let step
-        (f: State.t -> char -> ('a, string) result)
-        (e: string)
-        :
-        'a t
-        =
-        (* Auxiliary function to get a combinator receiving one character.
-
-           The function [f] decides what to do with a character received in a
-           certain state.
-
-           [e] is needed to generate an expect message in case that
-           we are offside or at the end of input.
-        *)
-        Basic.step
-            (fun state -> function
-                | None ->
-                    (* end of input reached. *)
-                    Error (e, None)
-
-                | Some c ->
-                    (match State.check_position state with
-                     | None ->
-                         (match f state c with
-                          | Ok a ->
-                              Ok (a, State.next c state)
-
-                          | Error e ->
-                              Error (e, None)
-                         )
-                     | Some vio ->
-                         Error (e, Some vio)
-                    )
-            )
+    let expect_end (a: 'a): 'a t =
+        Basic.expect_end (fun _ -> "end of input", None) a
 
 
 
@@ -233,163 +216,13 @@ struct
 
 
 
-    (* Character Combinators *)
-
-    let expect_end (a: 'a): 'a t =
-        Basic.expect_end (fun _ -> "end of input", None) a
-
-
-    let char (expected: char): char t =
-        let error () = String.(one '\'' ^ one expected ^ one '\'')
-        in
-        step
-            (fun _ actual ->
-                if expected = actual then
-                    Ok expected
-
-                else
-                    Error (error ())
-            )
-            (error ())
-
-
-    let charp (f: char -> bool) (e: string): char t =
-        step
-            (fun _ c ->
-                 if f c then
-                     Ok c
-                 else
-                     Error e)
-            e
-
-
-    let range (c1: char) (c2: char): char t =
-        charp
-            (fun c -> c1 <= c && c <= c2)
-            String.("character between '" ^ one c1 ^ "' and '" ^ one c2 ^ "'")
-
-
-    let uppercase_letter: char t =
-        charp
-            (fun c -> 'A' <= c && c <= 'Z')
-            "uppercase letter"
-
-
-    let lowercase_letter: char t =
-        charp
-            (fun c -> 'a' <= c && c <= 'z')
-            "lower case letter"
-
-
-    let letter: char t =
-        charp
-            (fun c ->
-                 ('A' <= c && c <= 'Z')
-                 ||
-                 ('a' <= c && c <= 'z'))
-            "letter"
-
-
-    let digit_char: char t =
-        charp (fun c -> '0' <= c && c <= '9') "digit"
-
-
-    let digit: int t =
-        let* d = digit_char
-        in
-        return Char.(code d - code '0')
-
-
-    let word
-            (first: char -> bool)
-            (inner: char -> bool)
-            (expect: string)
-        : string t
-        =
-        let* c0 = charp first expect in
-        zero_or_more_fold_left
-            (String.make 1 c0)
-            (fun str c -> str ^ String.make 1 c |> return)
-            (charp inner expect)
-        |> no_expectations
-
-
-    let hex_lowercase: int t =
-        let* c = range 'a' 'f' in
-        return Char.(code c - code 'a' + 10)
-
-
-    let hex_uppercase: int t =
-        let* c = range 'A' 'F' in
-        return Char.(code c - code 'A' + 10)
-
-    let hex_digit: int t =
-        digit </> hex_lowercase </> hex_uppercase <?> "hex digit"
-
-
-    let base64_char: int t =
-        let* i =
-            map (fun c -> Char.code c - Char.code 'A') uppercase_letter
-            </>
-            map (fun c -> Char.code c - Char.code 'a' + 26) lowercase_letter
-            </>
-            map (fun i -> i + 52) digit
-            </>
-            map (fun _ -> 62) (char '+')
-            </>
-            map (fun _ -> 63) (char '/')
-            <?>
-            "base64 character [A-Za-z0-9+/]"
-        in
-        let* _ = skip_zero_or_more (char ' ' </> char '\n' </> char '\r')
-        in
-        return i
-
-
-
-    let base64_group: int array t =
-        counted 2 4 [||] (fun _ -> Array.push) base64_char
-
-
-    let base64 (start: string -> 'r) (next: string -> 'r -> 'r): 'r t =
-        let _,_ = start, next in
-        let start0 arr =
-            Base64.decode arr |> start |> return
-        and next0  r arr =
-            next (Base64.decode arr) r |> return
-        in
-        let* r = one_or_more_fold_left start0 next0 base64_group in
-        let* _ = skip_zero_or_more (char '=') in
-        return r
-
-
-
-    let string_of_base64: string t =
-        base64 Fun.id (fun group str -> str ^ group)
-
-
-
-    let string (str: string): string t =
-        let len = String.length str in
-        let rec parse i =
-            if i = len then
-                return str
-            else
-                let* _ = char str.[i] in
-                parse (i + 1)
-        in
-        parse 0
-
-
-    let one_of_chars (str:string) (e: string): char t =
-        let p c = String.has (fun d -> c = d)  0 str
-        in
-        charp p e
 
 
 
 
-    (* Indentation combinators *)
+    (* Indentation Combinators
+       ============================================================
+     *)
 
 
     let indent (i: int) (p: 'a t): 'a t =
@@ -433,7 +266,224 @@ struct
 
 
 
-    (* Lexer support *)
+    (* Character Combinators
+       ============================================================
+     *)
+    let step
+        (f: State.t -> Uchar.t -> ('a, string) result)
+        (e: string)
+        :
+        'a t
+        =
+        (* Auxiliary function to get a combinator receiving one character.
+
+           The function [f] decides what to do with a character received in a
+           certain state.
+
+           [e] is needed to generate an expect message in case that
+           we are offside or at the end of input.
+        *)
+        Basic.step
+            (fun state -> function
+                | None ->
+                    (* end of input reached. *)
+                    Error (e, None)
+
+                | Some c -> begin
+                        match State.check_position state with
+                        | None ->
+                            (match f state (Dec.uchar c) with
+                             | Ok a ->
+                                 let state =
+                                     if Dec.is_newline c then
+                                         State.newline (Dec.byte_width c) state
+                                     else
+                                         State.advance
+                                             (Dec.byte_width c)
+                                             (Dec.width c)
+                                             state
+                                 in
+                                 Ok (a, state)
+
+                             | Error e ->
+                                 Error (e, None)
+                            )
+                        | Some vio ->
+                            Error (e, Some vio)
+                    end
+            )
+
+
+    let uchar (expected: Uchar.t): Uchar.t t =
+        let error () =
+            Printf.sprintf
+                "\"%s\" (U+%X)"
+                (Enc.to_external expected)
+                (Uchar.to_int expected)
+        in
+        step
+            (fun _ actual ->
+                 if expected = actual then
+                     Ok expected
+                 else
+                     Error (error ())
+            )
+            (error ())
+
+
+
+    let char (expected: char): char t =
+        assert (Char.code expected < 128);
+        let* _ = uchar (Uchar.of_char expected) in
+        return expected
+
+
+
+    let ucharp (f: Uchar.t -> bool) (e: string): Uchar.t t =
+        step
+            (fun _ c ->
+                 if f c then
+                     Ok c
+                 else
+                     Error e)
+            e
+
+
+    let charp (f: char -> bool) (e: string): char t =
+        map
+            Uchar.to_char
+            (ucharp
+                (fun uc ->
+                     let i = Uchar.to_int uc in
+                     0 <= i && i < 128 && f (Char.chr i))
+                e
+            )
+
+
+    let range (c1: char) (c2: char): char t =
+        charp
+            (fun c -> c1 <= c && c <= c2)
+            (Printf.sprintf "character between %c and %c" c1 c2)
+
+
+    let urange (c1: Uchar.t) (c2: Uchar.t): Uchar.t t =
+        let i1 = Uchar.to_int c1
+        and i2 = Uchar.to_int c2
+        in
+        ucharp
+            (fun c ->
+                 let i = Uchar.to_int c in
+                 i1 <= i && i <= i2
+            )
+            (Printf.sprintf
+                 "unicode character between U+%X and U+%X"
+                 i1
+                 i2
+            )
+
+
+    let uppercase_letter: char t =
+        charp
+            (fun c -> 'A' <= c && c <= 'Z')
+            "uppercase letter"
+
+
+    let lowercase_letter: char t =
+        charp
+            (fun c -> 'a' <= c && c <= 'z')
+            "lower case letter"
+
+
+    let letter: char t =
+        charp
+            (fun c ->
+                 ('A' <= c && c <= 'Z')
+                 ||
+                 ('a' <= c && c <= 'z'))
+            "letter"
+
+
+    let digit_char: char t =
+        charp (fun c -> '0' <= c && c <= '9') "digit"
+
+
+    let digit: int t =
+        let* d = digit_char
+        in
+        return Char.(code d - code '0')
+
+    let word
+            (first: char -> bool)
+            (inner: char -> bool)
+            (expect: string)
+        : string t
+        =
+        let* c0 = charp first expect in
+        zero_or_more_fold_left
+            (String.make 1 c0)
+            (fun str c -> str ^ String.make 1 c |> return)
+            (charp inner expect)
+        |> no_expectations
+
+
+    let hex_lowercase: int t =
+        let* c = range 'a' 'f' in
+        return Char.(code c - code 'a' + 10)
+
+
+    let hex_uppercase: int t =
+        let* c = range 'A' 'F' in
+        return Char.(code c - code 'A' + 10)
+
+    let hex_digit: int t =
+        digit </> hex_lowercase </> hex_uppercase <?> "hex digit"
+
+
+
+    let string (str: string): string t =
+        let len = String.length str in
+        let rec parse i =
+            if i = len then
+                return str
+            else
+                let* _ = char str.[i] in
+                parse (i + 1)
+        in
+        parse 0
+
+
+    let one_of_chars (str:string) (e: string): char t =
+        let p c = String.has (fun d -> c = d)  0 str
+        in
+        charp p e
+
+
+
+
+    let uword
+            (first: Uchar.t -> bool)
+            (inner: Uchar.t -> bool)
+            (expect: string)
+        : string t
+        =
+        let* c0 = ucharp first expect in
+        zero_or_more_fold_left
+            (Enc.to_internal c0)
+            (fun str c -> str ^ Enc.to_internal c |> return)
+            (ucharp inner expect)
+        |> no_expectations
+
+
+
+
+
+
+
+
+
+    (* Lexer support
+       ============================================================
+    *)
 
     let lexer
             (ws:        'a t)
@@ -452,9 +502,9 @@ struct
 
 
 
-
-
-    (* Make the final parser *)
+    (* Make the Final Parser
+       ============================================================
+     *)
 
     let make (user: User.t) (p: Final.t t): Parser.t =
         Basic.make
@@ -473,3 +523,36 @@ struct
             (State.make pos user)
             p
 end
+
+
+
+
+
+module Make_utf8
+        (User:  ANY)
+        (Final: ANY)
+        (Semantic: ANY)
+    =
+    Make (Utf8) (User) (Final) (Semantic)
+
+
+
+
+
+module Make_utf16_be
+        (User:  ANY)
+        (Final: ANY)
+        (Semantic: ANY)
+    =
+    Make (Utf16.Be) (User) (Final) (Semantic)
+
+
+
+
+
+module Make_utf16_le
+        (User:  ANY)
+        (Final: ANY)
+        (Semantic: ANY)
+    =
+    Make (Utf16.Le) (User) (Final) (Semantic)

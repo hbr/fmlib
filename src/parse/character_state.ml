@@ -34,6 +34,10 @@ struct
         Position.column s.pos
 
 
+    let byte_column (s: t): int =
+        Position.byte_column s.pos
+
+
     let user (s: t): User.t =
         s.user
 

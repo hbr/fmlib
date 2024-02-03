@@ -92,10 +92,10 @@ syntax error.  An error reporter can be generated from [p] by
     module Reporter = Error_reporter.Make (Parser)
 
     let r = Reporter.make_syntax p
-}
+]}
 
 Now we have an error reporter [r] which can report the error of the parser [p].
-Obviously this is allowed only of the parser [p] is in an error state
+Obviously this is allowed only if the parser [p] is in an error state
 [not (needs_more p) && not (has_succeeded p)].
 
 The error reporter needs some form of the

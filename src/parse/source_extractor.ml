@@ -249,22 +249,46 @@ let one_line_marker (is_last: bool) (p: t): Pretty.doc =
     let pos1, pos2 = p.range in
     let c1 = Position.column pos1
     and c2 = Position.column pos2
+    and bc = Position.byte_column pos2
     in
     assert (line pos1 = line pos2);
     assert (c1 <= c2);
-    let len = c2 - c1 in
-    let len = max len 1 in
+    let len = max 1 (c2 - c1) in
     let open Pretty
     in
+    let non_printable () =
+        let len = String.length p.line in
+        assert (bc < len);
+        let open Printf in
+        let hex i =
+            assert (bc + i < len);
+            Char.code p.line.[bc + i]
+        in
+        " nonprintable ascii(s): "
+        ^
+        if bc + 1 = len then
+            sprintf "%X end of line" (hex 0)
+        else if bc + 2 = len then
+            sprintf "%X %X (end of line)" (hex 0) (hex 1)
+        else if bc + 3 = len then
+            sprintf "%X %X %X (end of line)"
+                (hex 0) (hex 1) (hex 2)
+        else if bc + 4 = len then
+            sprintf "%X %X %X %X (end of line)"
+                (hex 0)   (hex 1) (hex 2) (hex 3)
+        else
+            sprintf "%X %X %X %X ..."
+                (hex 0)   (hex 1) (hex 2) (hex 3)
+    in
     let annotation =
-        if len = 1 && c1 < String.length p.line
+        if len = 1 && bc < String.length p.line
         then
-            let ch = p.line.[c1] in
+            let ch = p.line.[bc] in
             if ch < ' ' || Char.chr 126 <= ch then
-                text (" nonprintable ascii '" ^ Char.escaped ch ^ "'")
+                text (non_printable ())
             else
                 empty
-        else if len = 1 && c1 = String.length p.line then
+        else if len = 1 && bc = String.length p.line then
             if is_last then
                 text " end of input"
             else
