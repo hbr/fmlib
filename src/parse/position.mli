@@ -127,16 +127,6 @@ val next: char -> t -> t
 *)
 
 
-val nextu: Uchar.utf_decode -> t -> t
-(** [nextu uchar pos]: Advance the position by using the next unicode character.
-
-    Unicode characters which are ascii characters with a code below [0x20] (i.e.
-    space) are treated as zero width except newline and tab. Tabs are treated as
-    character width 4 and a newline increments the line number and resets the
-    positions within the current line. For more fine grained control use
-    {!advance} and {!newline} or correct the default behaviour by {!correct}.
-*)
-
 
 val correct: int -> t -> t
 (** [correct n pos] Correct the column by [n]. In case of multibyte characters
@@ -145,8 +135,8 @@ val correct: int -> t -> t
 
 
 val advance: int -> int -> t -> t
-(** [advance byte_width width pos]
-
+(** [advance byte_width width pos] Advance the position by [byte_width] and
+    character width [width].
 *)
 
 

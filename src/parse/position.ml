@@ -90,25 +90,6 @@ let next (c: char) (p: t): t =
 
 
 
-let nextu (dec: Uchar.utf_decode) (p: t): t =
-    let scalar     = Uchar.(utf_decode_uchar dec |> to_int)
-    and byte_width = Uchar.utf_decode_length dec
-    in
-    if scalar = Char.code '\n' then
-
-        newline byte_width p
-
-    else if scalar = Char.code '\t' then
-
-        advance byte_width 4 p
-
-    else if scalar < Char.code ' ' then
-
-        advance byte_width 0 p
-
-    else
-
-        advance byte_width 1 p
 
 
 
