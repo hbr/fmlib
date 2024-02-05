@@ -34,7 +34,7 @@ The components of [Fmlib] can be installed separately via opam.
 {1 Design and Implementation}
 
 The design and the implementation of some modules is described
-{{: https://fmlib_ocaml.readthedocs.io} in this document}.
+{{: https://fmlib-ocaml.readthedocs.io} in this document}.
 
 
 

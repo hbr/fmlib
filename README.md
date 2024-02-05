@@ -31,7 +31,7 @@
 
 
 
-[Design Documentation](https://fmlib_ocaml.readthedocs.io): Some designs and the
+[Design Documentation](https://fmlib-ocaml.readthedocs.io): Some designs and the
 corresponding algorithms are documented separately to ensure correctness of the
 corresponding designs and algorithms. The design documention is not neccessary
 to understand the usage of the library from a user's perspective. The user's
