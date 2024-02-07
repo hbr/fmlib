@@ -87,7 +87,7 @@ struct
     }
 
     let is_complete (u: t): bool =
-        u.missing = 0 && u.length > 0
+        u.missing = 0
 
 
     let has_error (u: t): bool =

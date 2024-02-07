@@ -87,23 +87,13 @@ struct
             (fun uc -> is_ascii_letter uc || is_greek_letter uc)
             (fun uc -> is_ascii_letter uc || is_greek_letter uc || is_digit uc)
             "identifier"
-end
 
 
-module Id_list =
-struct
-    include Make (struct type t = string list end)
-
-    let id_list: string list t =
-        let* _ = whitespace
-        in
-        zero_or_more (lexeme identifier)
 
 
-    let make: Parser.t =
-        make () id_list
-
-
+    (* Test Support
+       ============================================================
+    *)
     let write_error (flg: bool) (input: string) (p: Parser.t): unit =
         let module Reporter = Error_reporter.Make (Parser) in
         let module Pretty   = Fmlib_pretty.Print in
@@ -126,7 +116,29 @@ struct
 end
 
 
+module Id_list =
+struct
+    include Make (struct type t = string list end)
 
+    let id_list: string list t =
+        let* _ = whitespace
+        in
+        zero_or_more (lexeme identifier)
+
+
+    let make: Parser.t =
+        make () id_list
+end
+
+
+
+module Any_uchar =
+struct
+    include Make (Uchar)
+
+    let make: Parser.t =
+        make () (ucharp (fun _ -> true) "any uchar")
+end
 
 
 
@@ -172,3 +184,14 @@ let%test _ =
       ; sprintf "y%s2" beta
       ; sprintf "%sz3" gamma
     ]
+
+
+let%test _ =
+    let open Any_uchar in
+    let open Parser    in
+    let p = run_on_string_error true "" make
+    in
+    printf "has_succeeded %b\n" (has_succeeded p);
+    if has_succeeded p then
+        printf " c %X\n" (Uchar.to_int (final p));
+    true
