@@ -189,9 +189,6 @@ let%test _ =
 let%test _ =
     let open Any_uchar in
     let open Parser    in
-    let p = run_on_string_error true "" make
+    let p = run_on_string_error false "" make
     in
-    printf "has_succeeded %b\n" (has_succeeded p);
-    if has_succeeded p then
-        printf " c %X\n" (Uchar.to_int (final p));
-    true
+    not (has_succeeded p)
