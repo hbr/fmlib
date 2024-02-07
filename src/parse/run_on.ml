@@ -86,25 +86,31 @@ struct
 
             else if i < len then
 
-                let d = CD.put str.[i] d in
-                let p =
-                    if CD.(is_complete d || has_error d) then
-                        put d p
-                    else
-                        p
+                let d =
+                    CD.put str.[i] d
                 in
-                run (i + 1) d p
+                if CD.(is_complete d || has_error d) then
 
-            else (* i = len *)
+                    run (i + 1) CD.init (put d p)
 
-                let p =
-                    if CD.(is_complete d || has_error d) then
-                        p
-                    else
-                        put d p
-                in
-                run (i + 1) d (put_end p)
+                else
 
+                    run (i + 1) d p
+
+            else (* i = len *) begin
+
+
+                if CD.(is_complete d || has_error d) then
+
+                    (* [d] has already been pushed to the parser. *)
+                    i + 1, put_end p
+
+                else
+
+                    (* [d] has not yet been pushed to the parser. *)
+                    i + 1, put_end (put d p)
+
+            end
         in
         run start CD.init p
 
@@ -139,22 +145,20 @@ struct
             else
                 try
                     let c = input_char ic in
-                    let d = CD.put c d    in
-                    let p =
-                        if CD.(is_complete d || has_error d) then
-                            put d p
-                        else
-                            p
+                    let d = CD.put c d
                     in
-                    run d p
+                    if CD.(is_complete d || has_error d) then
+                        run CD.init (put d p)
+
+                    else
+                        run d p
                 with End_of_file ->
-                    let p =
-                        if CD.(is_complete d || has_error d) then
-                            p
-                        else
-                            put d p
-                    in
-                    put_end p
+                    if CD.(is_complete d || has_error d) then
+                        (* [d] has already been pushd to the parser *)
+                        put_end p
+                    else
+                        (* [d] has not yet been pushed to the parser *)
+                        put_end (put d p)
         in
         run CD.init p
 end
