@@ -699,6 +699,22 @@ end
 (** Decoder for unicode characters. *)
 module type CHAR_DECODER =
 sig
+    (**
+
+       A character decoder has some valid initial value {!init}. In order to
+       decode a character bytes has to be pushed into the decoder by {!put}
+       until the decoder is either complete ({!is_complete}) or has encoutered
+       some decoding error ({!has_error}).
+
+       If the decoding is complete the decoded unicode character is returned by
+       {!uchar}. As long as the scan is not complete or if the scan has
+       encountered some decoding error the function {!uchar} returns [rep =
+       U+FFFD].
+
+    *)
+
+
+
     type t  (** Partially or completely scanned unicode character. *)
 
     val is_complete: t -> bool
@@ -720,12 +736,7 @@ sig
 
 
     val width:       t -> int
-    (** The width of the unicode character. The width is either 0, 1, or 4.
-
-        A tab has width 4.
-
-        Other ascii control characters (below space) have witdh 0 (not visible).
-
+    (** The visible width of the unicode character.
     *)
 
 
@@ -735,11 +746,7 @@ sig
 
 
     val is_newline:  t -> bool
-    (** Is the decoded character a newline character.
-
-        Valid newline characters are line feed (LF), vertical tab (VT), form
-        feed (FF), next line (NEL), line separator (LS) and paragraph separator
-        (PS).
+    (** Is the decoded character a newline character?
     *)
 
 
@@ -747,6 +754,11 @@ sig
     val init: t
     (** Initial value representing the completely scanned unicode character
        [U+0000].
+
+        The following assertions are valid:
+
+        - [is_complete init]
+        - [not (has_error init)]
      *)
 
 
@@ -756,6 +768,7 @@ sig
         unicode character.
      *)
 end
+
 
 
 
