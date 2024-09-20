@@ -21,11 +21,11 @@ let make
 
 
 let of_value (v: float): t =
-    new%js Js.date_fromTimeValue v
+    new%js Js.date_fromTimeValue (Js.float v)
 
 
 let value (d: t): float =
-    d##valueOf
+    Js.to_float d##valueOf
 
 
 let zone_offset (d: t): int =
