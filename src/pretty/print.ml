@@ -262,9 +262,13 @@ let rec flush_flatten_group (g: Group.t) (): unit m =
 
 
 and flush_flatten_chunk (chunk: Chunk.t) (): unit m =
-    print_text
-        (Text.string (Chunk.break_text chunk))
-        ()
+    let brk = Chunk.break_text chunk
+    in
+    (if brk = "" then
+         return ()
+     else
+         print_text (Text.string brk) ()
+    )
     >>=
     flush_deque
         print_text
