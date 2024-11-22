@@ -46,7 +46,7 @@ document} which represents the structure by
 let doc =
     group (
         text "f" <+> space <+>
-        indent
+        nest
             2
             (stack_or_pack
                 " "
@@ -54,7 +54,7 @@ let doc =
                  text "b";
                  group (
                      text "(g" <+> space <+>
-                     indent
+                     nest
                         2
                         (stack_or_pack " " [text "c"; text "d"])
                      <+> text ")");
