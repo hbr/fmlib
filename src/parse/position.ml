@@ -116,6 +116,16 @@ let is_valid_range ((p1,p2): range): bool =
     is_less_equal p1 p2
 
 
-let merge ((p1, _): range) ((_, p2): range): range =
-    assert (is_less_equal p1 p2);
-    p1, p2
+let merge ((p11, p12): range) ((p21, p22): range): range =
+    (
+        if is_less_equal p11 p21 then
+            p11
+        else
+            p21
+    ),
+    (
+        if is_less_equal p12 p22 then
+            p22
+        else
+            p12
+    )
