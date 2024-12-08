@@ -183,9 +183,9 @@ val is_valid_range: range -> bool
 val merge: range -> range -> range
 (** [merge range_1 range_2]
 
-    Merge the ranges [range_1] and [range_2] i.e. when [range_1 = (pos1, _)] and
-    [range_2 = (_, pos2)] then the merged range is [(pos1, pos2)].
-
-    Precondition: Both are valid ranges and [range_1] starts before [range_2]
-    and [range_1] ends before [range_2].
+    Merge the ranges [range_1] and [range_2] the result range has the maximum
+    span of both. I.e. the merges selects as start position the lowest position
+    of both and as end position the highest position of both. I.e. the merges
+    selects as start position the lowest position of both and as end position
+    the highest position of both.
 *)
