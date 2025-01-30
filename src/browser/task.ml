@@ -1,16 +1,14 @@
 open Fmlib_js
 
 
-type empty = []
+type empty = |
 
 type http_error = [`Http_status of int | `Http_no_json | `Http_decode]
 
 type not_found  = [`Not_found]
 
-let absurd (_: empty): 'a =
-    assert false (* Ok! Will never be called, because an object of type [empty]
-                    cannot be constructed. *)
-
+let absurd: empty -> 'a = function
+    | _ -> .
 
 
 
