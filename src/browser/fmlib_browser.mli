@@ -881,7 +881,7 @@ module Task:
 sig
     (** {1 Error types} *)
 
-    type empty = []
+    type empty = |
 
     type http_error = [
         | `Http_status of int

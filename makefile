@@ -65,7 +65,7 @@ gh-pages-webapp:
 .PHONY: opam opam_rm
 
 
-version     = 0.5.10
+version     = 0.5.11
 # ---------------------------------------------
 opam_repo   = ../opam-repository/packages
 dir0        = $(opam_repo)/fmlib/fmlib.$(version)

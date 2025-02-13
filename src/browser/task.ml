@@ -8,7 +8,7 @@ type http_error = [`Http_status of int | `Http_no_json | `Http_decode]
 type not_found  = [`Not_found]
 
 let absurd: empty -> 'a = function
-    | _ -> .
+    | _ -> .
 
 
 
@@ -30,8 +30,7 @@ let run (task: ('a, empty) t) (post: Base.Value.t -> unit) (k: 'a -> unit): unit
         post
         (function
             | Ok a -> continue k a
-            | Error e ->
-                absurd e
+            | _ -> .
         )
 
 
@@ -96,14 +95,14 @@ let parallel
             if !n_ref = 0 then
                 k (Ok !accu_ref)
         in
-        let k0 = function
+        let k0: ('a, empty) result -> unit  = function
             | Ok a ->
                 assert (!n_ref <> 0);
                 n_ref := !n_ref - 1;
                 accu_ref := next a !accu_ref;
                 terminate ()
-            | Error e ->
-                absurd e
+            | _ ->
+                .
         in
         terminate ();
         List.iter
