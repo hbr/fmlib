@@ -186,7 +186,7 @@ let http_text
     let handler _ =
         assert (Http_request.ready_state req = 4);
         let status = Http_request.status req in
-        if status <> 200 then (* not ok *)
+        if status >= 300 then (* not ok *)
             continue k (Error (`Http_status status))
         else
             continue k (Ok (Http_request.response_text_string req))
