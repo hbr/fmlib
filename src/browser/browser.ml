@@ -65,6 +65,103 @@ type ('state, 'msg) data =
 
 
 
+
+
+(*  Operations
+    ============================================================
+*)
+
+let wrap_state_fun (str: string) (f: 's -> 'a) (state: 's): 'a =
+    Assert_failure.attempt
+        ("Exception in '" ^ str ^ "'")
+        (fun () -> f state)
+        (fun () -> ())
+
+
+let wrap_view (view: 's -> 'a) (state: 's): 'a =
+    wrap_state_fun "view" view state
+
+
+let wrap_subscription (view: 's -> 'a) (state: 's): 'a =
+    wrap_state_fun "subscriptioin" view state
+
+
+let wrap_update (update: 's -> 'm -> 'a) (state: 's) (message: 'm): 'a =
+    Assert_failure.attempt
+        "Exception in 'update'"
+        (fun () -> update state message)
+        (fun () -> ())
+
+
+
+let sandbox_operations
+        (view: ('s, 'm) view1)
+        (sub: 's -> 'm Subscription.t)
+        (update: ('s, 'm) update1)
+    : ('s, 'm) operations
+    =
+    Sandbox (wrap_view view, wrap_subscription sub, wrap_update update)
+
+
+
+let element_operations
+        (view: ('s, 'm) view1)
+        (sub: 's -> 'm Subscription.t)
+        (update: ('s, 'm) update2)
+        (post: Base.Value.t -> unit)
+    : ('s, 'm) operations
+    =
+    Element (
+        wrap_view view,
+        wrap_subscription sub,
+        wrap_update update,
+        post
+    )
+
+
+
+let app_operations
+        (view: ('s, 'm) view2)
+        (sub: 's -> 'm Subscription.t)
+        (update: ('s, 'm) update2)
+        (post: Base.Value.t -> unit)
+    : ('s, 'm) operations
+    =
+    App (
+        wrap_view view,
+        wrap_subscription sub,
+        wrap_update update,
+        post
+    )
+
+
+
+
+
+(*  Initial Data
+    ============================================================
+*)
+
+
+let initial_data
+        (state: 'state)
+        (root: Element.t)
+        (operations: ('state, 'msg) operations)
+    : ('state, 'msg) data
+    =
+    {
+        state;
+        dirty = false;
+        root;
+        dom   = None;
+        subs  = None;
+        operations;
+    }
+
+
+
+
+
 (* Dom operations
    ============================================================
 
@@ -369,35 +466,6 @@ let rec animate (data: ('state, 'msg) data): float -> unit =
 
 
 
-(* Helper function to wrap user supplied functions
-   ============================================================
- *)
-
-let wrap_state_fun (str: string) (f: 's -> 'a) (state: 's): 'a =
-    Assert_failure.attempt
-        ("Exception in '" ^ str ^ "'")
-        (fun () -> f state)
-        (fun () -> ())
-
-
-let wrap_view (view: 's -> 'a) (state: 's): 'a =
-    wrap_state_fun "view" view state
-
-
-let wrap_subscription (view: 's -> 'a) (state: 's): 'a =
-    wrap_state_fun "subscriptioin" view state
-
-
-let wrap_update (update: 's -> 'm -> 'a) (state: 's) (message: 'm): 'a =
-    Assert_failure.attempt
-        "Exception in 'update'"
-        (fun () -> update state message)
-        (fun () -> ())
-
-
-
-
-
 
 
 (* Helper function to receive messages from javascript
@@ -486,15 +554,11 @@ let make_sandbox
      *)
 
     (* Make the data for the application. *)
-    let data = {
-        state;
-        dirty      = false;
-        root       = Document.body (document ());
-        dom        = None;
-        subs       = None;
-        operations =
-            Sandbox (wrap_view view, wrap_subscription sub, wrap_update update)
-    }
+    let data =
+        initial_data
+            state
+            (Document.body (document ()))
+            (sandbox_operations view sub update)
     in
     update_subscriptions data; (* Initial subscriptions *)
     update_dom data;           (* Initial dom. *)
@@ -577,19 +641,11 @@ let init_element
                              Main.log_string
                                  ("Cannot find element " ^ element_id)
                          | Some root ->
-                             let data = {
-                                 state;
-                                 dirty = false;
-                                 root;
-                                 dom   = None;
-                                 subs  = None;
-                                 operations =
-                                     Element (
-                                         wrap_view view,
-                                         wrap_subscription sub,
-                                         wrap_update update,
-                                         post);
-                             }
+                             let data =
+                                 initial_data
+                                     state
+                                     root
+                                     (element_operations view sub update post)
                              in
                              dataref := Some data;
                              start_application data command post
@@ -624,6 +680,9 @@ let element
                  ; "post", receive_message app
                 |]
         )
+
+
+
 
 
 
@@ -666,19 +725,11 @@ let init_application
                 Event_target.add
                     "load"
                     (fun _ ->
-                         let data = {
-                             state;
-                             dirty = false;
-                             root  = Document.body (document ());
-                             dom   = None;
-                             subs  = None;
-                             operations =
-                                 App (
-                                     wrap_view view,
-                                     wrap_subscription sub,
-                                     wrap_update update,
-                                     post);
-                         }
+                         let data =
+                             initial_data
+                                 state
+                                 (Document.body (document ()))
+                                 (app_operations view sub update post)
                          in
                          dataref := Some data;
                          start_application data command post
@@ -733,19 +784,11 @@ let basic_application
     Event_target.add
         "load"
         (fun _ ->
-             let data = {
-                 state;
-                 dirty = false;
-                 root  = Document.body (document ());
-                 dom   = None;
-                 subs  = None;
-                 operations =
-                     App (
-                         wrap_view view,
-                         wrap_subscription sub,
-                         wrap_update update,
-                         post);
-             }
+             let data =
+                 initial_data
+                     state
+                     (Document.body (document ()))
+                     (app_operations view sub update post)
              in
              start_application data command post
         )
