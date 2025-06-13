@@ -1,7 +1,5 @@
 open Fmlib_js.Base
 
-module Dictionary = Dictionary.Make (String)
-
 type 'msg handlers = 'msg Handler.Virtual.t list Dictionary.t
 
 module Attributes =
