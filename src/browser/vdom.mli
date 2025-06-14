@@ -9,9 +9,10 @@ type 'msg handlers = 'msg Handler.Virtual.t list Dictionary.t
 
 
 type ('msg, 'el) operations = {
-    make_text:     string -> 'el;
-    make_element:  string -> 'el list -> 'el;
+    make_text:        string -> 'el;
+    make_element:     string -> 'el list -> 'el;
     make_element_ns:  string -> string -> 'el list -> 'el;
+    get_reference:    string -> 'el;
 
     add_child:     'el -> 'el -> unit;
     remove_child:  'el -> 'el -> unit;
@@ -60,5 +61,8 @@ val node: string -> 'msg Attribute.t list -> 'msg t list -> 'msg t
 val node_ns: string -> string -> 'msg Attribute.t list -> 'msg t list -> 'msg t
 
 val keyed: string -> 'msg Attribute.t list -> (string * 'msg t) list -> 'msg t
+
+val reference: string -> 'msg t
+
 
 val map: ('a -> 'b) -> ('a, unit) t1 -> ('b, unit) t1

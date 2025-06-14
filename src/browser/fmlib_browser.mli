@@ -779,6 +779,13 @@ sig
     *)
 
 
+    val reference: string -> 'msg t
+    (**
+        Insert a reference element into the dom.
+    *)
+
+
+
     val map: ('a -> 'b) -> 'a t -> 'b t
     (** [map f vdom]
 
@@ -1366,7 +1373,6 @@ sig
     val just_do: (unit, Task.empty) Task.t -> 'm t
     (** [perform task] Perform the non failing [task] and don't send any message
         to the application. *)
-
 
 end
 

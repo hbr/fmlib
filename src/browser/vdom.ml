@@ -76,6 +76,7 @@ type ('msg, 'el) t0 =
     | Node of string  * 'msg Attributes.t * ('msg, 'el) t1 list
     | Node_ns of string  * string * 'msg Attributes.t * ('msg, 'el) t1 list
     | Keyed of string * 'msg Attributes.t * ('msg, 'el) t1 Dictionary.t
+    | Reference of string
 
 
 and ('msg, 'el) t1 =
@@ -126,6 +127,11 @@ let keyed
     Keyed (tag, Attributes.of_list attrs, Dictionary.of_list lst), ()
 
 
+let reference (id: string): 'msg t =
+    Reference id, ()
+
+
+
 let rec map (f: 'a -> 'b) ((vdom, ()): ('a, unit) t1): ('b, unit) t1 =
     match vdom with
     | Text _ as nd ->
@@ -160,6 +166,9 @@ let rec map (f: 'a -> 'b) ((vdom, ()): ('a, unit) t1): ('b, unit) t1 =
         ),
         ()
 
+    | Reference _ as nd ->
+        nd, ()
+
 
 (*
     Make and update real dom from a virtual dom
@@ -172,9 +181,10 @@ let element: ('msg, 'el) t1 -> 'el =
 
 
 type ('msg, 'el) operations = {
-    make_text:     string -> 'el;
-    make_element:  string -> 'el list -> 'el;
+    make_text:        string -> 'el;
+    make_element:     string -> 'el list -> 'el;
     make_element_ns:  string -> string -> 'el list -> 'el;
+    get_reference:    string -> 'el;
 
     add_child:     'el -> 'el -> unit;
     remove_child:  'el -> 'el -> unit;
@@ -247,6 +257,9 @@ let make
             in
             add_attributes ops attrs parent;
             Keyed (tag, attrs, combined_children), parent
+
+        | Reference id, () ->
+            Reference id, ops.get_reference id
 
 
     and make_children (lst: 'msg t list): ('msg, 'el) t1 list * 'el list =
@@ -330,9 +343,14 @@ let rec update
         in
         (Keyed (tag2, attrs1, children), par), false
 
+    | (Reference id1, ()), (Reference id2, _ as old) when id1 = id2 ->
+
+        old, false
+
     | _, _ ->
 
         make ops vdom, true
+
 
 
 and update_keyed
