@@ -21,3 +21,6 @@ flight:
 
 circles:
 	dune build ./circles.js
+
+reference:
+	dune build ./reference.js
