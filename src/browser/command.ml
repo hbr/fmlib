@@ -4,6 +4,7 @@ type 'm t =
     | None
     | Task of ('m, Task.empty) Task.t
     | Task_wo_message of (unit, Task.empty) Task.t
+    | Set_ref of string * 'm Vdom.t
     | Batch of 'm t list
 
 
@@ -16,6 +17,12 @@ let batch (lst: 'm t list): 'm t =
     Batch lst
 
 
+
+
+let set_refnode (name: string) (vd: 'm Vdom.t): 'm t =
+    Set_ref (name, vd)
+
+
 let map (f: 'a -> 'b) (cmd: 'a t): 'b t =
     let rec map = function
         | None ->
@@ -26,6 +33,9 @@ let map (f: 'a -> 'b) (cmd: 'a t): 'b t =
 
         | Task_wo_message _ as cmd ->
             cmd
+
+        | Set_ref (name, vd)->
+            Set_ref (name, Vdom.map f vd)
 
         | Batch lst ->
             Batch (List.map map lst)
@@ -116,6 +126,8 @@ let send_to_javascript (v: Base.Value.t): 'm t =
 let execute
         (post: Base.Value.t -> unit)
         (dispatch: 'm -> unit)
+        (state: 's)
+        (set_ref: string -> 'm Vdom.t -> 's -> unit)
         (cmd: 'm t)
     : unit
     =
@@ -128,6 +140,9 @@ let execute
 
         | Task_wo_message task ->
             Task.run task post (fun _ -> ())
+
+        | Set_ref (name, vd) ->
+            set_ref name vd state
 
         | Batch lst ->
             List.iter exe lst
