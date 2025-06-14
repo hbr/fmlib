@@ -883,20 +883,6 @@ sig
 
     type empty = |
 
-    type http_error = [
-        | `Http_status of int
-        (**
-                - 0: no internet, server not found, timeout, ...
-                - 401: bad request
-                - 403: forbidden
-                - 404: page not found
-                - ...
-
-            *)
-        | `Http_no_json (** Resource is not a valid json file *)
-        | `Http_decode (** Resource is a valid json file, but the decoder could
-                           not decode the corresponding javascript object. *)
-    ]
 
     type not_found  = [`Not_found]
 
@@ -1088,34 +1074,152 @@ sig
 
     (** {1 Http requests} *)
 
-    val http_text:
-        string
-        -> string
-        -> (string * string) list
-        -> string
-        -> (string, http_error) t
-    (** [http_text method url headers body]
+    module Http:
+    sig
+        module Error:
+        sig
+            type t = [
+                | `Status of int
+                (**
+                    - 0: no internet, server not found, timeout, ...
+                    - 401: bad request
+                    - 403: forbidden
+                    - 404: page not found
+                    - ...
 
-        Make a http [method] request to [url] with [headers] and [body]. Expect
-        the response as a string.
+                *)
+                | `No_json (** Resource is not a valid json file *)
+                | `Decode (** Resource is a valid json file, but the decoder could
+                               not decode the corresponding javascript object. *)
+            ]
+        end
 
-        Method is one of [GET, POST, DELETE, ... ].
 
-        The headers and the body can be empty.
-    *)
+        module Body:
+        sig
+            type t
+
+            val empty : t
+            (** The body will be empty. This is equivalent to [string ""]. *)
+
+            val string : string -> t
+            (** [string s]
+
+                The body will be the string [s]. This corresponds to media type
+                [text/plain]. *)
+
+            val json : Value.t -> t
+            (** [json v]
+
+                The body will be [v], encoded as json. This corresponds to media
+                type [application/json]. *)
+
+        end
 
 
-    val http_json:
-        string
-        -> string
-        -> (string * string) list
-        -> string
-        -> 'a Decoder.t
-        -> ('a, http_error) t
-    (** [http_json method url headers body decoder] Same as {!http_text} but the
-        response is expected as a valid json string which is converted to a
-        javascript object and decoded by [decoder].
-     *)
+        module Expect:
+        sig
+            type 'a t
+
+            val string : string t
+            (** The response is expected to be a string. This corresponds to
+                media type [text/plain]. *)
+
+            val json : 'a Decoder.t -> 'a t
+            (** [json decoder]
+
+                The response is expected to be json and will be decoded with
+                [decoder]. This corresponds to media type
+                [application/json]). *)
+        end
+
+
+        val request:
+            string
+            -> string
+            -> (string * string) list
+            -> Body.t
+            -> 'a Expect.t
+            -> ('a, Error.t) t
+        (** [request method url headers body expect]
+
+            Make an http [method] request to [url] with [headers] and [body].
+            [expect] specifies the expected response format.
+
+            This is the most general http request function. See also the more
+            specific functions [text] and [json].
+
+            Example:
+            {[
+                let user = Value.(record [| ("username", string "Bob") |]) in
+                request "PUT" "/users" [] (Body.json user) (Expect.string)
+                |> Command.attempt (fun result ->
+                    match result with
+                    | Ok _ ->
+                        GotUserCreated
+                    | Error _ ->
+                        GotError "failed to create user")
+            ]}
+        *)
+
+
+        val text:
+            string
+            -> string
+            -> (string * string) list
+            -> string
+            -> (string, Error.t) t
+        (** [text method url headers body]
+
+            Make a http [method] request to [url] with [headers] and a string as
+            the [body]. Expect a string as the response.
+
+            Method is one of [GET, POST, DELETE, ... ].
+
+            The headers and the body can be empty.
+
+            Example:
+            {[
+                text "PUT" "/users" [] "Bob"
+                |> Command.attempt (fun result ->
+                    match result with
+                    | Ok _ ->
+                        GotUserCreated
+                    | Error _ ->
+                        GotError "failed to create user")
+            ]}
+        *)
+
+
+        val json:
+            string
+            -> string
+            -> (string * string) list
+            -> Value.t option
+            -> 'a Decoder.t
+            -> ('a, Error.t) t
+        (** [json method url headers body decoder]
+
+            Make an http [method] request to [url] with [headers] and an
+            optional json value as the [body]. Expect a json value as the
+            response which will be decoded by [decoder].
+
+            The headers can be empty.
+
+            Example:
+            {[
+                let decoder = Decoder.array Decoder.string in
+                json "GET" "/users" [] None decoder
+                |> Command.attempt (fun result ->
+                    match result with
+                    | Ok usernames -> (* the usernames were successfully decoded
+                                         into a string array *)
+                        GotUsers (Array.to_list usernames)
+                    | Error _ ->
+                        GotError "failed to obtain users")
+            ]}
+         *)
+    end
 end
 
 
