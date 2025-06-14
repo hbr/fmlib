@@ -400,6 +400,9 @@ and set_reference (name: string) (vd0: 'm Vdom.t) (data: ('s, 'm) data): unit =
     match !vdref with
     | None ->
         let vd = Vdom.make (dom_ops data) vd0 in
+        Node.append
+            (Vdom.element vd |> fst)
+            (Element.node root);
         vdref := Some vd
 
     | Some vd_old ->
