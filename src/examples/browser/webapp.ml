@@ -42,7 +42,7 @@ end
 
 module Http =
 struct
-    type error = Task.http_error
+    type error = Task.Http.Error.t
 
     type res = (string, error) result
 end
@@ -401,11 +401,11 @@ let http_page: page =
     let view state =
         let open Html in
         let view_error = function
-            | `Http_status status ->
+            | `Status status ->
                 text ("error: http status = " ^ string_of_int status)
-            | `Http_no_json ->
+            | `No_json ->
                 text "error: invalid json"
-            | `Http_decode ->
+            | `Decode ->
                 text "error: cannot decode javascript object"
         in
         let view_http_text =
@@ -436,7 +436,7 @@ let http_page: page =
             http_text
             Task.(
                 let* _ = sleep 1000 () in
-                http_text "GET" url [] ""
+                Http.text "GET" url [] ""
             )
     and cmd2 =
         let decode =
@@ -453,7 +453,7 @@ let http_page: page =
             http_json
             Task.(
                 let* _ = sleep 2000 () in
-                http_json "GET" url [] "" decode
+                Http.json "GET" url [] None decode
             )
     in
     Page.make
