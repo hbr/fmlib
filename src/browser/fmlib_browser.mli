@@ -257,6 +257,11 @@ sig
     (** [array [|int 5; string "hello"; bool true|] ] is the javascript array
         [[5, "hello", true]].
      *)
+
+    val stringify: t -> t
+    (** Serialize the javascript object. The result is a javascript string
+        representing the json encoding of the javascript object.
+     *)
 end
 
 
@@ -1076,23 +1081,20 @@ sig
 
     module Http:
     sig
-        module Error:
-        sig
-            type t = [
-                | `Status of int
-                (**
-                    - 0: no internet, server not found, timeout, ...
-                    - 401: bad request
-                    - 403: forbidden
-                    - 404: page not found
-                    - ...
+        type error = [
+            | `Status of int
+            (**
+               - 0: no internet, server not found, timeout, ...
+               - 401: bad request
+               - 403: forbidden
+               - 404: page not found
+               - ...
 
-                *)
-                | `No_json (** Resource is not a valid json file *)
-                | `Decode (** Resource is a valid json file, but the decoder could
-                               not decode the corresponding javascript object. *)
-            ]
-        end
+            *)
+            | `No_json (** Resource is not a valid json file *)
+            | `Decode (** Resource is a valid json file, but the decoder could
+                           not decode the corresponding javascript object. *)
+        ]
 
 
         module Body:
@@ -1140,7 +1142,7 @@ sig
             -> (string * string) list
             -> Body.t
             -> 'a Expect.t
-            -> ('a, Error.t) t
+            -> ('a, error) t
         (** [request method url headers body expect]
 
             Make an http [method] request to [url] with [headers] and [body].
@@ -1168,11 +1170,11 @@ sig
             -> string
             -> (string * string) list
             -> string
-            -> (string, Error.t) t
+            -> (string, error) t
         (** [text method url headers body]
 
-            Make a http [method] request to [url] with [headers] and a string as
-            the [body]. Expect a string as the response.
+            Make an http [method] request to [url] with [headers] and a string
+            as the [body]. Expect a string as the response.
 
             Method is one of [GET, POST, DELETE, ... ].
 
@@ -1197,7 +1199,7 @@ sig
             -> (string * string) list
             -> Value.t option
             -> 'a Decoder.t
-            -> ('a, Error.t) t
+            -> ('a, error) t
         (** [json method url headers body decoder]
 
             Make an http [method] request to [url] with [headers] and an

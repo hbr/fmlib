@@ -174,10 +174,8 @@ let random (rand: 'a Random.t): ('a, 'e) t =
 
 module Http =
 struct
-    module Error =
-    struct
-        type t = [ `Status of int | `No_json | `Decode ]
-    end
+
+    type error = [ `Status of int | `No_json | `Decode ]
 
 
     module Body =
@@ -202,7 +200,7 @@ struct
 
     module Expect =
     struct
-        type 'a t = Http_request.t -> ('a, Error.t) result
+        type 'a t = Http_request.t -> ('a, error) result
 
         let string : string t =
             fun req ->
@@ -228,7 +226,7 @@ struct
         (headers: (string * string) list)
         (body : Body.t)
         (expect : 'a Expect.t)
-        : ('a, Error.t) t
+        : ('a, error) t
         =
         fun _ k ->
         let req = Http_request.make meth url headers body in
@@ -251,7 +249,7 @@ struct
             (url: string)
             (headers: (string * string) list)
             (body: string)
-        : (string, Error.t) t
+        : (string, error) t
         =
         request meth url headers (Body.string body) Expect.string
 
@@ -262,7 +260,7 @@ struct
             (headers: (string * string) list)
             (body: Base.Value.t option)
             (decode: 'a Base.Decode.t)
-        : ('a, Error.t) t
+        : ('a, error) t
         =
         let body =
             match body with

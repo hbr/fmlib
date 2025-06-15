@@ -42,8 +42,7 @@ end
 
 module Http =
 struct
-    type error = Task.Http.Error.t
-
+    type error = Task.Http.error
     type res = (string, error) result
 end
 
