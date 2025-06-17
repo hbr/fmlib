@@ -45,8 +45,8 @@ object
     method setAttribute:    js_string -> js_string -> unit Js.meth
     method removeAttribute: js_string -> unit Js.meth
 
-    method focus: unit -> unit Js.meth
-    method blur:  unit -> unit Js.meth
+    method focus: 'a Js.opt -> unit Js.meth
+    method blur:  'a Js.opt -> unit Js.meth
 end
 
 
@@ -62,7 +62,7 @@ object
     method createTextNode: js_string -> node Js.t Js.meth
     method createElement:  js_string -> element Js.t Js.meth
     method createElementNS:  js_string -> js_string -> element Js.t Js.meth
-    method createDocumentFragment:  unit -> node Js.t Js.meth
+    method createDocumentFragment:  'a Js.opt -> node Js.t Js.meth
 end
 
 
@@ -228,10 +228,10 @@ struct
 
 
     let focus (element: t): unit =
-        element##focus ()
+        element##focus Js.null
 
     let blur (element: t): unit =
-        element##blur ()
+        element##blur Js.null
 end
 
 
@@ -270,7 +270,7 @@ struct
         doc##createElementNS (Js.string namespace) (Js.string tag)
 
     let create_document_fragment (doc: t): Node.t =
-        doc##createDocumentFragment ()
+        doc##createDocumentFragment Js.null
 end
 
 
