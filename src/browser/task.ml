@@ -172,6 +172,17 @@ let random (rand: 'a Random.t): ('a, 'e) t =
 
 
 
+let now: (Time.t, 'e) t =
+    fun _ k ->
+    continue k (Ok (Date.now ()))
+
+
+let time_zone: (Time.Zone.t, 'e) t =
+    fun _ k ->
+    continue k (Ok (Date.(zone_offset (now ()))))
+
+
+
 module Http =
 struct
 
@@ -271,14 +282,3 @@ struct
         in
         request meth url headers body (Expect.json decode)
 end
-
-
-
-let now: (Time.t, 'e) t =
-    fun _ k ->
-    continue k (Ok (Date.now ()))
-
-
-let time_zone: (Time.Zone.t, 'e) t =
-    fun _ k ->
-    continue k (Ok (Date.(zone_offset (now ()))))

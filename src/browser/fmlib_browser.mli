@@ -108,7 +108,7 @@ sig
         val make: int -> t
         (** [make offset] Time zone [offset] minutes westward of utc.
 
-            [make (-60)] is the zone of central european winter time. It is one
+[make (-60)] is the zone of central european winter time. It is one
             hour eastward of utc.
          *)
 
@@ -465,8 +465,6 @@ end
 (** {1 Virtual Dom} *)
 
 
-
-
 (** Attributes of Dom Elements.
 
     There are four types of attributes:
@@ -566,6 +564,19 @@ sig
 
     val on_click: 'msg -> 'msg t
     (** [on_click m] produce the message [m] on mouse click. *)
+
+
+    val on_keydown: (string -> 'msg) -> 'msg t
+    (** [on_keydown f]
+
+        Produce the message [f key] on the keydown event with [key].
+    *)
+
+    val on_keyup: (string -> 'msg) -> 'msg t
+    (** [on_keyup f]
+
+        Produce the message [f key] on the keyup event with [key].
+    *)
 
 
 
@@ -766,7 +777,6 @@ sig
         of children. An svg element is a node in the namespace
         "http://www.w3.org/2000/svg".
     *)
-
 
 
     val map: ('a -> 'b) -> 'a t -> 'b t
@@ -1237,6 +1247,9 @@ end
 *)
 module Command:
 sig
+
+    (** {1 Basics} *)
+
     type _ t
     (** [msg t] is the type of a command generating an object of type [msg] to
         inject it into the update function of the application. *)
@@ -1246,6 +1259,100 @@ sig
 
     val batch: 'm t list -> 'm t
     (** [batch lst] A list of commands to be executed. *)
+
+    val map: ('a -> 'b) -> 'a t -> 'b t
+    (** Map the message of a command. *)
+
+
+
+
+    (** {1 Simple Commands} *)
+
+
+    val now: (Time.t -> 'm) -> 'm t
+    (** Get the current time. *)
+
+
+    val time_zone: (Time.Zone.t -> 'm) -> 'm t
+    (** Get the time zone. *)
+
+
+
+    val focus: string -> 'm t
+    (** [focus id]
+
+        Focus the element [id]. If the element does not exist, then nothing is
+        done. This command does not return any message.
+    *)
+
+
+    val blur: string -> 'm t
+    (** [blur id]
+
+        Blur the element [id]. If the element does not exist, then nothing is
+        done. This command does not return any message.
+    *)
+
+
+    val focus_with_info: string -> 'm -> 'm -> 'm t
+    (** [focus_with_info id ok not_found]
+
+        Focus the element [id] and return [ok]. Return [not_found], if the
+        element does not exist.
+    *)
+
+
+    val blur_with_info: string -> 'm -> 'm -> 'm t
+    (** [blur_with_info id ok not_found]
+
+        Blur the element [id] and return [ok]. Return [not_found], if the
+        element does not exist.
+    *)
+
+
+    val log_string: string -> 'm t
+    (** Print a string to the console, don't return a message. *)
+
+
+    val log_value: Value.t -> 'm t
+    (** Print a value to the console, don't return a message. *)
+
+
+    val random: 'm Random.t -> 'm t
+    (** Generate a random value. *)
+
+
+    val notify: int -> 'm -> 'm t
+    (** [notify millis msg]
+
+        Send [msg] in [millis] milliseconds.
+    *)
+
+
+    val send_to_javascript: Value.t -> 'm t
+    (** Send a value to the surrounding javascript code. *)
+
+
+
+
+    (** {1 Execute Tasks} *)
+
+    (** If a command wants to execute chains of simple commands before returning
+        a message to the application, then it is necessary to create a task
+        which does the more complex operation and perform the task within a
+        command.
+
+        An object of type [('a, 'e) Task.t] is a task which in case of success
+        returns a value of type ['a] and in case of failure returns a value of
+        type ['e].
+
+        An object of type [('a, Task.empty) Task.t] is a task which cannot fail.
+    *)
+
+
+    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
+    (** [attempt f task] Attempt the possibly failing [task] and map the result
+        via the function [f] into a message to send to the application. *)
 
 
     val perform: ('m, Task.empty) Task.t -> 'm t
@@ -1258,11 +1365,6 @@ sig
         to the application. *)
 
 
-    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
-    (** [attemp f task] Attempt the possibly failing [task] and map the result
-        via the function [f] into a message to send to the application. *)
-
-    val map: ('a -> 'b) -> 'a t -> 'b t
 end
 
 
