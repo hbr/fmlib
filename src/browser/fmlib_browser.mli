@@ -1374,12 +1374,6 @@ sig
     (** [perform task] Perform the non failing [task] and don't send any message
         to the application. *)
 
-<<<<<<< HEAD
-=======
-
-    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
-    (** [attempt f task] Attempt the possibly failing [task] and map the result
-        via the function [f] into a message to send to the application. *)
 
 
     (** {1 Reference Nodes } *)
@@ -1393,7 +1387,6 @@ sig
         If a reference node [name] does not yet exist, then create a reference
         node.
     *)
->>>>>>> d30a28e (Added an example for reference nodes)
 end
 
 

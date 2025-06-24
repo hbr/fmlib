@@ -17,15 +17,12 @@ let batch (lst: 'm t list): 'm t =
     Batch lst
 
 
-<<<<<<< HEAD
 
 
 let set_refnode (name: string) (vd: 'm Vdom.t): 'm t =
     Set_ref (name, vd)
 
 
-=======
->>>>>>> d30a28e (Added an example for reference nodes)
 let map (f: 'a -> 'b) (cmd: 'a t): 'b t =
     let rec map = function
         | None ->
@@ -47,11 +44,7 @@ let map (f: 'a -> 'b) (cmd: 'a t): 'b t =
 
 
 
-<<<<<<< HEAD
 let perform (task: ('m, Task.empty) Task.t): 'm t =
-=======
-let perform (task: ('a, Task.empty) Task.t): 'm t =
->>>>>>> d30a28e (Added an example for reference nodes)
     Task task
 
 
@@ -66,7 +59,6 @@ let attempt (f: ('a, 'e) result -> 'm) (task: ('a, 'e) Task.t): 'm t =
 
 
 
-<<<<<<< HEAD
 let focus_with_info (id: string) (ok: 'm) (not_found: 'm): 'm t =
     attempt
         (function
@@ -130,13 +122,11 @@ let send_to_javascript (v: Base.Value.t): 'm t =
     just_do Task.(send_to_javascript v)
 
 
-=======
 let set_reference (name: string) (vd: 'm Vdom.t): 'm t =
     Set_ref (name, vd)
 
 
 
->>>>>>> d30a28e (Added an example for reference nodes)
 
 let execute
         (post: Base.Value.t -> unit)

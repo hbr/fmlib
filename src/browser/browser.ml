@@ -266,7 +266,8 @@ let dom_operations
                  Node.replace new_child old_child par);
 
         set_text =
-            (fun (node, _) text -> Node.set_node_value text node);
+            (fun (node, _) text ->
+                 Node.set_node_value text node);
 
 
         set_style =
@@ -394,27 +395,27 @@ and dom_ops (data: ('s, 'm) data): 'm dom_operations =
 
 
 
-and set_reference (name: string) (vd0: 'm Vdom.t) (data: ('s, 'm) data): unit =
+and set_reference (name: string) (vd_new: 'm Vdom.t) (data: ('s, 'm) data): unit =
     let root, vdref = ref_dom name data
     in
     match !vdref with
     | None ->
-        let vd = Vdom.make (dom_ops data) vd0 in
+        let vd = Vdom.make (dom_ops data) vd_new in
         Node.append
             (Vdom.element vd |> fst)
             (Element.node root);
         vdref := Some vd
 
     | Some vd_old ->
-        let vd, created = Vdom.update (dom_ops data) vd0 vd_old in
+        let vd, created = Vdom.update (dom_ops data) vd_new vd_old in
         if created then
             begin
                 Node.replace
                     (Vdom.element vd     |> fst)
                     (Vdom.element vd_old |> fst)
                     (Element.node root);
-                vdref := Some vd
-            end
+            end;
+        vdref := Some vd
 
 
 and execute_command
