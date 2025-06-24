@@ -1,6 +1,6 @@
 .PHONY: all temperature timer flight circles
 
-all: webapp temperature timer flight circles
+all: webapp temperature timer flight circles spreadsheet
 
 
 webapp:
@@ -24,3 +24,6 @@ circles:
 
 reference:
 	dune build ./reference.js
+
+spreadsheet:
+	dune build ./spreadsheet.js

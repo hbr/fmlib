@@ -91,3 +91,19 @@
   (mode (promote (until-clean)))
   (action (copy reference.bc.js reference.js))
 )
+
+
+
+
+(executable
+  (name spreadsheet)
+  (modules spreadsheet)
+  (modes js)
+  (libraries fmlib_browser fmlib_parse)
+)
+
+(rule
+  (targets spreadsheet.js) (deps spreadsheet.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy spreadsheet.bc.js spreadsheet.js))
+)
