@@ -1112,19 +1112,21 @@ sig
             type t
 
             val empty : t
-            (** The body will be empty. This is equivalent to [string ""]. *)
+            (** The body will be empty. *)
 
-            val string : string -> t
-            (** [string s]
+            val string : string -> string -> t
+            (** [string media_type s]
 
-                The body will be the string [s]. This corresponds to media type
-                [text/plain]. *)
+                The body will be the string [s]. The [Content-Type] header
+                will be automatically set to the given [media_type]. For common
+                media types, a.k.a. MIME types, see
+                {{: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types } this list}. *)
 
             val json : Value.t -> t
             (** [json v]
 
-                The body will be [v], encoded as json. This corresponds to media
-                type [application/json]. *)
+                The body will be [v], encoded as json. The [Content-Type] header
+                will be automatically set to [application/json]. *)
 
         end
 
@@ -1134,15 +1136,14 @@ sig
             type 'a t
 
             val string : string t
-            (** The response is expected to be a string. This corresponds to
-                media type [text/plain]. *)
+            (** The response is expected to be a string and will not be decoded
+                further. *)
 
             val json : 'a Decoder.t -> 'a t
             (** [json decoder]
 
                 The response is expected to be json and will be decoded with
-                [decoder]. This corresponds to media type
-                [application/json]). *)
+                [decoder]. *)
         end
 
 
@@ -1188,7 +1189,8 @@ sig
 
             Method is one of [GET, POST, DELETE, ... ].
 
-            The headers and the body can be empty.
+            The headers and the body can be empty. The [Content-Type] header
+            is automatically set to [text/plain].
 
             Example:
             {[
@@ -1216,7 +1218,8 @@ sig
             optional json value as the [body]. Expect a json value as the
             response which will be decoded by [decoder].
 
-            The headers can be empty.
+            The [headers] can be empty. The [Content-Type] header is
+            automatically set to [application/json] if [body] is not [None].
 
             Example:
             {[
