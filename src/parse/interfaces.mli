@@ -508,8 +508,28 @@ sig
     (** [zero_or_more_fold_left start f p]
 
         Try the combinator [p] as often as possible. Accumulate the results to
-        the start value [start] using the folding function [f].
+        the start value [start] using the folding function [f]. The accumulation
+        happens left to right. I.e. if 3 repetitions are encountered the
+        folding function [f] is called
+        {[
+            f (f (f start a1) a2) a3
+        ]}
     *)
+
+
+    val zero_or_more_fold_right: ('a -> 'r -> 'r t) -> 'a t -> 'r -> 'r t
+    (** [zero_or_more_fold_left f p start]
+
+        Try the combinator [p] as often as possible. Accumulate the results to
+        the start value [start] using the folding function [f]. The accumulation
+        happens right to left. I.e. if 3 repetitions are encountered the
+        folding function [f] is called
+        {[
+            f a1 (f a2 (f a3 start))
+        ]}
+
+    *)
+
 
 
     val one_or_more_fold_left:

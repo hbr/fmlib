@@ -519,6 +519,25 @@ struct
         many start
 
 
+
+    let zero_or_more_fold_right
+        (f: 'a -> 'r -> 'r t)
+        (p: 'a t)
+        (start: 'r)
+        : 'r t
+        =
+        let rec many () =
+            (
+                let* a = p in
+                let* r = many () in
+                f a r
+            )
+            </>
+            return start
+        in
+        many ()
+
+
     let one_or_more_fold_left
             (first: 'a -> 'r t)
             (f: 'r -> 'a -> 'r t)
@@ -532,15 +551,10 @@ struct
 
 
     let zero_or_more (p: 'a t): 'a list t =
-        let rec many () =
-            (
-                let* a = p in
-                let* lst = many () in
-                return (a :: lst)
-            )
-            </> return []
-        in
-        many ()
+        zero_or_more_fold_right
+            (fun a lst -> return (a :: lst))
+            p
+            []
 
 
     let one_or_more (p: 'a t): ('a * 'a list) t =

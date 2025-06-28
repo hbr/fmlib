@@ -107,6 +107,9 @@ sig
     val zero_or_more_fold_left:
         'r -> ('r -> 'a -> 'r t) -> 'a t -> 'r t
 
+    val zero_or_more_fold_right:
+        ('a -> 'r -> 'r t) -> 'a t -> 'r  -> 'r t
+
     val one_or_more_fold_left:
         ('a -> 'r t) -> ('r -> 'a -> 'r t) -> 'a t -> 'r t
 
