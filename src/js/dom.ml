@@ -220,6 +220,12 @@ struct
         element##removeAttribute (Js.string name)
 
 
+    let property
+            (name: string)
+            (element: t)
+        : Base.Value.t option =
+        Js.Unsafe.get element (Js.string name) |> Js.Opt.to_option
+
     let set_property (name: string) (value: Value.t) (element: t): unit =
         Js.Unsafe.set element (Js.string name) value
 

@@ -461,6 +461,20 @@ end
 
 
 
+module File:
+sig
+    type t
+
+    val name: t -> string
+
+    val media_type: t -> string option
+
+    val size: t -> int
+end
+
+
+
+
 
 (** {1 Virtual Dom} *)
 
@@ -1084,6 +1098,14 @@ sig
     val random: 'a Random.t -> ('a, 'e) t
     (** [random ran] Execute the random generator [rand] and return the
         generated random value. *)
+
+
+
+
+    (** {1 File operations} *)
+
+    val select_file: string list -> (File.t -> 'm) -> ('m, empty) t
+
 
 
 

@@ -13,6 +13,8 @@ module Timer = Timer
 
 module Date  = Date
 
+module File = File
+
 
 (** {1 Common Browser Modules}
 

@@ -20,3 +20,7 @@ let stop_propagation (e: t): unit =
 
 let prevent_default (e: t): unit =
     e##preventDefault ()
+
+let click: t =
+    let mouse_event = Js.Unsafe.global##.MouseEvent in
+    new%js mouse_event "click"

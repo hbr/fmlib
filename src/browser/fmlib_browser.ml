@@ -16,6 +16,12 @@ end
 
 
 
+module File =
+struct
+    include Fmlib_js.File
+end
+
+
 
 
 

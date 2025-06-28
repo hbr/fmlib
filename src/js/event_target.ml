@@ -6,6 +6,7 @@ class type event_target =
 object
     method addEventListener:    js_string -> ('a -> unit) -> unit Js.meth
     method removeEventListener: js_string -> ('a -> unit) -> unit Js.meth
+    method dispatchEvent:       'a -> bool Js.t Js.meth
 end
 
 
@@ -16,3 +17,6 @@ let add (name: string) (handler: Event.t -> unit) (tgt: t): unit =
 
 let remove (name: string) (handler: Event.t -> unit) (tgt: t): unit =
     tgt##removeEventListener (Js.string name) handler
+
+let dispatch (event: Event.t) (tgt: t): bool =
+    tgt##dispatchEvent event |> Js.to_bool
