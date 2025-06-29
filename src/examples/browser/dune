@@ -75,3 +75,20 @@
   (mode (promote (until-clean)))
   (action (copy circles.bc.js circles.js))
 )
+
+
+
+
+
+(executable
+  (name select_file)
+  (modules select_file)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets select_file.js) (deps select_file.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy select_file.bc.js select_file.js))
+)

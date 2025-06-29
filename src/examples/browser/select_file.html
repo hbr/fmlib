@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript" src="select_file.js">
+  </script>
+  <script>
+    function receive(v) {
+      console.log("message received in javascript");
+      console.log(v)
+    }
+    select_file.init({
+      data: null,
+      onMessage: receive
+    })
+  </script>
+</head>
+
+<body>
+</body>
+
+</html>
