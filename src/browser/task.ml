@@ -183,6 +183,37 @@ let time_zone: (Time.Zone.t, 'e) t =
 
 
 
+let select_file (media_types: string list) (msg: File.t -> 'm): ('m, empty) t =
+    fun _ k ->
+    let input =
+        Dom.Window.get ()
+        |> Dom.Window.document
+        |> Dom.Document.create_element "input"
+    in
+    Dom.Element.set_attribute "type" "file" input;
+    Dom.Element.set_attribute "accept" (String.concat "," media_types) input;
+    let handler _ =
+        let file =
+            input
+            |> Dom.Element.property "files"
+            |> Option.get
+            |> File.List.of_value
+            |> Option.get
+            |> File.List.item 0
+            |> Option.get
+        in
+        continue k (Ok (msg file))
+    in
+    let event_target =
+        input
+        |> Dom.Element.node
+        |> Dom.Node.event_target
+    in
+    Event_target.add "change" handler event_target;
+    let _ = Event_target.dispatch (Event.click) event_target in ()
+
+
+
 module Http =
 struct
 

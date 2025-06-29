@@ -21,3 +21,5 @@ val remove: string -> (Event.t -> unit) -> t -> unit
     Note: The same handler might be added for several event types. The
     function [remove] only removes the handler for the specific event type.
 *)
+
+val dispatch: Event.t -> t -> bool

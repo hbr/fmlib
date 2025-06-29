@@ -202,6 +202,9 @@ sig
         [element]. *)
 
 
+    val property: string -> t -> Base.Value.t option
+
+
     val set_property:     string -> Base.Value.t -> t -> unit
     (** [set_property name value element] Set the property [name] to [value] in
         [element].

@@ -18,3 +18,5 @@ val prevent_default:  t -> unit
     ... </a>] is to load the page given in [href]. The call [prevent_default
     event] inhibits this default behaviour.
 *)
+
+val click: t
