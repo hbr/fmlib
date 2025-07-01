@@ -13,12 +13,16 @@ open Fmlib_js.Dom
 *)
 
 
+module String_map = Fmlib_std.Btree.Map (String)
+
 
 type element             = Element.t * Handler.EventHs.t
 
 type node                = Node.t * element option
 
 type 'msg dom            = ('msg, node) Vdom.t1
+
+type 'msg ref_dom        = Element.t * ('msg, node) Vdom.t1 option ref
 
 type 'msg dom_operations = ('msg, node) Vdom.operations
 
@@ -57,8 +61,120 @@ type ('state, 'msg) data =
         mutable dirty: bool;
         mutable dom:   'msg dom option;
         mutable subs:  'msg Subscriptions.t option;
+        mutable ref_doms: 'msg ref_dom String_map.t;
         root:          Element.t;
         operations:    ('state, 'msg) operations;
+    }
+
+
+
+let ref_dom (name: string) (data: ('s, 'm) data): 'm ref_dom =
+    match
+        String_map.find_opt name data.ref_doms
+    with
+    | None ->
+        let root = Document.create_element "span" (document ()) in
+        let dom  = root, ref None in
+        data.ref_doms <- String_map.add name dom data.ref_doms;
+        dom
+
+    | Some dom ->
+        dom
+
+
+
+
+
+(*  Operations
+    ============================================================
+*)
+
+let wrap_state_fun (str: string) (f: 's -> 'a) (state: 's): 'a =
+    Assert_failure.attempt
+        ("Exception in '" ^ str ^ "'")
+        (fun () -> f state)
+        (fun () -> ())
+
+
+let wrap_view (view: 's -> 'a) (state: 's): 'a =
+    wrap_state_fun "view" view state
+
+
+let wrap_subscription (view: 's -> 'a) (state: 's): 'a =
+    wrap_state_fun "subscriptioin" view state
+
+
+let wrap_update (update: 's -> 'm -> 'a) (state: 's) (message: 'm): 'a =
+    Assert_failure.attempt
+        "Exception in 'update'"
+        (fun () -> update state message)
+        (fun () -> ())
+
+
+
+let sandbox_operations
+        (view: ('s, 'm) view1)
+        (sub: 's -> 'm Subscription.t)
+        (update: ('s, 'm) update1)
+    : ('s, 'm) operations
+    =
+    Sandbox (wrap_view view, wrap_subscription sub, wrap_update update)
+
+
+
+let element_operations
+        (view: ('s, 'm) view1)
+        (sub: 's -> 'm Subscription.t)
+        (update: ('s, 'm) update2)
+        (post: Base.Value.t -> unit)
+    : ('s, 'm) operations
+    =
+    Element (
+        wrap_view view,
+        wrap_subscription sub,
+        wrap_update update,
+        post
+    )
+
+
+
+let app_operations
+        (view: ('s, 'm) view2)
+        (sub: 's -> 'm Subscription.t)
+        (update: ('s, 'm) update2)
+        (post: Base.Value.t -> unit)
+    : ('s, 'm) operations
+    =
+    App (
+        wrap_view view,
+        wrap_subscription sub,
+        wrap_update update,
+        post
+    )
+
+
+
+
+
+(*  Initial Data
+    ============================================================
+*)
+
+
+let initial_data
+        (state: 'state)
+        (root: Element.t)
+        (operations: ('state, 'msg) operations)
+    : ('state, 'msg) data
+    =
+    {
+        state;
+        dirty = false;
+        root;
+        ref_doms = String_map.empty;
+        dom   = None;
+        subs  = None;
+        operations;
     }
 
 
@@ -74,7 +190,11 @@ type ('state, 'msg) data =
 *)
 
 
-let dom_operations (dispatch: 'msg -> unit): 'msg dom_operations =
+let dom_operations
+        (dispatch: 'msg -> unit)
+        (reference_root: string -> Element.t)
+    : 'msg dom_operations
+    =
     let get_both:
         node -> element
         =
@@ -123,6 +243,12 @@ let dom_operations (dispatch: 'msg -> unit): 'msg dom_operations =
                      lst;
                  node el, Some (el, Handler.EventHs.empty ()));
 
+        get_reference =
+            (fun id ->
+                 let el = reference_root id
+                 in
+                 Element.node el, Some (el, Handler.EventHs.empty()));
+
         add_child =
             (fun (child, _) (par, _) ->
                  Node.append child par);
@@ -140,7 +266,8 @@ let dom_operations (dispatch: 'msg -> unit): 'msg dom_operations =
                  Node.replace new_child old_child par);
 
         set_text =
-            (fun (node, _) text -> Node.set_node_value text node);
+            (fun (node, _) text ->
+                 Node.set_node_value text node);
 
 
         set_style =
@@ -223,12 +350,12 @@ let rec dispatch (data: ('state, 'msg) data) (msg: 'msg): unit =
     | Element (_, _, update, post) ->
         let state, cmd = update data.state msg in
         update_data state;
-        Command.execute post (dispatch_next data) cmd
+        execute_command data post cmd
 
     | App (_, _, update, post) ->
         let state, cmd = update data.state msg in
         update_data state;
-        Command.execute post (dispatch_next data) cmd
+        execute_command data post cmd
 
 
 and dispatch_next (data: ('state, 'msg) data) (msg: 'msg): unit =
@@ -260,6 +387,49 @@ and update_subscriptions (data: ('s, 'm) data): unit =
         update
         (fun () -> ())
 
+
+and dom_ops (data: ('s, 'm) data): 'm dom_operations =
+    dom_operations
+        (dispatch data)
+        (fun name -> ref_dom name data |> fst)
+
+
+
+and set_reference (name: string) (vd_new: 'm Vdom.t) (data: ('s, 'm) data): unit =
+    let root, vdref = ref_dom name data
+    in
+    match !vdref with
+    | None ->
+        let vd = Vdom.make (dom_ops data) vd_new in
+        Node.append
+            (Vdom.element vd |> fst)
+            (Element.node root);
+        vdref := Some vd
+
+    | Some vd_old ->
+        let vd, created = Vdom.update (dom_ops data) vd_new vd_old in
+        if created then
+            begin
+                Node.replace
+                    (Vdom.element vd     |> fst)
+                    (Vdom.element vd_old |> fst)
+                    (Element.node root);
+            end;
+        vdref := Some vd
+
+
+and execute_command
+        (data: ('s, 'm) data)
+        (post: Base.Value.t -> unit)
+        (cmd: 'm Command.t)
+    : unit
+    =
+    Command.execute
+        post
+        (dispatch_next data)
+        data
+        set_reference
+        cmd
 
 
 
@@ -312,7 +482,7 @@ let update_dom (data: ('state, 'msg) data): unit =
         | None ->
             let dom =
                 Vdom.make
-                    (dom_operations (dispatch data))
+                    (dom_ops data)
                     (vdom data)
             in
             data.dom <- Some dom;
@@ -322,7 +492,7 @@ let update_dom (data: ('state, 'msg) data): unit =
             if data.dirty then begin
                 let dom, created =
                     Vdom.update
-                        (dom_operations (dispatch data))
+                        (dom_ops data)
                         (vdom data)
                         dom
                 in
@@ -364,35 +534,6 @@ let rec animate (data: ('state, 'msg) data): float -> unit =
     update_dom data;
     assert (not data.dirty);
     on_next_animation (animate data)
-
-
-
-
-
-(* Helper function to wrap user supplied functions
-   ============================================================
- *)
-
-let wrap_state_fun (str: string) (f: 's -> 'a) (state: 's): 'a =
-    Assert_failure.attempt
-        ("Exception in '" ^ str ^ "'")
-        (fun () -> f state)
-        (fun () -> ())
-
-
-let wrap_view (view: 's -> 'a) (state: 's): 'a =
-    wrap_state_fun "view" view state
-
-
-let wrap_subscription (view: 's -> 'a) (state: 's): 'a =
-    wrap_state_fun "subscriptioin" view state
-
-
-let wrap_update (update: 's -> 'm -> 'a) (state: 's) (message: 'm): 'a =
-    Assert_failure.attempt
-        "Exception in 'update'"
-        (fun () -> update state message)
-        (fun () -> ())
 
 
 
@@ -459,7 +600,7 @@ let start_application
         (post: Base.Value.t -> unit): unit =
     update_subscriptions data;
     update_dom data;
-    Command.execute post (dispatch_next data) command;
+    execute_command data post command;
     on_next_animation (animate data)
 
 
@@ -486,15 +627,11 @@ let make_sandbox
      *)
 
     (* Make the data for the application. *)
-    let data = {
-        state;
-        dirty      = false;
-        root       = Document.body (document ());
-        dom        = None;
-        subs       = None;
-        operations =
-            Sandbox (wrap_view view, wrap_subscription sub, wrap_update update)
-    }
+    let data =
+        initial_data
+            state
+            (Document.body (document ()))
+            (sandbox_operations view sub update)
     in
     update_subscriptions data; (* Initial subscriptions *)
     update_dom data;           (* Initial dom. *)
@@ -577,19 +714,11 @@ let init_element
                              Main.log_string
                                  ("Cannot find element " ^ element_id)
                          | Some root ->
-                             let data = {
-                                 state;
-                                 dirty = false;
-                                 root;
-                                 dom   = None;
-                                 subs  = None;
-                                 operations =
-                                     Element (
-                                         wrap_view view,
-                                         wrap_subscription sub,
-                                         wrap_update update,
-                                         post);
-                             }
+                             let data =
+                                 initial_data
+                                     state
+                                     root
+                                     (element_operations view sub update post)
                              in
                              dataref := Some data;
                              start_application data command post
@@ -624,6 +753,9 @@ let element
                  ; "post", receive_message app
                 |]
         )
+
+
+
 
 
 
@@ -666,19 +798,11 @@ let init_application
                 Event_target.add
                     "load"
                     (fun _ ->
-                         let data = {
-                             state;
-                             dirty = false;
-                             root  = Document.body (document ());
-                             dom   = None;
-                             subs  = None;
-                             operations =
-                                 App (
-                                     wrap_view view,
-                                     wrap_subscription sub,
-                                     wrap_update update,
-                                     post);
-                         }
+                         let data =
+                             initial_data
+                                 state
+                                 (Document.body (document ()))
+                                 (app_operations view sub update post)
                          in
                          dataref := Some data;
                          start_application data command post
@@ -733,19 +857,11 @@ let basic_application
     Event_target.add
         "load"
         (fun _ ->
-             let data = {
-                 state;
-                 dirty = false;
-                 root  = Document.body (document ());
-                 dom   = None;
-                 subs  = None;
-                 operations =
-                     App (
-                         wrap_view view,
-                         wrap_subscription sub,
-                         wrap_update update,
-                         post);
-             }
+             let data =
+                 initial_data
+                     state
+                     (Document.body (document ()))
+                     (app_operations view sub update post)
              in
              start_application data command post
         )

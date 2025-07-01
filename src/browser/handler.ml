@@ -27,10 +27,12 @@ end
 
 
 
-module Actuals (Key: Fmlib_std.Interfaces.SORTABLE) =
+module Actuals
+        (Key: Fmlib_std.Interfaces.SORTABLE)
+        (Dict: Dictionary.DICT with type key := Key.t)
+=
 struct
     module Map  = Fmlib_std.Btree.Map (Key)
-    module Dict = Dictionary.Make (Key)
 
     type ('e, 'a) t = ('e Actual.t * 'a) Map.t ref
 
@@ -164,8 +166,8 @@ end
 (* Set of real handlers handling javascript events fired on event targets. *)
 module EventHs =
 struct
-    module Actuals = Actuals (String)
-    module Dict    = Dictionary.Make (String)
+    module Dict    = Dictionary
+    module Actuals = Actuals (String) (Dict)
 
     type t = (Event.t, unit) Actuals.t
 
@@ -213,8 +215,8 @@ end
 
 module Timers =
 struct
-    module Actuals = Actuals (Int)
     module Dict    = Dictionary.Make (Int)
+    module Actuals = Actuals (Int) (Dict)
 
     type t = (Time.t, Timer.interval) Actuals.t
 

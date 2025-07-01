@@ -172,6 +172,17 @@ let random (rand: 'a Random.t): ('a, 'e) t =
 
 
 
+let now: (Time.t, 'e) t =
+    fun _ k ->
+    continue k (Ok (Date.now ()))
+
+
+let time_zone: (Time.Zone.t, 'e) t =
+    fun _ k ->
+    continue k (Ok (Date.(zone_offset (now ()))))
+
+
+
 module Http =
 struct
 
@@ -180,21 +191,30 @@ struct
 
     module Body =
     struct
-        type t = string
+        type t = {
+            contents : string;
+            media_type : string option;
+        }
 
-        let empty : t = ""
+        let empty : t =
+            { contents = ""; media_type = None }
 
-        let string (s : string) : t = s
+        let string (media_type : string) (s : string) : t =
+            { contents = s; media_type = Some media_type }
 
         let json (v : Base.Value.t) : t =
-            (* it's ok to call Option.get here because v is constructed with one of
-               the functions from Fmlib_browser.Value and thus is guaranteed to be
-               serializable *)
-            v
-            |> Base.Value.stringify
-            |> Option.get
-            |> Base.Decode.string
-            |> Option.get
+            {
+                (* it's ok to call Option.get here because v is constructed with
+                   one of the functions from Fmlib_browser.Value and thus is
+                   guaranteed to be serializable *)
+                contents =
+                    v
+                    |> Base.Value.stringify
+                    |> Option.get
+                    |> Base.Decode.string
+                    |> Option.get;
+                media_type = Some "application/json"
+            }
     end
 
 
@@ -229,7 +249,14 @@ struct
         : ('a, error) t
         =
         fun _ k ->
-        let req = Http_request.make meth url headers body in
+        let headers =
+            match body.media_type with
+            | None ->
+                headers
+            | Some c ->
+                ("Content-Type", c) :: headers
+        in
+        let req = Http_request.make meth url headers body.contents in
         let handler _ =
             assert (Http_request.ready_state req = 4);
             let status = Http_request.status req in
@@ -251,7 +278,7 @@ struct
             (body: string)
         : (string, error) t
         =
-        request meth url headers (Body.string body) Expect.string
+        request meth url headers (Body.string "text/plain" body) Expect.string
 
 
     let json
@@ -271,14 +298,3 @@ struct
         in
         request meth url headers body (Expect.json decode)
 end
-
-
-
-let now: (Time.t, 'e) t =
-    fun _ k ->
-    continue k (Ok (Date.now ()))
-
-
-let time_zone: (Time.Zone.t, 'e) t =
-    fun _ k ->
-    continue k (Ok (Date.(zone_offset (now ()))))

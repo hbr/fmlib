@@ -112,6 +112,18 @@ struct
         on "click" (Decoder.return msg)
 
 
+    let decode_key_event (f: string -> 'm): 'm Decoder.t =
+        Decoder.(map f (field "key" string))
+
+
+    let on_keydown (f: string -> 'm): 'm t =
+        on "keydown" (decode_key_event f)
+
+
+    let on_keyup (f: string -> 'm): 'm t =
+        on "keyup" (decode_key_event f)
+
+
     (* Styles *)
 
     let font_size (size: string): 'm t =

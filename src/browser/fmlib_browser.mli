@@ -108,7 +108,7 @@ sig
         val make: int -> t
         (** [make offset] Time zone [offset] minutes westward of utc.
 
-            [make (-60)] is the zone of central european winter time. It is one
+[make (-60)] is the zone of central european winter time. It is one
             hour eastward of utc.
          *)
 
@@ -465,8 +465,6 @@ end
 (** {1 Virtual Dom} *)
 
 
-
-
 (** Attributes of Dom Elements.
 
     There are four types of attributes:
@@ -566,6 +564,19 @@ sig
 
     val on_click: 'msg -> 'msg t
     (** [on_click m] produce the message [m] on mouse click. *)
+
+
+    val on_keydown: (string -> 'msg) -> 'msg t
+    (** [on_keydown f]
+
+        Produce the message [f key] on the keydown event with [key].
+    *)
+
+    val on_keyup: (string -> 'msg) -> 'msg t
+    (** [on_keyup f]
+
+        Produce the message [f key] on the keyup event with [key].
+    *)
 
 
 
@@ -864,6 +875,45 @@ sig
 
     val li: 'msg Attribute.t list -> 'msg t list -> 'msg t
     (** [li attrs children] is equivalent to [node "li" attrs children]. *)
+
+
+
+
+
+    (** {1 Reference Nodes}
+
+        Reference nodes are nodes whose content is not controlled by the virtual
+        dom. In the virtual dom the reference nodes are inserted by their name.
+
+        The contents of reference nodes is controlled via
+        {!val:Command.set_reference}.
+
+        Reference nodes are persistent. Once referenced by {!val:reference} or
+        initialized or updated by {!val:Command.set_reference} they exist. Once
+        existing they can be modidfied by {!val:Command.set_reference}.
+
+        The virtual dom can use them or not. They remain in existence.
+
+        Reference nodes are a means to improve performance. In the following
+        examples reference nodes might be useful:
+
+        - Having an editor window in browser (e.g. CodeMirror): It does not make
+        sense and is quite difficult to control an editor window by the virtual
+        dome. It is better to create a reference node and let the internal state
+        of the editor handled by some other meanss (e.g. CodeMirror code)
+
+        - Spreadsheet with many cells: In a spreadsheet usully one cell is
+        updated and some cells whose content depends on the edited cell have to
+        be updated as well. Having a reference node for each cell makes it
+        possible to update only the edited its dependent cells. Having all
+        spreadsheet cells managed by the virtual dom requires a diffing of all
+        cells. This can become quite slow if the spreadsheet is large.
+     *)
+
+    val reference: string -> 'msg t
+    (**
+        Insert a reference element into the dom.
+    *)
 end
 
 
@@ -1102,19 +1152,21 @@ sig
             type t
 
             val empty : t
-            (** The body will be empty. This is equivalent to [string ""]. *)
+            (** The body will be empty. *)
 
-            val string : string -> t
-            (** [string s]
+            val string : string -> string -> t
+            (** [string media_type s]
 
-                The body will be the string [s]. This corresponds to media type
-                [text/plain]. *)
+                The body will be the string [s]. The [Content-Type] header
+                will be automatically set to the given [media_type]. For common
+                media types, a.k.a. MIME types, see
+                {{: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types } this list}. *)
 
             val json : Value.t -> t
             (** [json v]
 
-                The body will be [v], encoded as json. This corresponds to media
-                type [application/json]. *)
+                The body will be [v], encoded as json. The [Content-Type] header
+                will be automatically set to [application/json]. *)
 
         end
 
@@ -1124,15 +1176,14 @@ sig
             type 'a t
 
             val string : string t
-            (** The response is expected to be a string. This corresponds to
-                media type [text/plain]. *)
+            (** The response is expected to be a string and will not be decoded
+                further. *)
 
             val json : 'a Decoder.t -> 'a t
             (** [json decoder]
 
                 The response is expected to be json and will be decoded with
-                [decoder]. This corresponds to media type
-                [application/json]). *)
+                [decoder]. *)
         end
 
 
@@ -1178,7 +1229,8 @@ sig
 
             Method is one of [GET, POST, DELETE, ... ].
 
-            The headers and the body can be empty.
+            The headers and the body can be empty. The [Content-Type] header
+            is automatically set to [text/plain].
 
             Example:
             {[
@@ -1206,7 +1258,8 @@ sig
             optional json value as the [body]. Expect a json value as the
             response which will be decoded by [decoder].
 
-            The headers can be empty.
+            The [headers] can be empty. The [Content-Type] header is
+            automatically set to [application/json] if [body] is not [None].
 
             Example:
             {[
@@ -1237,6 +1290,9 @@ end
 *)
 module Command:
 sig
+
+    (** {1 Basics} *)
+
     type _ t
     (** [msg t] is the type of a command generating an object of type [msg] to
         inject it into the update function of the application. *)
@@ -1246,6 +1302,100 @@ sig
 
     val batch: 'm t list -> 'm t
     (** [batch lst] A list of commands to be executed. *)
+
+    val map: ('a -> 'b) -> 'a t -> 'b t
+    (** Map the message of a command. *)
+
+
+
+
+    (** {1 Simple Commands} *)
+
+
+    val now: (Time.t -> 'm) -> 'm t
+    (** Get the current time. *)
+
+
+    val time_zone: (Time.Zone.t -> 'm) -> 'm t
+    (** Get the time zone. *)
+
+
+
+    val focus: string -> 'm t
+    (** [focus id]
+
+        Focus the element [id]. If the element does not exist, then nothing is
+        done. This command does not return any message.
+    *)
+
+
+    val blur: string -> 'm t
+    (** [blur id]
+
+        Blur the element [id]. If the element does not exist, then nothing is
+        done. This command does not return any message.
+    *)
+
+
+    val focus_with_info: string -> 'm -> 'm -> 'm t
+    (** [focus_with_info id ok not_found]
+
+        Focus the element [id] and return [ok]. Return [not_found], if the
+        element does not exist.
+    *)
+
+
+    val blur_with_info: string -> 'm -> 'm -> 'm t
+    (** [blur_with_info id ok not_found]
+
+        Blur the element [id] and return [ok]. Return [not_found], if the
+        element does not exist.
+    *)
+
+
+    val log_string: string -> 'm t
+    (** Print a string to the console, don't return a message. *)
+
+
+    val log_value: Value.t -> 'm t
+    (** Print a value to the console, don't return a message. *)
+
+
+    val random: 'm Random.t -> 'm t
+    (** Generate a random value. *)
+
+
+    val notify: int -> 'm -> 'm t
+    (** [notify millis msg]
+
+        Send [msg] in [millis] milliseconds.
+    *)
+
+
+    val send_to_javascript: Value.t -> 'm t
+    (** Send a value to the surrounding javascript code. *)
+
+
+
+
+    (** {1 Execute Tasks} *)
+
+    (** If a command wants to execute chains of simple commands before returning
+        a message to the application, then it is necessary to create a task
+        which does the more complex operation and perform the task within a
+        command.
+
+        An object of type [('a, 'e) Task.t] is a task which in case of success
+        returns a value of type ['a] and in case of failure returns a value of
+        type ['e].
+
+        An object of type [('a, Task.empty) Task.t] is a task which cannot fail.
+    *)
+
+
+    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
+    (** [attempt f task] Attempt the possibly failing [task] and map the result
+        via the function [f] into a message to send to the application. *)
 
 
     val perform: ('m, Task.empty) Task.t -> 'm t
@@ -1258,11 +1408,21 @@ sig
         to the application. *)
 
 
-    val attempt: (('a, 'e) result -> 'm) -> ('a, 'e) Task.t -> 'm t
-    (** [attemp f task] Attempt the possibly failing [task] and map the result
-        via the function [f] into a message to send to the application. *)
 
-    val map: ('a -> 'b) -> 'a t -> 'b t
+    (** {1 Reference Nodes }
+
+        More details on reference nodes see {!val:Html.reference}.
+    *)
+
+
+    val set_reference: string -> 'm Html.t -> 'm t
+    (** [set_reference name vdom]
+
+        Display [vdom] in the reference node [name].
+
+        If a reference node [name] does not yet exist, then create a reference
+        node.
+    *)
 end
 
 
