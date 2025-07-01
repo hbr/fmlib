@@ -75,3 +75,35 @@
   (mode (promote (until-clean)))
   (action (copy circles.bc.js circles.js))
 )
+
+
+
+
+(executable
+  (name reference)
+  (modules reference)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets reference.js) (deps reference.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy reference.bc.js reference.js))
+)
+
+
+
+
+(executable
+  (name spreadsheet)
+  (modules spreadsheet)
+  (modes js)
+  (libraries fmlib_browser fmlib_parse)
+)
+
+(rule
+  (targets spreadsheet.js) (deps spreadsheet.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy spreadsheet.bc.js spreadsheet.js))
+)

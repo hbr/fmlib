@@ -779,6 +779,7 @@ sig
     *)
 
 
+
     val map: ('a -> 'b) -> 'a t -> 'b t
     (** [map f vdom]
 
@@ -874,6 +875,45 @@ sig
 
     val li: 'msg Attribute.t list -> 'msg t list -> 'msg t
     (** [li attrs children] is equivalent to [node "li" attrs children]. *)
+
+
+
+
+
+    (** {1 Reference Nodes}
+
+        Reference nodes are nodes whose content is not controlled by the virtual
+        dom. In the virtual dom the reference nodes are inserted by their name.
+
+        The contents of reference nodes is controlled via
+        {!val:Command.set_reference}.
+
+        Reference nodes are persistent. Once referenced by {!val:reference} or
+        initialized or updated by {!val:Command.set_reference} they exist. Once
+        existing they can be modidfied by {!val:Command.set_reference}.
+
+        The virtual dom can use them or not. They remain in existence.
+
+        Reference nodes are a means to improve performance. In the following
+        examples reference nodes might be useful:
+
+        - Having an editor window in browser (e.g. CodeMirror): It does not make
+        sense and is quite difficult to control an editor window by the virtual
+        dome. It is better to create a reference node and let the internal state
+        of the editor handled by some other meanss (e.g. CodeMirror code)
+
+        - Spreadsheet with many cells: In a spreadsheet usully one cell is
+        updated and some cells whose content depends on the edited cell have to
+        be updated as well. Having a reference node for each cell makes it
+        possible to update only the edited its dependent cells. Having all
+        spreadsheet cells managed by the virtual dom requires a diffing of all
+        cells. This can become quite slow if the spreadsheet is large.
+     *)
+
+    val reference: string -> 'msg t
+    (**
+        Insert a reference element into the dom.
+    *)
 end
 
 
@@ -1368,6 +1408,21 @@ sig
         to the application. *)
 
 
+
+    (** {1 Reference Nodes }
+
+        More details on reference nodes see {!val:Html.reference}.
+    *)
+
+
+    val set_reference: string -> 'm Html.t -> 'm t
+    (** [set_reference name vdom]
+
+        Display [vdom] in the reference node [name].
+
+        If a reference node [name] does not yet exist, then create a reference
+        node.
+    *)
 end
 
 

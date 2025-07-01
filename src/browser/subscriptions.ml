@@ -4,7 +4,6 @@ module String_map = Fmlib_std.Btree.Map (String)
 module Int_map  = Fmlib_std.Btree.Map (Int)
 
 module Intionary  = Dictionary.Make (Int)
-module Dictionary = Dictionary.Make (String)
 
 module Subs =
 struct
