@@ -169,6 +169,30 @@ end
 
 
 
+(** Files *)
+module File:
+sig
+
+    (** A file handle that represents a user-selected file in the local
+        filesystem. See {!Attribute.on_fileselect} on how to obtain file handles.
+    *)
+
+    type t
+
+    val name: t -> string
+    (** The filename. *)
+
+    val media_type: t -> string option
+    (** The media type, a.k.a. MIME type, or [None] if it is unknown. *)
+
+    val size: t -> int
+    (** The file size in bytes. *)
+
+end
+
+
+
+
 
 
 (** Event flags to stop propagation and prevent default action. *)
@@ -428,6 +452,10 @@ sig
     *)
 
 
+    val file_list: File.t list t
+    (** Decode a javascript [FileList] object into an ocaml list of [File.t]. *)
+
+
     (** {1 Complex decoders}
      *)
 
@@ -576,6 +604,30 @@ sig
     (** [on_keyup f]
 
         Produce the message [f key] on the keyup event with [key].
+    *)
+
+    val on_fileselect: (File.t list -> 'msg) -> 'msg t
+    (** [on_fileselect f]
+
+        Produce the message [f files] when a user selects one or more files.
+        [files] is guaranteed to have at least one element.
+
+        This only works on an {!Html.val-input} node with the [type="file"]
+        attribute. The [accept] attribute can be used to only show files with
+        specific media types in the file selection dialog. The [multiple]
+        attribute can be used to allow selecting multiple files at once.
+
+        E.g. to allow selecting multiple image files of type [png] or [jpeg]:
+        {[
+            input
+                [
+                    attribute "type" "file";
+                    attribute "accept" "image/png,image/jpeg";
+                    attribute "multiple" "true";
+                    on_fileselect (fun files -> Selected_files files)
+                ]
+                [ text "Select files" ]
+        ]}
     *)
 
 
@@ -942,6 +994,10 @@ sig
     type not_found  = [`Not_found]
 
 
+    type read_failed = [`Read_failed]
+
+
+
     (** {1 Basic type and functions} *)
 
     type ('a, +'e) t
@@ -1124,6 +1180,19 @@ sig
     val random: 'a Random.t -> ('a, 'e) t
     (** [random ran] Execute the random generator [rand] and return the
         generated random value. *)
+
+
+
+
+    (** {1 File operations} *)
+
+    val file_text: File.t -> (string, read_failed) t
+    (** [file_text file f]
+
+        Read the contents of [file] into a string. Reading can fail, e.g. in
+        case of missing filesystem permissions.
+    *)
+
 
 
 
@@ -1350,6 +1419,15 @@ sig
 
         Blur the element [id] and return [ok]. Return [not_found], if the
         element does not exist.
+    *)
+
+
+    val file_text: File.t -> ((string, Task.read_failed) result -> 'm) -> 'm t
+    (** [file_text file f]
+
+        Read the contents of [file] into a string [result] and produce the
+        message [f result] when reading has finished. Reading can fail, e.g. in
+        case of missing filesystem permissions.
     *)
 
 

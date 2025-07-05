@@ -53,6 +53,17 @@ end
 
 
 
+module File =
+struct
+    include Fmlib_js.File
+end
+
+
+
+
+
+
+
 module Decoder =
 struct
     include Fmlib_js.Base.Decode
@@ -122,6 +133,10 @@ struct
 
     let on_keyup (f: string -> 'm): 'm t =
         on "keyup" (decode_key_event f)
+
+
+    let on_fileselect (f: File.t list -> 'm): 'm t =
+        on "change" Decoder.(map f (field "target" (field "files" file_list)))
 
 
     (* Styles *)

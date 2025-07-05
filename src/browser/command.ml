@@ -118,6 +118,10 @@ let time_zone (f: Time.Zone.t -> 'm): 'm t =
     perform Task.(map f time_zone)
 
 
+let file_text (file: File.t) (f: (string, Task.read_failed) result -> 'm): 'm t =
+    attempt f (Task.file_text file)
+
+
 let send_to_javascript (v: Base.Value.t): 'm t =
     just_do Task.(send_to_javascript v)
 

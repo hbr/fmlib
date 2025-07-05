@@ -1,3 +1,5 @@
+type file = File.t
+
 open Js_of_ocaml
 open Fmlib_std
 
@@ -82,6 +84,11 @@ struct
     let is_number (v: Value.t): bool =
         Js.(typeof v == str_number)
 
+    let is_file (v: Value.t): bool =
+        Js.(instanceof v (Unsafe.global##.File))
+
+    let is_file_list (v: Value.t): bool =
+        Js.(instanceof v (Unsafe.global##.FileList))
 
     type 'a t = Value.t -> 'a option
 
@@ -222,6 +229,25 @@ struct
         map Option.return decode
         </>
         null None
+
+
+    let file: file t =
+        fun obj ->
+        if is_file obj then
+            Some (Obj.magic obj)
+        else
+            None
+
+
+    let file_list: file list t =
+        fun obj ->
+        if is_file_list obj then
+            Js.Unsafe.global##._Array##from obj
+            |> array file
+            |> Option.map Array.to_list
+        else
+            None
+
 
 end
 

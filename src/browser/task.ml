@@ -5,6 +5,8 @@ type empty = |
 
 type not_found  = [`Not_found]
 
+type read_failed = [`Read_failed]
+
 let absurd: empty -> 'a = function
     | _ -> .
 
@@ -180,6 +182,28 @@ let now: (Time.t, 'e) t =
 let time_zone: (Time.Zone.t, 'e) t =
     fun _ k ->
     continue k (Ok (Date.(zone_offset (now ()))))
+
+
+
+let file_text (file: File.t): (string, read_failed) t =
+    fun _ k ->
+    let reader = File_reader.make in
+    File_reader.read_text reader file ();
+    let handler _ =
+        assert (File_reader.ready_state reader = 2);
+        let result =
+            match File_reader.result reader with
+            | None ->
+                Error `Read_failed
+            | Some r ->
+                Ok (r |> Base.Decode.string |> Option.get)
+        in
+        continue k result
+    in
+    Event_target.add
+        "loadend"
+        handler
+        (File_reader.event_target reader)
 
 
 
