@@ -15,7 +15,7 @@ let media_type (file: t): string option =
     | s ->
         Some s
 
-  
+
 let size (file: t): int =
     file##.size
 
