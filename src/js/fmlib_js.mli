@@ -23,6 +23,10 @@ module Event = Event
 
 module Event_target = Event_target
 
+module File = File
+
+module File_reader = File_reader
+
 module Http_request = Http_request
 
 module Web_worker = Web_worker

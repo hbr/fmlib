@@ -306,6 +306,10 @@ sig
             (option int) (Value.string "a") ~>      None
         ]}
     *)
+
+    val file_list:  File.t list t
+    (** Decode a javascript [FileList] object into an ocaml list of [File.t]. *)
+
 end
 
 

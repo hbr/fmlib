@@ -107,3 +107,19 @@
   (mode (promote (until-clean)))
   (action (copy spreadsheet.bc.js spreadsheet.js))
 )
+
+
+
+
+(executable
+  (name file_select)
+  (modules file_select)
+  (modes js)
+  (libraries fmlib_browser)
+)
+
+(rule
+  (targets file_select.js) (deps file_select.bc.js)
+  (mode (promote (until-clean)))
+  (action (copy file_select.bc.js file_select.js))
+)
