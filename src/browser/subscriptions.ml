@@ -112,6 +112,16 @@ type 'm t = {
 
 
 
+let empty (): 'm t =
+    let open Handler
+    in
+    { subs        = Subs.empty;
+      window      = EventHs.empty ();
+      timers      = Timers.empty ();
+      url_request = Url_request.empty ();
+    }
+
+
 
 let make (dispatch: 'm -> unit) (sub: 'm Subscription.t): 'm t =
     let subs   = Subs.make sub in

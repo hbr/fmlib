@@ -29,29 +29,18 @@ type 'msg dom_operations = ('msg, node) Vdom.operations
 
 let document (): Document.t = Window.(get () |> document)
 
-type ('state, 'msg) view1 = 'state -> 'msg Vdom.t
-type ('state, 'msg) view2 = 'state -> 'msg Vdom.t * string
-
-type ('state, 'msg) update1 = 'state -> 'msg -> 'state
-type ('state, 'msg) update2 = 'state -> 'msg -> 'state * 'msg Command.t
 
 
 
-type ('s, 'm) operations =
-    | Sandbox of
-          ('s, 'm) view1
-          * ('s -> 'm Subscription.t)
-          * ('s, 'm) update1
-    | Element of
-          ('s, 'm) view1
-          * ('s -> 'm Subscription.t)
-          * ('s, 'm) update2
-          * (Base.Value.t -> unit)
-    | App     of
-          ('s, 'm) view2
-          * ('s -> 'm Subscription.t)
-          * ('s, 'm) update2
-          * (Base.Value.t -> unit)
+
+(*  State
+    ============================================================
+*)
+
+
+type ('state, 'msg) view   = 'state -> 'msg Vdom.t * (unit -> unit)
+
+type ('state, 'msg) update = 'state -> 'msg -> 'state * 'msg Command.t
 
 
 
@@ -63,23 +52,11 @@ type ('state, 'msg) data =
         mutable subs:  'msg Subscriptions.t option;
         mutable ref_doms: 'msg ref_dom String_map.t;
         root:          Element.t;
-        operations:    ('state, 'msg) operations;
+        view:          ('state, 'msg) view;
+        update:        ('state, 'msg) update;
+        subscriptions: 'state -> 'msg Subscription.t;
+        post_js:       Base.Value.t -> unit;
     }
-
-
-
-let ref_dom (name: string) (data: ('s, 'm) data): 'm ref_dom =
-    match
-        String_map.find_opt name data.ref_doms
-    with
-    | None ->
-        let root = Document.create_element "span" (document ()) in
-        let dom  = root, ref None in
-        data.ref_doms <- String_map.add name dom data.ref_doms;
-        dom
-
-    | Some dom ->
-        dom
 
 
 
@@ -101,7 +78,7 @@ let wrap_view (view: 's -> 'a) (state: 's): 'a =
 
 
 let wrap_subscription (view: 's -> 'a) (state: 's): 'a =
-    wrap_state_fun "subscriptioin" view state
+    wrap_state_fun "subscription" view state
 
 
 let wrap_update (update: 's -> 'm -> 'a) (state: 's) (message: 'm): 'a =
@@ -112,47 +89,58 @@ let wrap_update (update: 's -> 'm -> 'a) (state: 's) (message: 'm): 'a =
 
 
 
-let sandbox_operations
-        (view: ('s, 'm) view1)
-        (sub: 's -> 'm Subscription.t)
-        (update: ('s, 'm) update1)
-    : ('s, 'm) operations
+
+
+let make_view1 (v: 'state -> 'msg Vdom.t): ('state, 'msg) view =
+    let view s =
+        v s,
+        (fun () -> ())
+    in
+    wrap_view view
+
+
+let make_view2 (v: 'state -> 'msg Vdom.t * string): ('state, 'msg) view =
+    let view s =
+        let vdom, title = v s in
+        vdom,
+        (fun () ->
+             Document.set_title title (document ()))
+    in
+    wrap_view view
+
+
+let make_update1 (u: 'state -> 'msg -> 'state): ('state, 'msg) update =
+    let update s m = u s m, Command.None in
+    wrap_update update
+
+
+let make_update2
+        (u: 'state -> 'msg -> 'state * 'msg Command.t)
+    : ('state, 'msg) update
     =
-    Sandbox (wrap_view view, wrap_subscription sub, wrap_update update)
+    wrap_update u
 
 
-
-let element_operations
-        (view: ('s, 'm) view1)
-        (sub: 's -> 'm Subscription.t)
-        (update: ('s, 'm) update2)
-        (post: Base.Value.t -> unit)
-    : ('s, 'm) operations
+let make_subscription
+        (sub: 'state -> 'msg Subscription.t)
+    : 'state -> 'msg Subscription.t
     =
-    Element (
-        wrap_view view,
-        wrap_subscription sub,
-        wrap_update update,
-        post
-    )
+    wrap_subscription sub
 
 
 
-let app_operations
-        (view: ('s, 'm) view2)
-        (sub: 's -> 'm Subscription.t)
-        (update: ('s, 'm) update2)
-        (post: Base.Value.t -> unit)
-    : ('s, 'm) operations
-    =
-    App (
-        wrap_view view,
-        wrap_subscription sub,
-        wrap_update update,
-        post
-    )
+let ref_dom (name: string) (data: ('s, 'm) data): 'm ref_dom =
+    match
+        String_map.find_opt name data.ref_doms
+    with
+    | None ->
+        let root = Document.create_element "span" (document ()) in
+        let dom  = root, ref None in
+        data.ref_doms <- String_map.add name dom data.ref_doms;
+        dom
 
-
+    | Some dom ->
+        dom
 
 
 
@@ -164,7 +152,10 @@ let app_operations
 let initial_data
         (state: 'state)
         (root: Element.t)
-        (operations: ('state, 'msg) operations)
+        (view: ('state, 'msg) view)
+        (update: ('state, 'msg) update)
+        (subscriptions: 'state -> 'msg Subscription.t)
+        (post_js: Base.Value.t -> unit)
     : ('state, 'msg) data
     =
     {
@@ -174,7 +165,10 @@ let initial_data
         ref_doms = String_map.empty;
         dom   = None;
         subs  = None;
-        operations;
+        view;
+        update;
+        subscriptions;
+        post_js;
     }
 
 
@@ -343,19 +337,9 @@ let rec dispatch (data: ('state, 'msg) data) (msg: 'msg): unit =
             update_subscriptions data
         end
     in
-    match data.operations with
-    | Sandbox (_, _, update) ->
-        update_data (update data.state msg);
-
-    | Element (_, _, update, post) ->
-        let state, cmd = update data.state msg in
-        update_data state;
-        execute_command data post cmd
-
-    | App (_, _, update, post) ->
-        let state, cmd = update data.state msg in
-        update_data state;
-        execute_command data post cmd
+    let state, cmd = data.update data.state msg in
+    update_data state;
+    execute_command data data.post_js cmd
 
 
 and dispatch_next (data: ('state, 'msg) data) (msg: 'msg): unit =
@@ -365,21 +349,22 @@ and dispatch_next (data: ('state, 'msg) data) (msg: 'msg): unit =
 and update_subscriptions (data: ('s, 'm) data): unit =
     (* create or update the subscriptions, i.e. install all necessary handlers. *)
     let update () =
-        match data.operations, data.subs with
-        | Sandbox (_, sub, _),    None
-        | App (_, sub, _, _),     None
-        | Element (_, sub, _, _), None ->
+        match data.subs with
+        | None ->
             data.subs <-
-                Some (Subscriptions.make (dispatch data) (sub data.state))
+                Some (Subscriptions.make
+                          (dispatch data)
+                          (data.subscriptions data.state)
+                     )
 
-        | Sandbox (_, sub, _),    Some subs
-        | App (_, sub, _, _),     Some subs
-        | Element (_, sub, _, _), Some subs
-            when data.dirty ->
+        | Some subs  when data.dirty ->
             data.subs <-
-                Some (Subscriptions.update (dispatch data) (sub data.state) subs)
+                Some (Subscriptions.update
+                          (dispatch data)
+                          (data.subscriptions data.state)
+                          subs)
 
-        | _, _ ->
+        | _ ->
             ()
     in
     Assert_failure.attempt
@@ -457,14 +442,7 @@ let put_below_root (data: ('state, 'msg) data) (dom: 'msg dom): unit =
 
 let vdom (data: ('s, 'm) data): 'm Vdom.t * (unit -> unit) =
     (* Get the virtual dom from the state and the title update function. *)
-    match data.operations with
-    | Sandbox (view, _, _) ->
-        view data.state, (fun () -> ())
-    | Element (view, _, _, _) ->
-        view data.state, (fun () -> ())
-    | App (view, _, _, _) ->
-        let vdom, title = view data.state in
-        vdom, (fun () -> Document.set_title title (document ()))
+    data.view data.state
 
 
 
@@ -616,9 +594,9 @@ let start_application
 
 let make_sandbox
         (state: 's)
-        (view:   ('s, 'm) view1)
+        (view: 's -> 'm Vdom.t)
         (sub:    'state -> 'msg Subscription.t)
-        (update: ('s, 'm) update1)
+        (update: 's -> 'm -> 's)
         (_: 'a)
     : unit
     =
@@ -631,7 +609,10 @@ let make_sandbox
         initial_data
             state
             (Document.body (document ()))
-            (sandbox_operations view sub update)
+            (make_view1 view)
+            (make_update1 update)
+            (make_subscription sub)
+            (fun _ -> assert false (* cannot happen *))
     in
     update_subscriptions data; (* Initial subscriptions *)
     update_dom data;           (* Initial dom. *)
@@ -643,8 +624,8 @@ let make_sandbox
 
 let sandbox
         (state: 'state)
-        (view: ('state, 'msg) view1)
-        (update: ('state, 'msg) update1)
+        (view: 'state -> 'msg Vdom.t)
+        (update: 'state -> 'msg -> 'state)
     : unit
     =
     Event_target.add
@@ -656,9 +637,9 @@ let sandbox
 
 let sandbox_plus
         (state:  'state)
-        (view:   ('state, 'msg) view1)
+        (view:   'state -> 'msg Vdom.t)
         (sub:    'state -> 'msg Subscription.t)
-        (update: ('state, 'msg) update1)
+        (update: 'state -> 'msg -> 'state)
     : unit
     =
     Event_target.add
@@ -684,9 +665,9 @@ let sandbox_plus
 let init_element
         (dataref: ('s, 'm) data option ref)
         (decode:  ('s * 'm Command.t) Base.Decode.t)
-        (view:    ('s, 'm) view1)
+        (view:    's -> 'm Vdom.t)
         (sub:     's -> 'm Subscription.t)
-        (update:  ('s, 'm) update2)
+        (update:  ('s, 'm) update)
     : Base.Value.t
     =
     let open Base in
@@ -718,7 +699,10 @@ let init_element
                                  initial_data
                                      state
                                      root
-                                     (element_operations view sub update post)
+                                     (make_view1 view)
+                                     (make_update2 update)
+                                     (make_subscription sub)
+                                     post
                              in
                              dataref := Some data;
                              start_application data command post
@@ -738,9 +722,9 @@ let init_element
 let element
         (name: string)
         (decode: ('s * 'm Command.t) Base.Decode.t)
-        (view:   ('s, 'm) view1)
+        (view:   's -> 'm Vdom.t)
         (subs:   's -> 'm Subscription.t)
-        (update: ('s, 'm) update2)
+        (update: ('s, 'm) update)
     : unit
     =
     let _ = decode, view, subs, update in
@@ -774,9 +758,9 @@ let element
 let init_application
         (dataref: ('s, 'm) data option ref)
         (decode:  ('s * 'm Command.t) Base.Decode.t)
-        (view:    ('s, 'm) view2)
+        (view:    's -> 'm Vdom.t * string)
         (sub:     's -> 'm Subscription.t)
-        (update:  ('s, 'm) update2)
+        (update:  ('s, 'm) update)
     : Base.Value.t
     =
     let open Base in
@@ -802,7 +786,10 @@ let init_application
                              initial_data
                                  state
                                  (Document.body (document ()))
-                                 (app_operations view sub update post)
+                                 (make_view2 view)
+                                 (make_update2 update)
+                                 (make_subscription sub)
+                                 post
                          in
                          dataref := Some data;
                          start_application data command post
@@ -824,9 +811,9 @@ let init_application
 let application
         (name: string)
         (decode: ('s * 'm Command.t) Base.Decode.t)
-        (view:   ('s, 'm) view2)
+        (view:   's -> 'm Vdom.t * string)
         (subs:   's -> 'm Subscription.t)
-        (update: ('s, 'm) update2)
+        (update: ('s, 'm) update)
     : unit
     =
     let app = ref None in
@@ -847,9 +834,9 @@ let application
 let basic_application
         (state:   's)
         (command: 'm Command.t)
-        (view:    ('s, 'm) view2)
+        (view:    's -> 'm Vdom.t * string)
         (sub:     's -> 'm Subscription.t)
-        (update:  ('s, 'm) update2)
+        (update:  ('s, 'm) update)
     : unit
     =
     let post _ = ()
@@ -861,7 +848,10 @@ let basic_application
                  initial_data
                      state
                      (Document.body (document ()))
-                     (app_operations view sub update post)
+                     (make_view2 view)
+                     (make_update2 update)
+                     (make_subscription sub)
+                     post
              in
              start_application data command post
         )
