@@ -47,9 +47,10 @@ type ('state, 'msg) update = 'state -> 'msg -> 'state * 'msg Command.t
 type ('state, 'msg) data =
     {
         mutable state: 'state;
-        mutable dirty: bool;
+        mutable dirty_dom: bool;
+        mutable dirty_sub: bool;
         mutable dom:   'msg dom option;
-        mutable subs:  'msg Subscriptions.t option;
+        mutable subs:  'msg Subscriptions.t;
         mutable ref_doms: 'msg ref_dom String_map.t;
         root:          Element.t;
         view:          ('state, 'msg) view;
@@ -160,11 +161,12 @@ let initial_data
     =
     {
         state;
-        dirty = false;
+        dirty_dom = true;
+        dirty_sub = true;
         root;
         ref_doms = String_map.empty;
         dom   = None;
-        subs  = None;
+        subs  = Subscriptions.empty ();
         view;
         update;
         subscriptions;
@@ -328,17 +330,14 @@ let dom_operations
 *)
 
 let rec dispatch (data: ('state, 'msg) data) (msg: 'msg): unit =
-    let update_data state =
-        let state_different = not (state == data.state)
-        in
-        data.dirty <- data.dirty || state_different;
-        if state_different then begin
-            data.state <- state;
-            update_subscriptions data
-        end
+    let state, cmd = data.update data.state msg
     in
-    let state, cmd = data.update data.state msg in
-    update_data state;
+    let different = not (state == data.state)
+    in
+    data.state     <- state;
+    data.dirty_dom <- data.dirty_dom || different;
+    data.dirty_sub <- data.dirty_sub || different;
+    update_subscriptions data;
     execute_command data data.post_js cmd
 
 
@@ -347,30 +346,17 @@ and dispatch_next (data: ('state, 'msg) data) (msg: 'msg): unit =
 
 
 and update_subscriptions (data: ('s, 'm) data): unit =
-    (* create or update the subscriptions, i.e. install all necessary handlers. *)
-    let update () =
-        match data.subs with
-        | None ->
-            data.subs <-
-                Some (Subscriptions.make
-                          (dispatch data)
-                          (data.subscriptions data.state)
-                     )
+    (* update the subscriptions, i.e. install all necessary handlers. *)
+    if data.dirty_sub then
+        begin
+            data.dirty_sub <- false;
 
-        | Some subs  when data.dirty ->
-            data.subs <-
-                Some (Subscriptions.update
-                          (dispatch data)
-                          (data.subscriptions data.state)
-                          subs)
-
-        | _ ->
-            ()
-    in
-    Assert_failure.attempt
-        "Exception in 'update_subscriptions' of Fmlib_browser"
-        update
-        (fun () -> ())
+            data.subs      <-
+                Subscriptions.update
+                    (dispatch data)
+                    (data.subscriptions data.state)
+                    data.subs;
+        end
 
 
 and dom_ops (data: ('s, 'm) data): 'm dom_operations =
@@ -380,19 +366,25 @@ and dom_ops (data: ('s, 'm) data): 'm dom_operations =
 
 
 
-and set_reference (name: string) (vd_new: 'm Vdom.t) (data: ('s, 'm) data): unit =
+and set_reference
+        (data: ('s, 'm) data)
+        (ops:  'm dom_operations)
+        (name: string)
+        (vd_new: 'm Vdom.t)
+    : unit
+    =
     let root, vdref = ref_dom name data
     in
     match !vdref with
     | None ->
-        let vd = Vdom.make (dom_ops data) vd_new in
+        let vd = Vdom.make ops vd_new in
         Node.append
             (Vdom.element vd |> fst)
             (Element.node root);
         vdref := Some vd
 
     | Some vd_old ->
-        let vd, created = Vdom.update (dom_ops data) vd_new vd_old in
+        let vd, created = Vdom.update ops vd_new vd_old in
         if created then
             begin
                 Node.replace
@@ -412,8 +404,7 @@ and execute_command
     Command.execute
         post
         (dispatch_next data)
-        data
-        set_reference
+        (set_reference data (dom_ops data))
         cmd
 
 
@@ -438,55 +429,34 @@ let put_below_root (data: ('state, 'msg) data) (dom: 'msg dom): unit =
 
 
 
-
-
-let vdom (data: ('s, 'm) data): 'm Vdom.t * (unit -> unit) =
-    (* Get the virtual dom from the state and the title update function. *)
-    data.view data.state
-
-
-
-
 let update_dom (data: ('state, 'msg) data): unit =
     (* Create or update the real dom based on the state. First create a virtual
        dom from the state and then create or update the real dom. *)
-    let update () =
-        let vdom data =
-            let vdom, set_title = vdom data in
-            set_title ();
-            vdom
-        in
-        match data.dom with
-        | None ->
-            let dom =
-                Vdom.make
-                    (dom_ops data)
-                    (vdom data)
-            in
-            data.dom <- Some dom;
-            put_below_root data dom;
 
-        | Some dom ->
-            if data.dirty then begin
-                let dom, created =
-                    Vdom.update
-                        (dom_ops data)
-                        (vdom data)
-                        dom
-                in
-                if created then
-                    put_below_root data dom;
+    if data.dirty_dom then
+        begin
+            data.dirty_dom <- false;
+
+            let vdom, set_title = data.view data.state in
+            set_title ();
+
+            match data.dom with
+            | None ->
+                let dom = Vdom.make (dom_ops data) vdom in
                 data.dom <- Some dom;
-            end
-    and cleanup () =
-        data.dirty <- false
-    in
-    Assert_failure.attempt
-        "Exception in 'update_dom' of Fmlib_browser"
-        update
-        cleanup;
-    cleanup ();
-    assert (not data.dirty)
+                put_below_root data dom
+
+            | Some dom ->
+                let dom, created = Vdom.update (dom_ops data) vdom dom
+                in
+                data.dom <- Some dom;
+                if created then
+                    put_below_root data dom
+        end;
+    assert (not data.dirty_dom)
+
+
+
 
 
 let on_next_animation (f: float -> unit): unit =
@@ -499,18 +469,14 @@ let on_next_animation (f: float -> unit): unit =
 let rec animate (data: ('state, 'msg) data): float -> unit =
     fun time ->
     begin
-        match data.subs with
+        match data.subs.subs.animation with
         | None ->
             ()
-        | Some subs ->
-            match subs.subs.animation with
-            | None ->
-                ()
-            | Some callback ->
-                dispatch data (callback (Time.of_float time))
+        | Some callback ->
+            dispatch data (callback (Time.of_float time))
     end;
     update_dom data;
-    assert (not data.dirty);
+    assert (not data.dirty_dom);
     on_next_animation (animate data)
 
 
@@ -536,28 +502,22 @@ let receive_message
             Main.log_string "receive_message: application not yet initialized";
             Value.null
         | Some data ->
-            match data.subs with
+            match data.subs.subs.message with
             | None ->
                 Main.log_string
-                    "receive_message: subscriptions not yet initialized";
+                    "receive_message: event not subscribed";
                 Value.null
-            | Some subs ->
-                match subs.subs.message with
+            | Some decode ->
+                match decode v with
                 | None ->
                     Main.log_string
-                        "receive_message: event not subscribed";
+                        "receive_message: cannot decode message from \
+                         javascript";
+                    Main.log_value v;
                     Value.null
-                | Some decode ->
-                    match decode v with
-                    | None ->
-                        Main.log_string
-                            "receive_message: cannot decode message from \
-                             javascript";
-                        Main.log_value v;
-                        Value.null
-                    | Some m ->
-                        dispatch data m;
-                        Value.null
+                | Some m ->
+                    dispatch data m;
+                    Value.null
     in
     Value.function1 post
 

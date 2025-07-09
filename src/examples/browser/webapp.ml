@@ -31,6 +31,7 @@ module Global_event =
 struct
     type t =
         | Key_down of string
+        | Key_up   of string
         | Mouse_down of int * int
         | Mouse_move of int * int
         | Mouse_up   of int * int
@@ -90,6 +91,7 @@ and msg =
     | Send of Value.t
     | Receive of string
     | Key_down of string
+    | Key_up   of string
     | Mouse_down of int * int
     | Mouse_move of int * int
     | Mouse_up   of int * int
@@ -111,6 +113,7 @@ let die_face face  = Die_face face
 let send_msg value = Send value
 let receive_msg s  = Receive s
 let keydown s      = Key_down s
+let keyup s        = Key_up s
 let mouse_down x y = Mouse_down (x, y)
 let mouse_up   x y = Mouse_up (x, y)
 let mouse_move x y = Mouse_move (x, y)
@@ -300,6 +303,9 @@ let global_event_page: page =
             | Some (Key_down key) ->
                 div [] [text "key down: "; text "\""; text key; text "\""]
 
+            | Some (Key_up key) ->
+                div [] [text "key up: "; text "\""; text key; text "\""]
+
             | Some (Mouse_down (x, y)) ->
                 view_mouse "down" x y
 
@@ -323,6 +329,7 @@ let global_event_page: page =
     and sub =
         Subscription.(batch [
             on_keydown    keydown
+          ; on_keyup      keyup
           ; on_mouse_down mouse_down
           ; on_mouse_up   mouse_up
           ; on_mouse_move mouse_move
@@ -645,6 +652,10 @@ let update (state: state): msg -> state * msg Command.t = function
 
     | Key_down key ->
         {state with global_event = Some (Global_event.Key_down key)},
+        Command.none
+
+    | Key_up key ->
+        {state with global_event = Some (Global_event.Key_up key)},
         Command.none
 
     | Mouse_down (x, y) ->

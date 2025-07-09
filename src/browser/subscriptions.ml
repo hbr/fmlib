@@ -123,24 +123,6 @@ let empty (): 'm t =
 
 
 
-let make (dispatch: 'm -> unit) (sub: 'm Subscription.t): 'm t =
-    let subs   = Subs.make sub in
-    let open Handler in
-
-    let window = EventHs.empty () in
-    EventHs.set
-        Fmlib_js.Dom.Window.(event_target (get ()))
-        dispatch
-        subs.window
-        window;
-
-    let timers = Timers.empty () in
-    Timers.set dispatch subs.timers timers;
-
-    let url_request = Url_request.empty () in
-    Url_request.set dispatch subs.url_request url_request;
-    { subs; window; timers; url_request }
-
 
 
 let update (dispatch: 'm -> unit) (sub: 'm Subscription.t) (s: 'm t): 'm t =
