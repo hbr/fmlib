@@ -1,6 +1,6 @@
 .PHONY: all temperature timer flight circles
 
-all: webapp temperature timer flight circles spreadsheet file_select
+all: webapp temperature timer flight circles spreadsheet reference file_select
 
 
 webapp:

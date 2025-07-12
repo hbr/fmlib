@@ -141,3 +141,29 @@ let update (dispatch: 'm -> unit) (sub: 'm Subscription.t) (s: 'm t): 'm t =
         s.subs.url_request
         s.url_request;
     { s with subs }
+
+
+
+let on_animation (time: float) (dispatch: 'm -> unit) (s: 'm t): unit =
+    match s.subs.animation with
+    | None ->
+        ()
+
+    | Some f ->
+        dispatch (f (Time.of_float time))
+
+
+
+let on_message (dispatch: 'm -> unit) (s: unit -> 'm t): Base.Value.t -> unit =
+    fun v ->
+    match (s ()).subs.message with
+    | None ->
+        ()
+
+    | Some decode ->
+        match decode v with
+        | None ->
+            Base.Main.log_string "Cannot decode message from javascript"
+
+        | Some m ->
+            dispatch m

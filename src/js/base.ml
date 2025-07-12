@@ -198,11 +198,14 @@ struct
 
     let field (name: string) (decode: 'a t): 'a t =
         fun obj ->
-        let open Js in
-        Option.(
-            let* v = Optdef.to_option (Unsafe.get obj (string name)) in
-            decode v
-        )
+        if obj == Value.null || obj == Value.undefined then
+            None
+        else
+            let open Js in
+            Option.(
+                let* v = Optdef.to_option (Unsafe.get obj (string name)) in
+                decode v
+            )
 
 
     let array (decode: 'a t): 'a array t =
