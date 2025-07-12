@@ -112,24 +112,16 @@ type 'm t = {
 
 
 
+let empty (): 'm t =
+    let open Handler
+    in
+    { subs        = Subs.empty;
+      window      = EventHs.empty ();
+      timers      = Timers.empty ();
+      url_request = Url_request.empty ();
+    }
 
-let make (dispatch: 'm -> unit) (sub: 'm Subscription.t): 'm t =
-    let subs   = Subs.make sub in
-    let open Handler in
 
-    let window = EventHs.empty () in
-    EventHs.set
-        Fmlib_js.Dom.Window.(event_target (get ()))
-        dispatch
-        subs.window
-        window;
-
-    let timers = Timers.empty () in
-    Timers.set dispatch subs.timers timers;
-
-    let url_request = Url_request.empty () in
-    Url_request.set dispatch subs.url_request url_request;
-    { subs; window; timers; url_request }
 
 
 
@@ -149,3 +141,29 @@ let update (dispatch: 'm -> unit) (sub: 'm Subscription.t) (s: 'm t): 'm t =
         s.subs.url_request
         s.url_request;
     { s with subs }
+
+
+
+let on_animation (time: float) (dispatch: 'm -> unit) (s: 'm t): unit =
+    match s.subs.animation with
+    | None ->
+        ()
+
+    | Some f ->
+        dispatch (f (Time.of_float time))
+
+
+
+let on_message (dispatch: 'm -> unit) (s: unit -> 'm t): Base.Value.t -> unit =
+    fun v ->
+    match (s ()).subs.message with
+    | None ->
+        ()
+
+    | Some decode ->
+        match decode v with
+        | None ->
+            Base.Main.log_string "Cannot decode message from javascript"
+
+        | Some m ->
+            dispatch m

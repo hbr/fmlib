@@ -135,8 +135,7 @@ let set_reference (name: string) (vd: 'm Vdom.t): 'm t =
 let execute
         (post: Base.Value.t -> unit)
         (dispatch: 'm -> unit)
-        (state: 's)
-        (set_ref: string -> 'm Vdom.t -> 's -> unit)
+        (set_ref: string -> 'm Vdom.t -> unit)
         (cmd: 'm t)
     : unit
     =
@@ -151,7 +150,7 @@ let execute
             Task.run task post (fun _ -> ())
 
         | Set_ref (name, vd) ->
-            set_ref name vd state
+            set_ref name vd
 
         | Batch lst ->
             List.iter exe lst

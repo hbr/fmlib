@@ -18,9 +18,21 @@ let (let* ) (m: 'a t) (f: 'a -> 'b t): 'b t =
 let (>>=) = (let* )
 
 
-let map (f: 'a -> 'b) (m: 'a t): 'b t =
-    let* a = m in
-    return (f a)
+
+let (<*>) (f: ('a -> 'b) t) (a: 'a t): 'b t =
+    match f, a with
+    | Some f, Some a ->
+        Some (f a)
+    | _, _ ->
+        None
+
+
+
+let map (f: 'a -> 'b): 'a t -> 'b t = function
+    | None ->
+        None
+    | Some a ->
+        Some (f a)
 
 
 
@@ -30,3 +42,10 @@ let to_list (m: 'a t): 'a list =
         [a]
     | None ->
         []
+
+
+let to_result (err: 'e): 'a t -> ('a, 'e) result = function
+    | None ->
+        Error err
+    | Some a ->
+        Ok a
