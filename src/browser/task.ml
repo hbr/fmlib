@@ -207,118 +207,66 @@ let file_text (file: File.t): (string, read_failed) t =
 
 
 
-module Http =
-struct
 
-    type error = [ `Status of int | `No_json | `Decode ]
-
-
-    module Body =
-    struct
-        type t = {
-            contents : string;
-            media_type : string option;
-        }
-
-        let empty : t =
-            { contents = ""; media_type = None }
-
-        let string (media_type : string) (s : string) : t =
-            { contents = s; media_type = Some media_type }
-
-        let json (v : Base.Value.t) : t =
-            {
-                (* it's ok to call Option.get here because v is constructed with
-                   one of the functions from Fmlib_browser.Value and thus is
-                   guaranteed to be serializable *)
-                contents =
-                    v
-                    |> Base.Value.stringify
-                    |> Option.get
-                    |> Base.Decode.string
-                    |> Option.get;
-                media_type = Some "application/json"
-            }
-    end
-
-
-    module Expect =
-    struct
-        type 'a t = Http_request.t -> ('a, error) result
-
-        let string : string t =
-            fun req ->
-            Ok (Http_request.response_text_string req)
-
-        let json (decode : 'a Base.Decode.t) : 'a t =
-            fun req ->
-            match Base.Value.parse (Http_request.response_text_value req) with
-            | None ->
-                Error `No_json
-            | Some v ->
-                match decode v with
-                | None ->
-                    Error `Decode
-                | Some a ->
-                    Ok a
-    end
-
-
-    let request
+let http_request
         (meth: string)
         (url: string)
         (headers: (string * string) list)
-        (body : Body.t)
-        (expect : 'a Expect.t)
-        : ('a, error) t
-        =
-        fun _ k ->
-        let headers =
-            match body.media_type with
-            | None ->
-                headers
-            | Some c ->
-                ("Content-Type", c) :: headers
-        in
-        let req = Http_request.make meth url headers body.contents in
-        let handler _ =
-            assert (Http_request.ready_state req = 4);
-            let status = Http_request.status req in
-            if status >= 300 then (* not ok *)
-                continue k (Error (`Status status))
-            else
-                continue k (expect req)
-        in
-        Event_target.add
-            "loadend"
-            handler
-            (Http_request.event_target req)
+        (body : Http.Body.t)
+        (expect : 'a Http.Expect.t)
+    : ('a, Http.error) t
+    =
+    fun _ k ->
+    let headers =
+        match body.media_type with
+        | None ->
+            headers
+        | Some c ->
+            ("Content-Type", c) :: headers
+    in
+    let req = Http_request.make meth url headers body.contents in
+    let handler _ =
+        assert (Http_request.ready_state req = 4);
+        let status = Http_request.status req in
+        if status >= 300 then (* not ok *)
+            continue k (Error (`Status status))
+        else
+            continue k (expect req)
+    in
+    Event_target.add
+        "loadend"
+        handler
+        (Http_request.event_target req)
 
 
-    let text
-            (meth: string)
-            (url: string)
-            (headers: (string * string) list)
-            (body: string)
-        : (string, error) t
-        =
-        request meth url headers (Body.string "text/plain" body) Expect.string
+let http_text
+        (meth: string)
+        (url: string)
+        (headers: (string * string) list)
+        (body: string)
+    : (string, Http.error) t
+    =
+    http_request
+        meth
+        url
+        headers
+        (Http.Body.string "text/plain" body)
+        Http.Expect.string
 
 
-    let json
-            (meth: string)
-            (url: string)
-            (headers: (string * string) list)
-            (body: Base.Value.t option)
-            (decode: 'a Base.Decode.t)
-        : ('a, error) t
-        =
-        let body =
-            match body with
-            | None ->
-                Body.empty
-            | Some b ->
-                Body.json b
-        in
-        request meth url headers body (Expect.json decode)
-end
+let http_json
+        (meth: string)
+        (url: string)
+        (headers: (string * string) list)
+        (body: Value.t option)
+        (decode: 'a Decoder.t)
+    : ('a, Http.error) t
+    =
+    let body =
+        match body with
+        | None ->
+            Http.Body.empty
+        | Some b ->
+            Http.Body.json b
+    in
+    http_request meth url headers body (Http.Expect.json decode)

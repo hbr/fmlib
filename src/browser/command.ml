@@ -130,10 +130,25 @@ let set_reference (name: string) (vd: 'm Vdom.t): 'm t =
     Set_ref (name, vd)
 
 
+let http_request
+        (meth: string)
+        (url: string)
+        (headers: (string * string) list)
+        (body: Http.Body.t)
+        (expect: 'm Http.Expect.t)
+        (error: Http.error -> 'm)
+    : 'm t
+    =
+    attempt
+        (function
+            | Ok m -> m
+            | Error e -> error e)
+        (Task.http_request meth url headers body expect)
+
 
 
 let execute
-        (post: Base.Value.t -> unit)
+        (post: Value.t -> unit)
         (dispatch: 'm -> unit)
         (set_ref: string -> 'm Vdom.t -> unit)
         (cmd: 'm t)

@@ -43,7 +43,7 @@ end
 
 module Http =
 struct
-    type error = Task.Http.error
+    type error = Http.error
     type res = (string, error) result
 end
 
@@ -132,11 +132,6 @@ let http_json res  = Http_json res
 
 
 
-
-
-
-
-
 (* Pages
  * ======================================================================
  *)
@@ -156,10 +151,6 @@ let counter_page: page =
         ]
     in
     Page.make "Counter" "Counter" view Subscription.none Command.none
-
-
-
-
 
 let digital_clock_page: page =
     let view state =
@@ -185,16 +176,13 @@ let digital_clock_page: page =
             [ time "your zone" state.time state.zone
             ; time "utc" state.time Time.Zone.utc
             ]
-    and subs =
-        Subscription.every 1000 time_msg
-    and get_time =
-        Command.(perform Task.now       |> map time_msg)
-    and get_zone =
-        Command.(perform Task.time_zone |> map zone_msg)
     in
-    let get_time_info = Command.batch [get_time; get_zone]
-    in
-    Page.make "Digital clock" "DClock" view subs get_time_info
+    Page.make
+        "Digital clock"
+        "DClock"
+        view
+        (Subscription.every 1000 time_msg)
+        Command.(batch [now time_msg; time_zone zone_msg])
 
 
 
@@ -442,7 +430,7 @@ let http_page: page =
             http_text
             Task.(
                 let* _ = sleep 1000 () in
-                Http.text "GET" url [] ""
+                http_text "GET" url [] ""
             )
     and cmd2 =
         let decode =
@@ -459,7 +447,7 @@ let http_page: page =
             http_json
             Task.(
                 let* _ = sleep 2000 () in
-                Http.json "GET" url [] None decode
+                http_json "GET" url [] None decode
             )
     in
     Page.make

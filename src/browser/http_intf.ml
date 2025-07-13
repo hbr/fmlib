@@ -1,0 +1,63 @@
+module type S =
+sig
+    type file
+    type value
+    type _ decoder
+
+
+    type error = [
+        | `Status of int
+        (**
+           - 0: no internet, server not found, timeout, ...
+           - 401: bad request
+           - 403: forbidden
+           - 404: page not found
+           - ...
+
+        *)
+        | `No_json (** Resource is not a valid json file *)
+        | `Decode (** Resource is a valid json file, but the decoder could not
+                      decode the corresponding javascript object. *)
+    ]
+
+
+    module Body:
+    sig
+        type t
+
+        val empty : t
+        (** The body will be empty. *)
+
+        val string : string -> string -> t
+        (** [string media_type s]
+
+            The body will be the string [s]. The [Content-Type] header
+            will be automatically set to the given [media_type]. For common
+            media types, a.k.a. MIME types, see
+            {{: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types } this list}. *)
+
+        val json : Value.t -> t
+        (** [json v]
+
+            The body will be [v], encoded as json. The [Content-Type] header
+            will be automatically set to [application/json]. *)
+
+    end
+
+
+    module Expect:
+    sig
+        type 'a t
+
+        val string : string t
+        (** The response is expected to be a string and will not be decoded
+            further. *)
+
+        val json : 'a Decoder.t -> 'a t
+        (** [json decoder]
+
+            The response is expected to be json and will be decoded with
+            [decoder]. *)
+    end
+
+end
