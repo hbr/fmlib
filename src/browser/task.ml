@@ -187,7 +187,7 @@ let time_zone: (Time.Zone.t, 'e) t =
 
 let file_text (file: File.t): (string, read_failed) t =
     fun _ k ->
-    let reader = File_reader.make in
+    let reader = File_reader.make () in
     File_reader.read_text reader file ();
     let handler _ =
         assert (File_reader.ready_state reader = 2);
