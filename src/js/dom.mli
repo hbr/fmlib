@@ -349,6 +349,26 @@ end
 
 
 
+(** Module representing local or session storage. *)
+module Storage:
+sig
+    type t
+
+    val length: t -> int
+
+    val key: int -> t -> string
+
+    val set: string -> string -> t -> unit
+
+    val get: string -> t -> string
+
+    val remove: string -> t -> unit
+
+    val clear: t -> unit
+end
+
+
+
 (** Module representing the browser history. *)
 module History:
 sig
@@ -415,6 +435,14 @@ sig
 
     val location: t -> Location.t
     (** Location object. *)
+
+
+    val local_storage: t -> Storage.t
+    (** Local storage object. *)
+
+
+    val session_storage: t -> Storage.t
+    (** Session storage object. *)
 
 
     val on_next_animation: (float -> unit) -> t -> unit

@@ -18,3 +18,15 @@ val prevent_default:  t -> unit
     ... </a>] is to load the page given in [href]. The call [prevent_default
     event] inhibits this default behaviour.
 *)
+
+
+
+val mouse: string -> Base.Value.t -> t
+(** [mouse typ optional]
+
+    Create a mouse event. The type can be one of [click, dblclick, mouseup,
+    mousedown, mouseenter, mouseleave, mouseout, mouseover].
+
+    The optional is a javscript object with the following optional properties
+    [screenX, screenY, ...]. The optional can be empty.
+*)

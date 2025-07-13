@@ -79,6 +79,20 @@ end
 
 
 
+class type storage =
+object
+    method length: int Js.readonly_prop
+    method key: int -> js_string Js.meth
+    method getItem: js_string -> js_string Js.meth
+    method setItem: js_string -> js_string -> unit Js.meth
+    method removeItem: js_string -> unit Js.meth
+    method clear: 'a Js.opt -> unit Js.meth
+end
+
+
+
+
+
 class type location =
 object
     method href:        js_string Js.readonly_prop
@@ -101,6 +115,8 @@ class type window =
 object
     method history:  history Js.t Js.readonly_prop
     method location: location Js.t Js.readonly_prop
+    method localStorage:   storage Js.t Js.readonly_prop
+    method sessionStorage: storage Js.t Js.readonly_prop
     method document: document Js.t Js.readonly_prop
     method requestAnimationFrame: (float -> unit) -> unit Js.meth
 end
@@ -274,6 +290,31 @@ struct
 end
 
 
+module Storage =
+struct
+    type t = storage Js.t
+
+    let length (s: t): int =
+        s##.length
+
+    let key (i: int) (s: t): string =
+        assert (i < length s);
+        s##key i |> Js.to_string
+
+    let get (k: string) (s: t): string =
+        s##getItem (Js.string k) |> Js.to_string
+
+    let set (k: string) (v: string) (s: t): unit =
+        s##setItem (Js.string k) (Js.string v)
+
+    let remove (k: string) (s: t): unit =
+        s##removeItem (Js.string k)
+
+    let clear (s: t): unit =
+        s##clear Js.null
+end
+
+
 
 module History =
 struct
@@ -366,6 +407,14 @@ struct
 
     let location (w: t): Location.t =
         w##.location
+
+
+    let local_storage (w: t): Storage.t =
+        w##.localStorage
+
+
+    let session_storage (w: t): Storage.t =
+        w##.sessionStorage
 
 
     let on_next_animation (callback: float -> unit) (w: t): unit =

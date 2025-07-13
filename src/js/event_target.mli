@@ -21,3 +21,15 @@ val remove: string -> (Event.t -> unit) -> t -> unit
     Note: The same handler might be added for several event types. The
     function [remove] only removes the handler for the specific event type.
 *)
+
+
+val dispatch: Event.t -> t -> bool
+(** [dispatch event target]
+
+    Dispatch [event] on the [target].
+
+    Returns [false], if the event is cancelable and at least one of the handlers
+    has prevented default handling.
+
+    Otherwise it returns [true].
+*)
