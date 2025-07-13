@@ -16,7 +16,7 @@ val event_target: t -> Event_target.t
 *)
 
 
-val make: t
+val make: unit -> t
 (** Create a file reader. *)
 
 

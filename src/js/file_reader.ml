@@ -23,7 +23,7 @@ let event_target (reader: t): Event_target.t =
     Obj.magic reader
 
 
-let make: t =
+let make (): t =
     let reader = Js.Unsafe.global##.FileReader in
     new%js reader
 
