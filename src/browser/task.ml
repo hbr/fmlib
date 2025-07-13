@@ -224,7 +224,13 @@ let http_request
         | Some c ->
             ("Content-Type", c) :: headers
     in
-    let req = Http_request.make meth url headers body.contents in
+    let req =
+        match body.contents with
+        | String s ->
+            Http_request.make_text meth url headers s
+        | File f ->
+            Http_request.make_file meth url headers f
+    in
     let handler _ =
         assert (Http_request.ready_state req = 4);
         let status = Http_request.status req in

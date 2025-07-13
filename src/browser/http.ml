@@ -5,29 +5,34 @@ type error = [ `Status of int | `No_json | `Decode ]
 
 module Body =
 struct
+    type contents = String of string | File of File.t
+
     type t = {
-        contents : string;
+        contents : contents;
         media_type : string option;
     }
 
     let empty : t =
-        { contents = ""; media_type = None }
+        { contents = String ""; media_type = None }
 
     let string (media_type : string) (s : string) : t =
-        { contents = s; media_type = Some media_type }
+        { contents = String s; media_type = Some media_type }
 
     let json (v : Value.t) : t =
-        {
-            (* it's ok to call Option.get here because v is constructed with
-               one of the functions from Fmlib_browser.Value and thus is
-               guaranteed to be serializable *)
-            contents =
-                v
-                |> Value.stringify
-                |> Decoder.string
-                |> Option.get;
-            media_type = Some "application/json"
-        }
+        (* it's ok to call Option.get here because v is constructed with one of
+           the functions from Fmlib_browser.Value and thus is guaranteed to be
+           serializable *)
+        let json =
+            v
+            |> Base.Value.stringify
+            |> Option.get
+            |> Base.Decode.string
+            |> Option.get
+        in
+        { contents = String json; media_type = Some "application/json" }
+
+    let file (file: File.t): t =
+        { contents = File file; media_type = File.media_type file }
 end
 
 

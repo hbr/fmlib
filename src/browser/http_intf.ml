@@ -42,6 +42,12 @@ sig
             The body will be [v], encoded as json. The [Content-Type] header
             will be automatically set to [application/json]. *)
 
+        val file : File.t -> t
+        (** [file f]
+            The body will be the contents of file [f]. If the media type of [f]
+            can be determined using {!File.media_type}, the [Content-Type]
+            header will be automatically set to that media type. *)
+
     end
 
 
