@@ -185,6 +185,46 @@ let time_zone: (Time.Zone.t, 'e) t =
 
 
 
+let open_file_dialog
+        (media_types: string list)
+        (multiple: bool)
+    : (File.t list, empty) t =
+    fun _ k ->
+    let input =
+        Dom.Window.get ()
+        |> Dom.Window.document
+        |> Dom.Document.create_element "input"
+    in
+    Dom.Element.set_attribute "type" "file" input;
+    Dom.Element.set_attribute "accept" (String.concat "," media_types) input;
+    Dom.Element.set_attribute "multiple" (string_of_bool multiple) input;
+    let handler event =
+        let files =
+            event
+            |> Event.value
+            |> Base.Decode.(field "target" (field "files" file_list))
+            |> Option.get
+        in
+        continue k (Ok files)
+    in
+    let event_target =
+        input
+        |> Dom.Element.node
+        |> Dom.Node.event_target
+    in
+    Event_target.add "change" handler event_target;
+    let click = Event.mouse "click" Base.Value.null in
+    let _ = Event_target.dispatch click event_target in ()
+
+
+let select_file (media_types: string list): (File.t, empty) t =
+    open_file_dialog media_types false |> map List.hd
+
+
+let select_files (media_types: string list): (File.t list, empty) t =
+    open_file_dialog media_types true
+
+
 let file_text (file: File.t): (string, read_failed) t =
     fun _ k ->
     let reader = File_reader.make () in

@@ -212,6 +212,29 @@ sig
 
     (** {1 File operations} *)
 
+    val select_file: string list -> (file, empty) t
+    (** [select_file media_types]
+        Show the browser's file selection dialog and return a file when the user
+        selected one. The given list of [media_types] allows restricting what
+        file types are visible in the dialog (users can still select different
+        file types if they want to).
+
+        NOTE: This task only works if it is triggered in reaction to a user
+        event, such as a mouse click. This restriction is imposed by browsers
+        for security reasons (websites should not be able to ask for file access
+        without user interaction).
+    *)
+
+    val select_files: string list -> (file list, empty) t
+    (** [select_files media_types]
+        The same as {!select_file} but allows selecting multiple files at once.
+
+        NOTE: This task only works if it is triggered in reaction to a user
+        event, such as a mouse click. This restriction is imposed by browsers
+        for security reasons (websites should not be able to ask for file access
+        without user interaction).
+    *)
+
     val file_text: file -> (string, read_failed) t
     (** [file_text file f]
 

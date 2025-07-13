@@ -10,6 +10,7 @@ type state = {
 
 
 type msg =
+    | Clicked_select_file
     | Selected_file of File.t
     | Got_file_contents of string
     | Got_error of string
@@ -25,6 +26,11 @@ let init: state =
 
 let update (state: state) (msg: msg): state * msg Command.t =
     match msg with
+    | Clicked_select_file ->
+        let cmd =
+            Command.select_file ["text/plain"] (fun file -> Selected_file file)
+        in
+        (state, cmd)
     | Selected_file file ->
         let cmd = Command.file_text file (fun t ->
             match t with
@@ -45,18 +51,6 @@ let update (state: state) (msg: msg): state * msg Command.t =
 
 
 (* VIEW*)
-
-let view_select_button: msg Html.t =
-    let open Html in
-    let open Attribute in
-    input
-        [
-            attribute "type" "file";
-            attribute "accept" "text/plain";
-            on_fileselect (fun files -> Selected_file (List.hd files))
-        ]
-        [ text "Select file" ]
-
 
 let view_file_info (file: File.t): msg Html.t =
     let open Html in
@@ -80,7 +74,7 @@ let view (state: state): msg Html.t * string =
         div []
             [
                 h1 [] [text "File selection"];
-                view_select_button;
+                button [on_click Clicked_select_file] [ text "Select file" ];
                 h2 [] [text "File info"];
                 (
                     match state.file with
