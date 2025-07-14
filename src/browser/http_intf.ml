@@ -1,5 +1,7 @@
 module type S =
 sig
+    (** Data of an Http Request. *)
+
     type file
     type value
     type _ decoder
@@ -23,6 +25,8 @@ sig
 
     module Body:
     sig
+        (** Body of an Http Request *)
+
         type t
 
         val empty : t
@@ -53,6 +57,8 @@ sig
 
     module Expect:
     sig
+        (** Expected Response of an Http Request *)
+
         type 'a t
 
         val string : string t

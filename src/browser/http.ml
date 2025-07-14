@@ -21,12 +21,11 @@ struct
     let json (v : Value.t) : t =
         (* it's ok to call Option.get here because v is constructed with one of
            the functions from Fmlib_browser.Value and thus is guaranteed to be
-           serializable *)
+           serializable and its serialization is a string. *)
         let json =
             v
-            |> Base.Value.stringify
-            |> Option.get
-            |> Base.Decode.string
+            |> Value.stringify
+            |> Decoder.string
             |> Option.get
         in
         { contents = String json; media_type = Some "application/json" }
