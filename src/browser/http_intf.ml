@@ -1,5 +1,7 @@
 module type S =
 sig
+    (** Data of an Http Request. *)
+
     type file
     type value
     type _ decoder
@@ -23,6 +25,8 @@ sig
 
     module Body:
     sig
+        (** Body of an Http Request *)
+
         type t
 
         val empty : t
@@ -36,24 +40,32 @@ sig
             media types, a.k.a. MIME types, see
             {{: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types } this list}. *)
 
-        val json : Value.t -> t
+        val json : value -> t
         (** [json v]
 
             The body will be [v], encoded as json. The [Content-Type] header
             will be automatically set to [application/json]. *)
+
+        val file : file -> t
+        (** [file f]
+            The body will be the contents of file [f]. If the media type of [f]
+            can be determined using {!File.media_type}, the [Content-Type]
+            header will be automatically set to that media type. *)
 
     end
 
 
     module Expect:
     sig
+        (** Expected Response of an Http Request *)
+
         type 'a t
 
         val string : string t
         (** The response is expected to be a string and will not be decoded
             further. *)
 
-        val json : 'a Decoder.t -> 'a t
+        val json : 'a decoder -> 'a t
         (** [json decoder]
 
             The response is expected to be json and will be decoded with

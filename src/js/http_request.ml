@@ -1,6 +1,10 @@
+type file = File.t
+
 open Js_of_ocaml
 
 type js_string = Js.js_string Js.t
+
+type blob = File.blob Js.t
 
 class type xmlHttpRequest =
 object
@@ -9,6 +13,8 @@ object
     method setRequestHeader: js_string -> js_string -> unit Js.meth
 
     method send_string: js_string -> unit Js.meth
+
+    method send_blob: blob -> unit Js.meth
 
     method readyState: int Js.readonly_prop
     (*
@@ -39,7 +45,6 @@ let make
         (_method: string)
         (url: string)
         (headers: (string * string) list)
-        (body: string)
     : t
     =
     let req: xmlHttpRequest Js.t =
@@ -53,7 +58,30 @@ let make
              req##setRequestHeader (Js.string name) (Js.string value)
         )
         headers;
-    req##send_string (Js.string body);
+    req
+
+
+let make_text
+        (_method: string)
+        (url: string)
+        (headers: (string * string) list)
+        (text: string)
+    : t
+    =
+    let req = make _method url headers in
+    req##send_string (Js.string text);
+    req
+
+
+let make_file
+        (_method: string)
+        (url: string)
+        (headers: (string * string) list)
+        (file: file)
+    : t
+    =
+    let req = make _method url headers in
+    req##send_blob (Obj.magic file);
     req
 
 

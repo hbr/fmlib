@@ -38,9 +38,17 @@ val event_target: t -> Event_target.t
     ]}
 *)
 
-val make: string -> string -> (string * string) list -> string -> t
-(** [make method url headers body]
+val make_text: string -> string -> (string * string) list -> string -> t
+(** [make_text method url headers text]
 
+    Make an http request with the string [text] as payload.
+*)
+
+
+val make_file: string -> string -> (string * string) list -> File.t -> t
+(** [make_file method url headers file]
+
+    Make an http request with contents of [file] as payload.
 *)
 
 
