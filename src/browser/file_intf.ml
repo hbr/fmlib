@@ -3,7 +3,8 @@ module type FILE =
 sig
 
     (** A file handle that represents a user-selected file in the local
-        filesystem. See {!Attribute.on_fileselect} on how to obtain file handles.
+        filesystem. See {!Command.select_file} and {!Command.select_files} on
+        how to obtain file handles.
     *)
 
     type t

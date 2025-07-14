@@ -61,10 +61,6 @@ let on_keyup (f: string -> 'm): 'm t =
     on "keyup" (decode_key_event f)
 
 
-let on_fileselect (f: File.t list -> 'm): 'm t =
-    on "change" Decoder.(map f (field "target" (field "files" file_list)))
-
-
 (* Styles *)
 
 let font_size (size: string): 'm t =

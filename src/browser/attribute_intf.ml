@@ -119,29 +119,6 @@ sig
         Produce the message [f key] on the keyup event with [key].
     *)
 
-    val on_fileselect: (file list -> 'msg) -> 'msg t
-    (** [on_fileselect f]
-
-        Produce the message [f files] when a user selects one or more files.
-        [files] is guaranteed to have at least one element.
-
-        This only works on an {!Html.val-input} node with the [type="file"]
-        attribute. The [accept] attribute can be used to only show files with
-        specific media types in the file selection dialog. The [multiple]
-        attribute can be used to allow selecting multiple files at once.
-
-        E.g. to allow selecting multiple image files of type [png] or [jpeg]:
-        {[
-            input
-                [
-                    attribute "type" "file";
-                    attribute "accept" "image/png,image/jpeg";
-                    attribute "multiple" "true";
-                    on_fileselect (fun files -> Selected_files files)
-                ]
-                [ text "Select files" ]
-        ]}
-    *)
 
 
 

@@ -118,6 +118,14 @@ let time_zone (f: Time.Zone.t -> 'm): 'm t =
     perform Task.(map f time_zone)
 
 
+let select_file (media_types: string list) (f: (File.t -> 'm)): 'm t =
+    perform Task.(map f (select_file media_types))
+
+
+let select_files (media_types: string list) (f: (File.t list -> 'm)): 'm t =
+    perform Task.(map f (select_files media_types))
+
+
 let file_text (file: File.t) (f: (string, Task.read_failed) result -> 'm): 'm t =
     attempt f (Task.file_text file)
 
