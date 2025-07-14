@@ -254,7 +254,7 @@ sig
         -> http_body
         -> 'a http_expect
         -> ('a, http_error) t
-    (** [request method url headers body expect]
+    (** [http_request method url headers body expect]
 
         Make an http [method] request to [url] with [headers] and [body].
         [expect] specifies the expected response format.
@@ -265,7 +265,7 @@ sig
         Example:
         {[
             let user = Value.(record [| ("username", string "Bob") |]) in
-            request "PUT" "/users" [] (Body.json user) (Expect.string)
+            http_request "PUT" "/users" [] (Body.json user) (Expect.string)
             |> Command.attempt (fun result ->
                 match result with
                 | Ok _ ->
@@ -281,7 +281,7 @@ sig
         -> (string * string) list
         -> string
         -> (string, http_error) t
-    (** [text method url headers body]
+    (** [http_text method url headers body]
 
         Make an http [method] request to [url] with [headers] and a string
         as the [body]. Expect a string as the response.
@@ -293,7 +293,7 @@ sig
 
         Example:
         {[
-            text "PUT" "/users" [] "Bob"
+            http_text "PUT" "/users" [] "Bob"
             |> Command.attempt (fun result ->
                 match result with
                 | Ok _ ->
@@ -310,7 +310,7 @@ sig
         -> value option
         -> 'a decoder
         -> ('a, http_error) t
-        (** [json method url headers body decoder]
+        (** [http_json method url headers body decoder]
 
             Make an http [method] request to [url] with [headers] and an
             optional json value as the [body]. Expect a json value as the
@@ -322,7 +322,7 @@ sig
             Example:
             {[
                 let decoder = Decoder.array Decoder.string in
-                json "GET" "/users" [] None decoder
+                http_json "GET" "/users" [] None decoder
                 |> Command.attempt (fun result ->
                     match result with
                     | Ok usernames -> (* the usernames were successfully decoded
