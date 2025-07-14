@@ -36,13 +36,13 @@ sig
             media types, a.k.a. MIME types, see
             {{: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types } this list}. *)
 
-        val json : Value.t -> t
+        val json : value -> t
         (** [json v]
 
             The body will be [v], encoded as json. The [Content-Type] header
             will be automatically set to [application/json]. *)
 
-        val file : File.t -> t
+        val file : file -> t
         (** [file f]
             The body will be the contents of file [f]. If the media type of [f]
             can be determined using {!File.media_type}, the [Content-Type]
@@ -59,7 +59,7 @@ sig
         (** The response is expected to be a string and will not be decoded
             further. *)
 
-        val json : 'a Decoder.t -> 'a t
+        val json : 'a decoder -> 'a t
         (** [json decoder]
 
             The response is expected to be json and will be decoded with
