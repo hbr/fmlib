@@ -323,18 +323,13 @@ struct
         *)
         assert (count_toks b0 <= count_toks b);
         assert (b._end <> End_consumed);
-        if b0.la_ptr = b.la_ptr then
-            (* failed without consumption, no backtracking necessary *)
-            {b with is_buffering = b0.is_buffering}
-        else
-            (* failed with consumption, backtracking necessary *)
-            {
-                b0 with
-                toks  = b.toks;
-                _end  = b._end;
-                error =
-                    match e with
-                    | None -> b0.error (* not_followed_by ? *)
-                    | Some e -> Error.add_expected e b0.error
-            }
+        {
+            b0 with
+            toks  = b.toks;
+            _end  = b._end;
+            error =
+                match e with
+                | None -> b0.error (* not_followed_by ? *)
+                | Some e -> Error.add_expected e b0.error
+        }
 end

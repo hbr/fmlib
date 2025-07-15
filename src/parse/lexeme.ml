@@ -134,6 +134,8 @@ struct
             0
             (fun n m -> return (n + m))
             whitespace_token
+        <?>
+        "whitespace"
 
 
 
@@ -227,23 +229,7 @@ struct
         let* s = sign 1 (-1) in
         map (fun (_, v) -> s * v) unsigned_int_base
 
-
-    let unsigned_int: int Located.t t =
-        backtrack unsigned_int_base "unsigned int"
-        |> map snd
-        |> located
-        |> lexeme
-
-
-    let int: int Located.t t =
-        signed_int_base
-        |> located
-        |> lexeme
-
-
-
-
-    let float: float Located.t t =
+    let float_base: float t =
         let fraction =
             let* _ = char '.' in
             unsigned_int_base
@@ -261,6 +247,25 @@ struct
         let* frac = optional_with_default 0.0 fraction in
         let* exp  = optional_with_default 1.0 exponent in
         return (s *. (v +. frac) *. exp)
+
+
+    let unsigned_int: int Located.t t =
+        backtrack unsigned_int_base "unsigned int"
+        |> map snd
+        |> located
+        |> lexeme
+
+
+    let int: int Located.t t =
+        backtrack signed_int_base "signed integer"
+        |> located
+        |> lexeme
+
+
+
+
+    let float: float Located.t t =
+        backtrack float_base "floating point number"
         |> located
         |> lexeme
 

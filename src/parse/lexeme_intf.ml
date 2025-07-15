@@ -12,6 +12,7 @@ sig
     val map: ('a -> 'b) -> 'a t -> 'b t
     val ( let* ): 'a t -> ('a -> 'b t) -> 'b t
     val ( </> ): 'a t -> 'a t -> 'a t
+    val ( <?> ): 'a t -> string -> 'a t
     val located: 'a t -> 'a Located.t t
     val unexpected: string -> 'a t
     val backtrack: 'a t -> string -> 'a t

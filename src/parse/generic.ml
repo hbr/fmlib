@@ -334,7 +334,7 @@ struct
 
 
 
-
+(*
     let consumer (p: 'a t): 'a t =
         (* Execute [p].
 
@@ -347,7 +347,7 @@ struct
                  let consumed = B.has_consumed b in
                  assert (res = None || consumed);
                  k res (B.end_new_consumer b0 b))
-
+*)
 
 
     let (</>) (p: 'a t) (q: 'a t): 'a t =
@@ -404,15 +404,6 @@ struct
 
     let (<?>) (p: 'a t) (e: Expect.t): 'a t =
         update_expectations (fun _ _ -> e) p
-        (*fun b0 k ->
-        p
-            (B.start_alternatives b0)
-            (fun res b ->
-                 match res with
-                 | None ->
-                     k None (B.end_failed_alternatives e b0 b)
-                 | Some a ->
-                     k (Some a) (B.end_succeeded_alternatives b0 b))*)
 
 
     let backtrack (p: 'a t) (e: Expect.t): 'a t =
@@ -658,10 +649,6 @@ struct
             (make_binary: 'exp -> 'op -> 'exp -> 'exp t)
         : 'exp t
         =
-        let primary         = consumer primary
-        and unary_operator  = Option.map consumer unary_operator
-        and binary_operator = consumer binary_operator
-        in
         let rec apply_unaries us a =
             match us with
             | [] ->
