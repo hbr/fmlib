@@ -118,6 +118,12 @@ struct
         Printf.sprintf "%s%s" (column_name x) (row_name y)
 
 
+    let is_valid ((x, y): t) ((x1, y1): t): bool =
+        0 <= x && x < x1
+        &&
+        0 <= y && y < y1
+
+
     let up ((x, y) as id: t): t =
         if y = 0 then
             id
@@ -151,219 +157,6 @@ end
 
 (*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                              Parser
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*)
-
-
-
-module Parser =
-struct
-    open Fmlib_parse
-
-    module Final =
-    struct
-        type t = (float array -> float)
-    end
-
-    module State =
-    struct
-        type t = Id.t * Id.t array
-
-        let id s = fst s
-
-        let args s = snd s
-
-        let push_arg id (id0, args) =
-            (id0, Fmlib_std.Array.push id args)
-    end
-
-
-    type exp = Final.t
-
-
-    include Character.Make (State) (Final) (String)
-
-
-    let get_id: Id.t t =
-        map State.id get
-
-
-    let get_args: Id.t array t =
-        map State.args get
-
-
-    let cell_index (cell_id: Id.t): int t =
-        let* args = map State.args get in
-        match
-            Fmlib_std.Array.find (fun arg_id -> cell_id = arg_id) args
-        with
-        | None ->
-            let* _ = update (State.push_arg cell_id) in
-            let* args2 = map State.args get in
-            assert Array.(length args + 1 = length args2);
-            return (Array.length args)
-
-        | Some idx ->
-            return idx
-
-
-
-    let whitespace: int t =
-        skip_zero_or_more (char ' ' </> char '\n')
-
-
-    let lexeme (p: 'a t): 'a t =
-        let* a = p in
-        let* _ = whitespace in
-        return a
-
-
-    let binary_operator: (char * (float -> float -> float)) t =
-        let mapc op c = (c, op)
-        in
-        map (mapc ( +. )) (char '+')
-        </>
-        map (mapc ( -. )) (char '-')
-        </>
-        map (mapc ( *. )) (char '*')
-        |>
-        lexeme
-
-
-    let int_number: int t =
-        one_or_more_fold_left
-            return
-            (fun v d -> 10 * v + d |> return)
-            digit
-
-
-    let fraction: float t =
-        one_or_more_fold_left
-            (fun d -> return (0.01, 0.1 *. d))
-            (fun (base, v) d -> (0.1 *. base, v +. base *. d) |> return)
-            (map float_of_int digit)
-        |> map snd
-
-
-    let number_dot_number: float t =
-        let* predot =
-            map float_of_int int_number
-        in
-        let* postdot =
-            (
-                let* _ = char '.' in
-                fraction
-            ) |> optional
-        in
-        match postdot with
-        | None ->
-            return predot
-        | Some frac ->
-            return (predot +. frac)
-
-
-    let number: exp t =
-        lexeme (map (fun n _ -> n) number_dot_number)
-
-
-    let cell: exp t =
-        (
-            let* x =
-                (charp (fun c -> 'A' <= c && c <= 'Z') "Letter [A-Z]"
-                 |> map (fun c -> Char.code c - Char.code 'A'))
-                </>
-                (charp (fun c -> 'a' <= c && c <= 'z') "Letter [a-z]"
-                 |> map (fun c -> Char.code c - Char.code 'a'))
-            in
-            let* y = int_number in
-            let y = y - 1 in
-            let* id = get_id in
-            if x < Id.x id && 0 <= y && y < Id.y id then
-                let cell_id = Id.make x y in
-                let* i = cell_index cell_id in
-                return (fun args -> args.(i))
-            else
-                fail "Illegal cell"
-        )
-        |> lexeme
-
-
-
-    let rec expr (): exp t =
-        let is_left (op1, _) (op2, _): bool t =
-            return (op1 = '*' || op2 <> '*')
-
-        and make_unary _ _ : exp t =
-            assert false
-
-        and make_binary exp1 (_, op) exp2: exp t =
-            return (fun args -> op (exp1 args) (exp2 args))
-
-        and primary (): exp t =
-            number
-            </>
-            cell
-            </>
-            parenthesized
-                (fun _ a _ -> return a)
-                (char '(' |> map (fun _ -> ')') |> lexeme)
-                expr
-                (fun _ -> char ')' |> lexeme)
-        in
-        operator_expression
-            (primary ())
-            None
-            binary_operator
-            is_left
-            make_unary
-            make_binary
-
-
-    let expr_opt: exp option t =
-        expr () |> optional
-
-
-    let formula: exp t =
-        let* _ = whitespace
-        in
-        expr ()
-        </>
-        ( let* _ = char '=' |> lexeme
-          in expr ())
-        </>
-        return (fun _ -> 0.)
-
-
-
-    let parse
-            (id: Id.t)
-            (input: string)
-        : (Id.t array * Final.t, string) result
-        =
-        let p = make (id, [||]) formula
-        in
-        let p = Parser.run_on_string input p
-        in
-        if Parser.has_succeeded p then
-            let args = Parser.state p |> State.args
-            and formula = Parser.final p
-            in
-            Ok (args, formula)
-        else if Parser.has_failed_semantic p then
-            Error (Parser.failed_semantic p)
-        else
-            Error "Syntax"
-end
-
-
-
-
-
-
-
-(*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                               Message
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 *)
@@ -377,6 +170,7 @@ type msg =
     | Right
     | Goto  of Id.t
     | Input of string
+    | Explain
     | Edit
     | Enter
     | Escape
@@ -565,6 +359,273 @@ end
 
 (*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                              Parser
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*)
+
+
+
+module Parser =
+struct
+    open Fmlib_parse
+    module Pretty = Fmlib_pretty.Print
+
+    module Final =
+    struct
+        type t = (float array -> float)
+    end
+
+    module Semantic =
+    struct
+        type t = {
+            range: Position.range;
+            pretty: Pretty.doc;
+        }
+
+        let range s  = s.range
+        let pretty s = s.pretty
+    end
+
+    module State =
+    struct
+        type t = {
+            id: Id.t;
+            users: (Cell.t * Cell.t list) list;
+            args: Id.t array;
+        }
+
+        let make id users =
+            { id; users; args = [||];}
+
+        let id s = s.id
+
+        let users s = s.users
+
+        let args s = s.args
+
+        let push_arg id s =
+            {s with args = Fmlib_std.Array.push id s.args}
+    end
+
+    module Lang =
+    struct
+        let whitespace_chars = " \t\n\r"
+        let multiline_comment: (string * string * bool) option =
+            Some ("{-", "-}", true)
+
+        let line_comment: string option =
+            Some "--"
+
+        let is_letter (c: char): bool =
+            ('A' <= c && c <= 'Z')
+            ||
+            ('a' <= c && c <= 'z')
+
+        let is_digit (c: char): bool =
+            ('0' <= c && c <= '9')
+
+        let identifier_start _ = false
+
+        let identifier_inner _ = false
+
+        let reserved_names = []
+    end
+
+    module CP     = Character.Make (State) (Final) (Semantic)
+    module Lexeme = Lexeme.Make (CP) (Lang)
+    include CP
+    include Lexeme
+
+
+    type identifier =
+        | Cell of Id.t
+        | Name of string
+
+
+    type exp = Final.t
+
+
+    let get_id: Id.t t =
+        map State.id get
+
+
+    let get_args: Id.t array t =
+        map State.args get
+
+
+    let cell_index (cell_id: Id.t): int t =
+        let* args = map State.args get in
+        match
+            Fmlib_std.Array.find (fun arg_id -> cell_id = arg_id) args
+        with
+        | None ->
+            let* _ = update (State.push_arg cell_id) in
+            let* args2 = map State.args get in
+            assert Array.(length args + 1 = length args2);
+            return (Array.length args)
+
+        | Some idx ->
+            return idx
+
+
+    let identifier: identifier t =
+        let append str c = str ^ String.make 1 c |> return
+        and upper = charp (fun c -> 'A' <= c && c <= 'Z') "Letter [A-Z]"
+        and lower = charp (fun c -> 'a' <= c && c <= 'z') "Letter [a-z]"
+        in
+        let* x, xstr =
+            (map
+                 (fun c -> Char.code c - Char.code 'A', String.make 1 c)
+                 upper)
+            </>
+            (map
+                 (fun c -> Char.code c - Char.code 'a', String.make 1 c)
+                 lower)
+        in
+        let* ystr =
+            zero_or_more_fold_left "" append digit_char
+        in
+        let* rest =
+            zero_or_more_fold_left "" append (upper </> lower </> digit_char)
+        in
+        if ystr <> "" && rest = "" then
+            return (Cell (Id.make x (int_of_string ystr - 1)))
+        else
+            return (Name (xstr ^ ystr ^ rest))
+
+
+    let make_cell (range: Position.range) (id: Id.t): exp Located.t t =
+        let* state = get in
+        let id1 = State.id state
+        in
+        if not Id.(is_valid id id1) then
+            fail { range;
+                   pretty = Pretty.text "Illegal cell"}
+        else
+            match
+                Fmlib_std.List.find
+                    (fun (c, _) -> id = Cell.id c)
+                    (State.users state)
+            with
+            | Some (_, path) ->
+                fail { range;
+                       pretty =
+                           let open Pretty in
+                           text "Cyclic cell dependency:"
+                           <+> cut <+> cut
+                           <+> nest 4 (
+                               String.concat
+                                   " -> "
+                                   List.( Id.name id
+                                          ::
+                                          (rev_map Cell.name path)
+                                          |> rev
+                                   )
+                               |> Pretty.text)
+                           <+> cut <+> cut
+                           <+> text "x -> y: cell x uses cell y";
+                     }
+            | None ->
+                let* i = cell_index id in
+                return (range, fun args -> args.(i))
+
+
+    let constant: exp Located.t t =
+        let* range, id = identifier |> located |> token "identifier" in
+        match id with
+        | Cell id ->
+            make_cell range id
+        | Name _ ->
+            fail {range;
+                  pretty = Pretty.text "constants not yet implemented";}
+
+
+
+    let primary (expr: unit -> exp Located.t t): exp Located.t t =
+        (float |> map (fun (range, v) -> range, fun _ -> v))
+        </>
+        constant
+        </>
+        (parens expr <?> "( expression )")
+
+
+
+    let operator_table =
+        let bin op =
+            lift_binary
+                (fun f1 f2 args -> op (f1 args) (f2 args))
+        and un op =
+            lift_unary
+                (fun f args -> op (f args))
+        in
+        [
+            [ "^", Right, Binary (bin ( ** ))]
+            ;
+            [ ("*", Left, Binary (bin ( *. )));
+              ("/", Left, Binary (bin ( /. ))) ]
+            ;
+            [ ("+", Left, Both (un (~+.), bin (+.)));
+              ("-", Left, Both (un (~-.), bin (-.))) ]
+        ]
+
+
+    let operator: string t =
+        one_of_chars "+-*/^" "[+,-,*,/,^]"
+        |> map (String.make 1)
+        <?>
+        "operator"
+
+
+    let expr (): exp Located.t t =
+        expression operator primary operator_table <?> "expression"
+
+
+    let formula: exp t =
+        let expr () = expr () |> map snd
+        in
+        expr ()
+        </>
+        ( let* _ = char '=' <?> "= expression" |> lexeme
+          in expr ())
+        </>
+        return (fun _ -> 0.)
+
+
+
+    let parse
+            (id: Id.t)
+            (users: (Cell.t * Cell.t list) list)
+            (input: string)
+        : (Id.t array * Final.t, string) result
+        =
+        let p = make (State.make id users) (whitespace_before formula)
+        in
+        let p = Parser.run_on_string input p
+        in
+        if Parser.has_succeeded p then
+            let args = Parser.state p |> State.args
+            and formula = Parser.final p
+            in
+            Ok (args, formula)
+        else
+            let module ER = Error_reporter.Make (Parser) in
+            Error (
+                ER.run_on_string
+                    input
+                    (ER.make Semantic.range Semantic.pretty p)
+                |> Pretty.layout 60
+                |> Pretty.string_of
+            )
+end
+
+
+
+
+
+
+
+(*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                               Sheet
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 *)
@@ -656,6 +717,7 @@ type model = {
     height: int;
     cells:  Cell.t array array;
     input:  string;
+    explain: bool;
     error:  string;
     select: Id.t;
 }
@@ -730,9 +792,28 @@ let view (s: model): msg Html.t =
                           )
                     ]
                     [];
-                div [background_color "red"] [
-                    text s.error
-                ]
+                if s.error = "" then
+                    div [] []
+                else
+                    div [color "red";
+                         style "position" "relative";
+                         on_mouseenter Explain;
+                         on_mouseleave Explain]
+                        (text "Error: see details here"
+                         ::
+                         (if not s.explain then
+                              []
+                          else
+                              [pre
+                                   [style "position" "absolute";
+                                    style "top"  "10px";
+                                    style "left" "10px";
+                                    color "black";
+                                    padding "20px";
+                                    background_color "white";
+                                    style "border" "1px solid black"]
+                                   [text s.error]]
+                         ))
             ]
         ;
         div [ style "width" "90vw"
@@ -779,30 +860,32 @@ let select (id: Id.t) (with_focus: bool) (s: model): model * msg Command.t =
 
 
 
-let string_of_list (f: 'a -> string) (lst: 'a list): string =
-    "["
-    ^
-    String.concat
-        ","
-        (List.map f lst)
-    ^
-    "]"
+let sort_users (s: model): (Cell.t * Cell.t list) list =
+    (* Compute the users of the selected cell including the selected cell.
 
+       The selected cell is the first in the list. All proper users of a cell
+       appear strictly after the cell.
 
-let sort_users (s: model): Cell.t list =
+       Each user in the list has a path from the user to the selected cell.
+     *)
+    let make_idle (sorted: (Cell.t * Cell.t list) list): unit =
+        List.iter
+            (fun (cell, _) -> Cell.set_idle cell)
+            sorted
+    in
     let rec sort stack sorted =
         match stack with
         | [] ->
 
             sorted
 
-        | (top, n) :: rest ->
+        | (top, path, n) :: rest ->
 
             assert (Cell.is_sorting top);
             if n = Cell.count_users top then
                 begin
                     Cell.set_sorted top;
-                    sort rest (top :: sorted)
+                    sort rest ((top, path) :: sorted)
                 end
             else
                 begin
@@ -810,29 +893,29 @@ let sort_users (s: model): Cell.t list =
                         get_cell (Cell.user n top) s
                     in
                     if Cell.is_sorted user then
-                        sort ((top, n + 1) :: rest) sorted
+                        sort ((top, path, n + 1) :: rest) sorted
                     else
                         begin
                             assert (Cell.is_idle user);
                             Cell.set_sorting user;
                             sort
-                                ((user, 0) :: (top, n + 1) :: rest)
+                                ((user, (user :: path), 0)
+                                 :: (top, path, n + 1)
+                                 :: rest)
                                 sorted
                         end
                 end
     in
     let cell = get_cell s.select s in
     Cell.set_sorting cell;
-    sort [cell, 0] []
+    let sorted = sort [cell, [cell], 0] [] in
+    make_idle sorted;
+    sorted
 
 
 
 
 
-let make_idle (sorted: Cell.t list): unit =
-    List.iter
-        Cell.set_idle
-        sorted
 
 
 
@@ -876,10 +959,14 @@ let insert_suppliers (suppliers: Id.t array) (s: model): unit =
 
 
 
-let update_sorted (sorted: Cell.t list) (s: model): msg Command.t =
+let update_sorted
+        (sorted: (Cell.t * Cell.t list) list)
+        (s: model)
+    : msg Command.t
+    =
     let cmds =
         List.fold_left
-            (fun cmds cell ->
+            (fun cmds (cell, _) ->
                  let args =
                      Array.map
                          (fun id -> Cell.value (get_cell id s))
@@ -889,7 +976,6 @@ let update_sorted (sorted: Cell.t list) (s: model): msg Command.t =
             []
             sorted
     in
-    make_idle sorted;
     Command.batch (Command.blur "input" :: cmds)
 
 
@@ -897,13 +983,13 @@ let update_sorted (sorted: Cell.t list) (s: model): msg Command.t =
 
 let update_selected (s: model): model * msg Command.t =
     (* Update the selected cell with the editor input string *)
-    let s =
-        {s with input = String.trim s.input}
+    let s = {s with input = String.trim s.input}
+    and sorted = sort_users s
     in
-
     match
         Parser.parse
             (Id.make s.width s.height)
+            (sort_users s)
             s.input
     with
     | Error error ->
@@ -911,28 +997,10 @@ let update_selected (s: model): model * msg Command.t =
         Command.none
 
     | Ok (suppliers, formula) ->
-        let sorted = sort_users s in
-        let has_cycle =
-            List.exists
-                (fun user ->
-                     Array.exists
-                         (fun supplier -> Cell.id user = supplier)
-                         suppliers
-                )
-                sorted
-        in
-        if has_cycle then
-            begin
-                make_idle sorted;
-                {s with error = "Cycle"}, Command.none
-            end
-        else
-            begin
-                insert_suppliers suppliers s;
-                Cell.set_formula s.input formula (get_cell s.select s);
-                {s with error = ""},
-                update_sorted sorted s
-            end
+        insert_suppliers suppliers s;
+        Cell.set_formula s.input formula (get_cell s.select s);
+        {s with error = ""},
+        update_sorted sorted s
 
 
 
@@ -960,6 +1028,9 @@ let update s =
     | Input input ->
         {s with input}, Command.none
 
+    | Explain ->
+        {s with explain = not s.explain}, Command.none
+
     | Edit ->
         s, Command.focus "input"
 
@@ -969,7 +1040,8 @@ let update s =
     | Escape ->
         {s with
          input = get_cell s.select s |> Cell.edit;
-         error = "";}
+         error = "";
+         explain = false;}
         ,
         Command.blur "input"
 
@@ -1004,6 +1076,7 @@ let init (width: int) (height: int): model * msg Command.t =
         cells;
         input = "";
         error = "";
+        explain = false;
         select = Id.make 0 0;
     }
     ,
