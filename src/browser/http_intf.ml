@@ -70,6 +70,13 @@ sig
 
             The response is expected to be json and will be decoded with
             [decoder]. *)
+
+        val map : ('a -> 'b) -> 'a t -> 'b t
+        (** [map f expect]
+
+            Map the result of [expect] via the function [f] to produce a
+            message. This is meant to be used in combination with
+            {!Command.http_request}. *)
     end
 
 end

@@ -183,9 +183,38 @@ sig
         -> 'm http_expect
         -> (http_error -> 'm)
         -> 'm t
-    (** [http_request method url headers body expect error]
+    (** [http_request method url headers body expect on_error]
 
-        Details see {!val:Task.http_request}
+        Make an http [method] request to [url] with [headers] and [body].
+        [expect] specifies the expected response format and can be used to
+        produce a message. [on_error] transforms a {!Http.error} into a
+        message.
+
+        Examples:
+        {[
+            (* Send an empty body and expect a string response *)
+            let on_success msg = Got_message msg in
+            let on_error _ = Got_error "Failed to obtain message" in
+            http_request
+                "GET"
+                "/message/123"
+                []
+                Http.Body.empty
+                (Http.Expect.map on_success Http.Expect.string)
+                on_error
+
+            (* Send file contents as the body and expect a json object with
+               field "url" *)
+            let on_success url = Got_file_uploaded url in
+            let on_error _ = Got_error "file upload failed" in
+            http_request
+                "PUT"
+                "/upload/my_file.txt"
+                []
+                (Http.Body.file file)
+                (Http.Expect.json Decoder.(map on_success (field "url" string)))
+                on_error
+        ]}
     *)
 
 

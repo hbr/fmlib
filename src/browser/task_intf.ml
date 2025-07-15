@@ -260,7 +260,7 @@ sig
         [expect] specifies the expected response format.
 
         This is the most general http request function. See also the more
-        specific functions [text] and [json].
+        specific functions [http_text] and [http_json].
 
         Example:
         {[

@@ -54,4 +54,9 @@ struct
                 Error `Decode
             | Some a ->
                 Ok a
+
+    let map (f : ('a -> 'b)) (expect : 'a t): 'b t =
+        fun req ->
+        Result.map f (expect req)
+
 end
