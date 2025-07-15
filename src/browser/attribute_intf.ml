@@ -107,6 +107,18 @@ sig
     (** [on_click m] produce the message [m] on mouse click. *)
 
 
+    val on_mouseenter: 'msg -> 'msg t
+    (** [on_mouseenter m] Produce the message [m] when the mouse enters the
+        element.
+     *)
+
+
+    val on_mouseleave: 'msg -> 'msg t
+    (** [on_mouseleave m] Produce the message [m] when the mouse leaves the
+        element.
+     *)
+
+
     val on_keydown: (string -> 'msg) -> 'msg t
     (** [on_keydown f]
 

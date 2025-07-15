@@ -49,6 +49,15 @@ let on_click (msg: 'msg): 'msg t =
     on "click" (Decoder.return msg)
 
 
+let on_mouseenter (m: 'm): 'm t =
+    on "mouseenter" (Decoder.return m)
+
+
+let on_mouseleave (m: 'm): 'm t =
+    on "mouseleave" (Decoder.return m)
+
+
+
 let decode_key_event (f: string -> 'm): 'm Decoder.t =
     Decoder.(map f (field "key" string))
 
