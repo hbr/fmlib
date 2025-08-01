@@ -914,7 +914,7 @@ let%test _ =
           b
           c|} |> reformat
     in
-    test 3 true doc expected
+    test 3 false doc expected
 
 
 let%test _ =
