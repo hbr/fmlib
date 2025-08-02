@@ -110,6 +110,7 @@ let rpar (c: char): char t =
 
 
 let is_left ((_,c1): operator) ((_,c2): operator): bool t =
+    (* Does the left operator 'c1' bind stronger than 'c2'? *)
     let (p1, a1) = Map.find c1
     and (p2, _ ) = Map.find c2
     in

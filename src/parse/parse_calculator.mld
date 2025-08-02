@@ -48,7 +48,7 @@ We find the information of the operators with the help of a map
 {[
     module Map:
     sig
-        find: char -> info
+        val find: char -> info
     end
     =
     struct
@@ -85,19 +85,32 @@ We write the parser as a lexerless parser i.e. we use a character parser which
 uses characters as tokens.
 
 {[
+    module Semantic =
+    struct
+        type t = Position.range * string
+    end
+
     module CP = Character.Make (Unit) (Int) (String)
 
     open CP
+
+    type operator = Position.range * char
+    type operand  = Position.range * int
 ]}
 
 No state is needed, our final construct is an integer
-(the value of the expression) and semantic error messages are strings.
+(the value of the expression) and semantic error messages are located strings.
 
 Since there is no lexer, it is necessary to recognize and remove whitespace.
 
 {[
+
     let whitespace: int t =
-        skip_zero_or_more (char ' ' </> char '\n')
+        char ' ' </> char '\n'
+        |> skip_zero_or_more
+        |> no_expectations      (* expected whitespace shall never appear in
+                                   sytax error messages. *)
+
 
     let lexeme (p: 'a t): 'a t =
         let* a = p in
@@ -115,21 +128,32 @@ the whitespace which after the construct.
 {1 Operators and Numbers}
 
 {[
-    let unary_operator: char t =
-        lexeme (char '-')
 
-    let binary_operator: char t =
+    let unary_operator: operator t =
+        lexeme (char '-' |> located)
+
+
+    let binary_operator: operator t =
         let op_chars = "+-*/^"
         in
         one_of_chars op_chars "binary operator"
         |>
+        located
+        |>
         lexeme
 
-    let number: int t =
-        one_or_more
-            return
+
+    let number: operand t =
+        one_or_more_fold_left
+            (fun d -> return d)
             (fun v d -> 10 * v + d |> return)
             digit
+        |>
+        located
+        |>
+        no_expectations
+        <?>
+        "number"        (* expecting a number *)
         |>
         lexeme
 ]}
@@ -138,12 +162,16 @@ the whitespace which after the construct.
 {1 Parentheses}
 
 {[
+
     let lpar: char t =
         lexeme (
             map (fun _ -> ')') (char '(')
             </>
             map (fun _ -> ']') (char '[')
         )
+        <?>
+        "opening parenthesis '(' or '['"
+
 
     let rpar (c: char): char t =
         lexeme (char c)
@@ -169,7 +197,7 @@ We use the precedence and associativity information of the operators to write
 the decision procedure.
 
 {[
-    let is_left (c1: char) (c2: char): bool t =
+    let is_left ((_,c1): operator) ((_,c2): operator): bool t =
         (* Does the left operator 'c1' bind stronger than 'c2'? *)
         let (p1, a1) = Map.find c1
         and (p2, _ ) = Map.find c2
@@ -194,9 +222,13 @@ To perform a unary operation (which in our case is just the unary minus) we
 write the combinator
 
 {[
-    let make_unary (u: char) (a: int): int t =
+    let make_unary
+            (((p1,_), u): operator)
+            (((_,p2), a): operand)
+        : operand t
+        =
         assert (u = '-');
-        return ((-1) * a)
+        return ((p1, p2), (-1) * a)
 ]}
 
 For the binary operations we need a function to do the exponentiation.
@@ -217,24 +249,29 @@ Division and exponentiation can fail. The correct semantic action is described
 by the following combinator.
 
 {[
-    let make_binary (a: int) (o: char) (b: int): int t =
+    let make_binary
+            (((p1,_), a): operand)
+            ((_, o): operator)
+            (((pb,p2), b): operand)
+        : operand t
+        =
         match o with
         | '+' ->
-            return (a + b)
+            return ((p1,p2), a + b)
         | '-' ->
-            return (a - b)
+            return ((p1,p2), a - b)
         | '*' ->
-            return (a * b)
+            return ((p1,p2), a * b)
         | '/' ->
             if b = 0 then
-                fail "Division by zero"
+                fail ((pb, p2), "Division by zero")
             else
-                return (a / b)
+                return ((p1,p2), a / b)
         | '^' ->
             if b < 0 then
-                fail "Negative exponent"
+                fail ((pb, p2), "Negative exponent")
             else
-                return (power a b)
+                return ((p1,p2), power a b)
         | _ ->
             assert false (* cannot happen *)
 ]}
@@ -249,8 +286,8 @@ and
 a combinator which parses an arbitrarily deep expression can be written easily.
 
 {[
-    let rec expr (): int t =
-        let primary (): int t =
+    let rec expr (): operand t =
+        let primary (): operand t =
             parenthesized
                 (fun _ a _ -> return a)
                 lpar
@@ -277,7 +314,7 @@ remove initial whitespace. The final parser is constructed by
 
 {[
     let parse: Parser.t =
-        make () (let* _ = whitespace in expr ())
+        make () (let* _ = whitespace in expr () |> map snd)
 ]}
 
 
@@ -290,7 +327,7 @@ Some unit tests show that the parser works as expected.
 {[
     let%test _ =
         let open Parser in
-        let p = run_on_string " 1 +,2 + 2 " parse (* syntax error *)
+        let p = run_on_string " 1 +,2 + 2 " parse
         in
         has_failed_syntax p
         &&
@@ -301,7 +338,7 @@ Some unit tests show that the parser works as expected.
 {[
     let%test _ =
         let open Parser in
-        let p = run_on_string " 1 + 2 , + 2 " parse (* syntax error *)
+        let p = run_on_string "[1 + 2 ) + 2 " parse
         in
         has_failed_syntax p
         &&
