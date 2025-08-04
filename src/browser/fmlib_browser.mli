@@ -3,8 +3,7 @@
 
     This library helps to write web applications which run in the browser. See
     some simple
-    {{: https://hbr.github.io/fmlib/webapp/index.html} live examples} and look
-    into the
+    {{: https://hbr.github.io/fmlib/webapp/index.html} live examples} and their
     {{: https://github.com/hbr/fmlib/tree/master/src/examples/browser/webapp.ml}
        source code}.
 
@@ -115,6 +114,8 @@ module Command: Command_intf.S
 module Subscription: Subscription_intf.S
     with type time       := Time.t
      and type 'a decoder := 'a Decoder.t
+
+
 
 
 
