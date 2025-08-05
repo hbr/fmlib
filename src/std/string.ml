@@ -113,7 +113,7 @@ end
 
 
 
-module From_source (R: Interfaces.SOURCE with type item = char) =
+module From_source (R: Interfaces.SOURCE with type item := char) =
 struct
     let make_with_size (estimate: int) (r: R.t): t =
         let estimate =
