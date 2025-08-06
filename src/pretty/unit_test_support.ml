@@ -54,6 +54,12 @@ let quoted (s: string): string =
 
 
 
+let check (print: bool) (str: string) (expected: string): bool =
+    let ok = str = expected in
+    if not ok || print then
+        Printf.printf "/---\nstr\n%s\nexpected\n%s\n\\---\n" str expected;
+    ok
+
 
 let test_with_ribbon
         (width: int)

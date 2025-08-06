@@ -1,4 +1,4 @@
-(** Pretty Printer: Generate nicely formatted ascii text. *)
+(** DEPRECATED: use {!module:Pretty} instead *)
 
 
 (** {1 Documentation}

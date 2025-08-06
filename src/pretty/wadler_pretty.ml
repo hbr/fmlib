@@ -588,8 +588,9 @@ struct
 
     let nest i x = Nest (i, lazy x)
 
-    let group x =
-        Union (flatten x, x)
+    let group = function
+        | Union _ as x -> x (* group is idempotent *)
+        | x            -> Union (flatten x, x)
 
     let pretty (w: int) (x: t): string =
         be w 0 [0, x] |> Base.layout

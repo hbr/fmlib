@@ -8,4 +8,6 @@
 
 {1 API}
 
+{!Fmlib_pretty.Pretty}
+
 {!Fmlib_pretty.Print}
