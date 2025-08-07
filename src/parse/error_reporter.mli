@@ -90,7 +90,7 @@ sig
 
     *)
 
-    open Fmlib_pretty.Print
+    open Fmlib_pretty
 
     (** {1 Types} *)
 
@@ -113,7 +113,7 @@ sig
 
     val make:
         (semantic -> Position.range)
-        -> (semantic -> doc)
+        -> (semantic -> Pretty.t)
         -> Parser.t
         -> t
     (** [make semantic_range semantic_doc p]
@@ -144,12 +144,12 @@ sig
         message describing the error. *)
 
 
-    val run_on_string: string -> t -> doc
+    val run_on_string: string -> t -> Pretty.t
     (** run the reporter on a string which represents the source
         code.*)
 
 
-    val run_on_channel: in_channel -> t -> doc
+    val run_on_channel: in_channel -> t -> Pretty.t
     (** run the reporter on an input channel which represents the source
         code. Note that the input channel must be positioned at the start.
     *)
@@ -183,7 +183,7 @@ sig
     (** Tell the reporter that there are no more characters in the input
         source. *)
 
-    val document: t -> doc
+    val document: t -> Pretty.t
     (** The document containing a source snippet which contains the marked
         error and the error message. *)
 end

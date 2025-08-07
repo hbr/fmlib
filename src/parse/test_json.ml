@@ -455,7 +455,7 @@ end
  * ===================================================
  *)
 
-module Pretty = Fmlib_pretty.Print
+open Fmlib_pretty
 
 let write_error (str: string) (p: PL.t): unit =
     let module Reporter = Error_reporter.Make (PL) in

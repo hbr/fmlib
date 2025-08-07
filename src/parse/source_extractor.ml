@@ -31,9 +31,7 @@
 *)
 
 
-open Fmlib_pretty
-
-module Pretty = Fmlib_pretty.Print
+module Pretty = Fmlib_pretty.Pretty
 
 
 
@@ -48,7 +46,7 @@ type t = {
 
     line:  string;              (* the current line *)
 
-    doc:   Print.doc;           (* the generated doc *)
+    doc:   Pretty.t;             (* the generated doc *)
 }
 
 
@@ -153,7 +151,7 @@ let source_indent (p: t): int =
 
 
 
-let source_line (p: t): Pretty.doc =
+let source_line (p: t): Pretty.t =
     (* The current line nicely formatted i.e. displayed as
 
         25 |  xxx yyy ... zzz
@@ -181,7 +179,7 @@ let source_line (p: t): Pretty.doc =
 
 
 
-let start_line_marker (p: t): Pretty.doc =
+let start_line_marker (p: t): Pretty.t =
     (* A line marker of the form
 
               v--------
@@ -203,7 +201,7 @@ let start_line_marker (p: t): Pretty.doc =
 
 
 
-let end_line_marker (p: t): Pretty.doc =
+let end_line_marker (p: t): Pretty.t =
     (* A line marker of the form
 
               --------^
@@ -224,7 +222,7 @@ let end_line_marker (p: t): Pretty.doc =
     )
 
 
-let one_line_marker (is_last: bool) (p: t): Pretty.doc =
+let one_line_marker (is_last: bool) (p: t): Pretty.t =
     (* A line marker of the form
 
            ^^^^^
@@ -354,7 +352,7 @@ let put_end: t -> t =
     receive_char true '\n'
 
 
-let document (p: t): Pretty.doc =
+let document (p: t): Pretty.t =
     p.doc
 
 

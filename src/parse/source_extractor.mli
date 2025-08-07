@@ -1,6 +1,6 @@
 (** Extract snippets from a source file containing an error. *)
 
-open Fmlib_pretty.Print
+open Fmlib_pretty
 
 type t
 
@@ -35,4 +35,4 @@ val put_end: t -> t
 
 
 (** {1 Get the document which represents the extracted source snippet} *)
-val document: t -> doc
+val document: t -> Pretty.t

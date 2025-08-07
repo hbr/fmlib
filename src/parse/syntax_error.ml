@@ -1,4 +1,4 @@
-module Pretty = Fmlib_pretty.Print
+open Fmlib_pretty
 
 let plural_s (i: int) (s: string): string =
     if i = 1 then
@@ -7,7 +7,7 @@ let plural_s (i: int) (s: string): string =
         s ^ "s"
 
 
-let header (col: int) (e: Indent.expectation): Pretty.doc =
+let header (col: int) (e: Indent.expectation): Pretty.t =
     let open Indent in
     let open Pretty in
     match e with
@@ -66,7 +66,7 @@ let header (col: int) (e: Indent.expectation): Pretty.doc =
 let one_group
         (col: int)
         ((e, lst): Indent.expectation option * string list)
-    : Pretty.doc list
+    : Pretty.t list
     =
     let open Pretty
     in
@@ -94,7 +94,7 @@ let one_group
 let document
         (col: int)
         (es: (string * Indent.expectation option) list)
-    : Pretty.doc
+    : Pretty.t
     =
     let one_or_more: string =
         match es with

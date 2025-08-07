@@ -96,6 +96,15 @@ val separated_by: t -> t list -> t
     separated by [sep]. *)
 
 
+val paragraphs: t list -> t
+(** [paragraphs ps]
+
+    Print the paragraphs in [ps] separated by newlines. The function works best
+    if each paragraph ends in a newline. [paragraphs ps] is equivalent to
+    [separated_by cut ps].
+*)
+
+
 val nest: int -> t -> t
 (** [nest n x]
 

@@ -365,6 +365,11 @@ let parent_child (hint: string) (i: int) (parent: t) (child: t): t =
     parent <+> nest i (break hint <+> group child) |> group
 
 
+let paragraphs: t list -> t =
+    separated_by cut
+
+
+
 let wrap_words (s: string): t =
     let open Fmlib_std
     in

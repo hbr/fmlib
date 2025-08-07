@@ -860,8 +860,14 @@ let tree1 () =
          tree "gf" [leaf "b"; leaf "c"];
          leaf "d"]
 
-let _ = tree0
-let _ = tree1
+let tree2 () =
+    tree
+        "ff"
+        [tree "gf" [leaf "b"; leaf "c"];
+         tree "gf" [leaf "b"; leaf "c"];
+         tree "gf" [leaf "b"; leaf "c"];]
+
+let _ = tree0, tree1, tree2
 
 
 let doc_tree (tree: tree): doc =
@@ -966,7 +972,20 @@ let%test _ =
     in
     test 4 false doc expected
 
-
+(*
+let%test _ =
+    let doc = doc_tree (tree2 ())
+    and expected =
+    (*  01234567890123456789 *)
+        {|
+        ff
+          (gf b c)
+          (gf b c)
+          (gf b c)
+        |} |> reformat
+    in
+    test 27 true doc expected
+*)
 
 (* Paragraphs
  * ----------

@@ -103,6 +103,7 @@
 *)
 
 
+
 (*  Note [Break Decisions]
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -181,11 +182,11 @@
 
         [ group* chunk*
 
-       where a chunk has the general form "B T* group*. However a complete group
-       cannot be followed by a text block because of normalisation (pushing text
-       blocks following a group into the group). Therefore there is a least one
-       chunk in the incomplete group and the chunk does not end with a complete
-       group.
+       where a chunk has the general form "B T* group*". However a complete
+       group cannot be followed by a text block because of normalisation
+       (pushing text blocks following a group into the group). Therefore there
+       is a least one chunk in the incomplete group and the chunk does not end
+       with a complete group.
 
        The text block is appended to the last chunk of the incomplete group.
 
