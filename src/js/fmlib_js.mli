@@ -13,6 +13,9 @@ module Timer = Timer
 
 module Date  = Date
 
+module Url = Url
+
+
 
 (** {1 Common Browser Modules}
 

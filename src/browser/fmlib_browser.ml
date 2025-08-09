@@ -3,6 +3,7 @@ module Time       = Time
 module Task       = Task
 module Value      = Value
 module Event_flag = Event_flag
+module Url        = Url
 module File       = File
 module Decoder    = Decoder
 module Http       = Http

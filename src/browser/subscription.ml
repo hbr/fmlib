@@ -1,4 +1,4 @@
-open Fmlib_js
+module Base = Fmlib_js.Base
 
 type 'm t =
     | None

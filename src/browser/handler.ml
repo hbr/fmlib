@@ -1,4 +1,9 @@
-open Fmlib_js
+module Base = Fmlib_js.Base
+module Event = Fmlib_js.Event
+module Event_target = Fmlib_js.Event_target
+module Timer = Fmlib_js.Timer
+module Date = Fmlib_js.Date
+module Dom = Fmlib_js.Dom
 
 
 
@@ -294,11 +299,18 @@ struct
         let open Base.Decode in
         let* tag  = field "target" (field "tagName" string) in
         let* href = field "target" (field "href"    string) in
-        match Url.parse href with
+        match Url.of_string href with
         | None ->
             fail
         | Some url ->
-            if tag <> "A" || tag <> "a" || not (Url.is_page url) then
+            let is_page (url: Url.t) =
+                match Fmlib_js.Url.current () |> Url.of_string with
+                | Some current ->
+                    url.protocol = current.protocol && url.host = current.host
+                | None ->
+                    false
+            in
+            if tag <> "A" || tag <> "a" || not (is_page url) then
                 fail
             else
                 return url

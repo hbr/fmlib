@@ -1,4 +1,4 @@
-open Fmlib_js
+module Base = Fmlib_js.Base
 
 module String_map = Fmlib_std.Btree.Map (String)
 module Int_map  = Fmlib_std.Btree.Map (Int)

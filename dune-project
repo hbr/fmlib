@@ -1,2 +1,3 @@
-(lang dune 1.10)
+(lang dune 1.11)
+
 (name fmlib)
