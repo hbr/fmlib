@@ -59,7 +59,7 @@ simple.
                         constructor *)
 ]}
 
-The system state is [unit], the [message] type has no constructors, and the 
+The system state is [unit], the [message] type has no constructors, and the
 [update] function, which has the type [state -> msg -> state * msg Command.t]
 (more on Commands below), cannot be called because no [message] value can ever
 be constructed. Thus,

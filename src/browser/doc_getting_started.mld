@@ -53,28 +53,29 @@ source file which implements the application.
                 [text "+"]
             ]
 
-    let update (s: state): msg -> state = 
+    let update (s: state): msg -> state =
         let counter = s.counter in function
         | Decrement ->
-            {counter=counter - 1}
+            {counter = counter - 1}
         | Increment ->
-            {counter=counter + 1}
+            {counter = counter + 1}
 
     let _ =
-        sandbox          (* very simple applications are sandbox applications *)
-            {counter=0}  (* initial state *)
-            view         (* view function *)
-            update       (* update function *)
+        sandbox            (* very simple applications are sandbox applications *)
+            {counter = 0}  (* initial state *)
+            view           (* view function *)
+            update         (* update function *)
 ]}
 
 
 
 {1 Compile the application via dune}
 
-The application in the file [bin/counter.ml] has to be compiled to javascript. This
-is done with the help of [js_of_ocaml]. The following dune file can be used:
+The application in the file [bin/counter.ml] has to be compiled to javascript.
+This is done with the help of [js_of_ocaml]. The following dune file can be
+used:
 {v
-    (* file: bin/dune *)
+    (* file: dune *)
     (executable
       (name counter)
       (modes js)                    ; Activate compilation to javascript
@@ -138,7 +139,7 @@ starts the application.
 
 {1 A digital clock}
 
-To demonstrate commands and subscriptions we write a simple application 
+To demonstrate commands and subscriptions we write a simple application
 displaying a digital clock. We want the webpage to look like
 {v
     10:15:37
