@@ -8,8 +8,7 @@
 
 {1 Installation}
 
-The library {!module: Fmlib_browser} is best installed via opam issuing the
-command
+{!module: Fmlib_browser} is best installed via opam using the command
 {v
     opam install fmlib_browser
 v}
@@ -20,27 +19,32 @@ v}
 
 {1 Write the application}
 
-In this section we write first a very simple application with a counter value
-and two buttons to decrease and increase the counter value. Here is the ocaml
+In this section we write a very simple application with a counter value
+and two buttons to increase and decrease the counter value. Here is the ocaml
 source file which implements the application.
 {[
-    (* file: counter.ml *)
+    (* file: bin/counter.ml *)
     open Fmlib_browser
 
-    (* The type of the state is [int]. Therefore no type declaration is
-       necessary for the state. *)
+    (* Strictly speaking, we could omit that [state] type and replace it with [int]
+      in the code for a smaller, cleaner example. We use it to demonstrate how
+      to define and use the state type in larger applications. *)
+    type state = {
+      counter: int
+    }
 
-    let type msg =
-        | Decrement
-        | Increment
+    type msg =
+    | Decrement
+    | Increment
 
-    let view (counter: int): msg Html.t =
+    let view (s: state): msg Html.t =
         let open Html in
         let open Attribute in
+        let counter = s.counter in
         div []
-            [ button
+            [ button
                 [color "blue"; on_click Decrement]
-                [text "-"]
+                [text "-"]
             ; span
                 [background_color "silver"; font_size "20px"]
                 [text (string_of_int counter)]
@@ -49,26 +53,28 @@ source file which implements the application.
                 [text "+"]
             ]
 
-    let update (counter: int): msg -> int = function
+    let update (s: state): msg -> state = 
+        let counter = s.counter in function
         | Decrement ->
-            counter - 1
+            {counter=counter - 1}
         | Increment ->
-            counter + 1
+            {counter=counter + 1}
 
     let _ =
-        sandbox         (* very simple applications are sandbox applications *)
-            0           (* initial state *)
-            view        (* view function *)
-            update      (* update function *)
+        sandbox          (* very simple applications are sandbox applications *)
+            {counter=0}  (* initial state *)
+            view         (* view function *)
+            update       (* update function *)
 ]}
 
 
 
 {1 Compile the application via dune}
 
-The application in the file [webapp.ml] has to be compiled to javascript. This
+The application in the file [bin/counter.ml] has to be compiled to javascript. This
 is done with the help of [js_of_ocaml]. The following dune file can be used:
 {v
+    (* file: bin/dune *)
     (executable
       (name counter)
       (modes js)                    ; Activate compilation to javascript
@@ -112,6 +118,7 @@ Furthermore we need a html file.
             </script>
         </head>
         <body>
+            This gets overwritten!
         </body>
     </html>
 v}
@@ -121,9 +128,9 @@ event and creates and updates the dom directly below the [body] element of the
 html document. Everything in the html file below the body element will be
 overwritten.
 
-Now you have the files [webapp.js] and [index.html] in your source directory. By
+Now you have the files [counter.js] and [index.html] in your source directory. By
 loading [index.html] into the browser (either from a webserver or from disk),
-the browser loads the application [webapp.js] and fires the [onload] event which
+the browser loads the application [counter.js] and fires the [onload] event which
 starts the application.
 
 
@@ -131,9 +138,8 @@ starts the application.
 
 {1 A digital clock}
 
-In order to demonstrate commands and subscriptions with a simple example we
-write an application displaying a digital clock. We want the webpage to look
-like
+To demonstrate commands and subscriptions we write a simple application 
+displaying a digital clock. We want the webpage to look like
 {v
     10:15:37
 v}
