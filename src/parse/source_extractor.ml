@@ -184,7 +184,7 @@ let source_line (p: t): Pretty.doc =
 let start_line_marker (p: t): Pretty.doc =
     (* A line marker of the form
 
-              v--------
+              v----------
 
        to mark the start of a multiline error
     *)
@@ -214,13 +214,13 @@ let end_line_marker (p: t): Pretty.doc =
     and ind = source_indent p
     in
     Pretty.(
-        fill ind ' '
-        <+>
-        fill (col - ind) '-'
-        <+>
-        char '^'
-        <+>
-        cut
+        fill ind ' '        (* columns for the line numbers *)
+        <+> (if col <= 1 then
+                 empty
+             else
+                 fill (col - 1) '-')
+        <+> char '^'
+        <+> cut
     )
 
 
