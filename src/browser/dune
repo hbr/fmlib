@@ -2,6 +2,8 @@
   (public_name fmlib_browser)
   (name fmlib_browser)
   (libraries fmlib_js)
+  (preprocess (pps ppx_inline_test))
+  (inline_tests (modes js))
 )
 
 
