@@ -1,3 +1,44 @@
+Release 0.6.0
+================================================================================
+
+A lot of functionality has been added to the library. Unfortunately some changes
+are breaking. It is quite easy to adapt to the changes, because only the
+syntactic interface (different module names, function names, ...) has been
+changed but not the semantic interface.
+
+- `Fmlib_browser`:
+
+    - More generic http requests.
+    - Fix: focussing and blurring of elements
+    - Added simple tasks to the module 'Command': It is now possible to execute
+      simple tasks directly as a command without the need to make a task.
+    - Reference nodes: It is possible to add reference elements into the dom.
+      The reference nodes can be modified via commands. Reference nodes can be
+      used to optimize html pages with many many elements (e.g. spreadsheets).
+      The performance gain is in the range of jane street's incremental.
+    - Local files can be selected a used within a web application.
+    - Local and session storage implemented.
+    - Added module 'Url' to parse and generate urls.
+    - Added support for single page applications with access to the browser history.
+
+
+- `Fmlib_pretty`:
+
+    - Redesign based on Philip Wadler's design of a pretty printer. With the
+      redesign some bugs have been fixed. The module 'Print' (old design) is
+      marked as obsolete and will be removed in the next releases. The
+      redesigned module is called 'Pretty' and has nearly the same interface as
+      the old module.
+
+
+- `Fmlib_parse`:
+
+    - Added lexeme parsers.
+    - Fix: Backtracking did not work correctly in some corner cases.
+
+
+
+
 Release 0.5.9
 ================================================================================
 
