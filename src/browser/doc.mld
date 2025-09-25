@@ -7,4 +7,6 @@
 
 - {{!page-doc_getting_started} Getting Started}
 
+- {{!page-doc_single_page_application} Writing a single-page application}
+
 - {{!page-doc_event_handler} Event Handler}
