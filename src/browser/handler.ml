@@ -246,19 +246,6 @@ struct
         =
         Timer.clear_interval timer
 
-    let set
-            (dispatch: 'm -> unit)
-            (dict: (Time.t -> 'm) list Dict.t)
-            (map: t)
-        : unit
-        =
-        Actuals.set
-            (of_list dispatch)
-            make_timer
-            dict
-            map
-
-
     let update
             (dispatch: 'm -> unit)
             (d1: (Time.t -> 'm) list Dict.t)
@@ -284,7 +271,6 @@ struct
     let empty (): t =
         ref None
 
-
     let target (): Event_target.t =
         Dom.Window.(event_target (get ()))
 
@@ -294,51 +280,120 @@ struct
     let remove (h: Event.t -> unit): unit =
         Event_target.remove "click" h (target ())
 
-
-    let decode: Url.t Base.Decode.t =
+    let decode: Navigation.url_request Base.Decode.t =
         let open Base.Decode in
-        let* tag  = field "target" (field "tagName" string) in
-        let* href = field "target" (field "href"    string) in
-        match Url.of_string href with
-        | None ->
+        let* tag = field "target" (field "tagName" string) in
+        let* href = field "target" (field "href" string) in
+        let* button = field "button" int in
+        let* target = field "target" (field "target" string) in
+        let* has_download_attr =
+            let* has_attr = field "target" (field "hasAttribute" _method) in
+            field
+                "target"
+                (fun v -> bool (has_attr v [| Value.string "download" |]))
+        in
+        let* ctrl_key = field "ctrlKey" bool in
+        let* meta_key = field "metaKey" bool in
+        let* shift_key = field "shiftKey" bool in
+        if
+            (tag <> "A" && tag <> "a")
+                (* clicked on something else than an anchor element? *)
+            || button <> 0
+                (* not the primary mouse button? *)
+            || String.length target > 0
+                (* anchor element specifies a target, e.g. "_blank"? *)
+            || has_download_attr
+                (* anchor has download attribute? *)
+            || ctrl_key
+                (* "open in new tab" shortcut? *)
+            || meta_key
+                (* "open in new tab" shortcut on Mac? *)
+            || shift_key
+                (* "open in new window" shortcut? *)
+        then
             fail
-        | Some url ->
-            let is_page (url: Url.t) =
-                match Fmlib_js.Url.current () |> Url.of_string with
-                | Some current ->
-                    url.protocol = current.protocol && url.host = current.host
-                | None ->
-                    false
-            in
-            if tag <> "A" || tag <> "a" || not (is_page url) then
+        else
+            match Navigation.url_request_of_string href with
+            | None ->
                 fail
-            else
-                return url
+            | Some req ->
+                return req
 
-
-    let make (dispatch: 'm -> unit) (f: Url.t -> 'm) (event: Event.t): unit =
+    let make
+            (dispatch: 'm -> unit)
+            (f: Navigation.url_request -> 'm)
+            (event: Event.t)
+        : unit =
         match decode (Event.value event) with
         | None ->
             ()
-        | Some url ->
+        | Some nav ->
             Event.prevent_default event;
-            dispatch (f url)
+            dispatch (f nav)
 
-
-    let set
+    let update
             (dispatch: 'm -> unit)
-            (virt: (Url.t -> 'm) option)
+            (virt1: (Navigation.url_request -> 'm) option)
+            (virt2: (Navigation.url_request -> 'm) option)
             (req: t)
         : unit
         =
-        match virt with
-        | None ->
-            req := None
-        | Some f ->
-            let actual = Actual.make (make dispatch f) in
+        match virt1, virt2, !req with
+        | None, None, None ->
+            ()
+
+        | Some f1, None, None ->
+            (* [f1] is new handler, not yet a current handler *)
+            let actual = Actual.make (make dispatch f1) in
             add (Actual.fire actual);
             req := Some actual
 
+        | Some f1, Some _, Some actual ->
+            (* [f1] is handler which has to update the current handler. *)
+            let handler = make dispatch f1 in
+            Actual.update handler actual
+
+        | None, Some _, Some actual ->
+            (* No new handler, current handler has to be removed. *)
+            remove (Actual.fire actual)
+
+        | _, None, Some _ | _, Some _, None ->
+            assert false (* Illegal call, [virt2] and [!req] are either both
+                            empty or both present. *)
+end
+
+
+
+
+module Url_change =
+struct
+    type t = Event.t Actual.t option ref
+
+    let empty (): t =
+        ref None
+
+    let target (): Event_target.t =
+        Dom.Window.(event_target (get ()))
+
+    let add (h: Event.t -> unit): unit =
+        Event_target.add "popstate" h (target ());
+        Event_target.add "hashchange" h (target ())
+
+    let remove (h: Event.t -> unit): unit =
+        Event_target.remove "popstate" h (target ());
+        Event_target.remove "hashchange" h (target ())
+
+    let make
+            (dispatch: 'm -> unit)
+            (f: Url.t -> 'm)
+            (_event: Event.t)
+        : unit =
+        let url =
+            Fmlib_js.Url.current ()
+            |> Url.of_string
+            |> Option.get (* assume the browser handed us a valid URL *)
+        in
+        dispatch (f url)
 
     let update
             (dispatch: 'm -> unit)
@@ -370,8 +425,6 @@ struct
             assert false (* Illegal call, [virt2] and [!req] are either both
                             empty or both present. *)
 end
-
-
 
 
 

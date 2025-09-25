@@ -11,6 +11,7 @@ sig
     type _ random
     type value
     type file
+    type _ nav_key
     type empty
     type read_failed
     type http_error
@@ -153,6 +154,75 @@ sig
 
     val send_to_javascript: value -> 'm t
     (** Send a value to the surrounding javascript code. *)
+
+
+
+    (** {2 Navigation } *)
+
+    val push_url: 'm nav_key -> string -> 'm t
+    (** [push_url navigation_key url]
+
+        Set the browser address bar to [url] and add an entry to the browser
+        history. This requires a [navigation_key] which is only available in
+        {{!application}full web applications}. See {!Navigation.key} for
+        details.
+
+        NOTE: For security reasons browsers don't allow setting an invalid URL
+        or a URL with a different origin (protocol, hostname and port) than the
+        current URL. Browsers may also enforce a rate limit for changing the
+        URL. This means that if [url] is not a valid URL of the same origin or
+        if we try to change the URL too frequently, an exception is thrown.
+    *)
+
+    val replace_url: 'm nav_key -> string -> 'm t
+    (** [replace_url navigation_key url]
+
+        Like [push_url], but do not add a new entry to the browser history.
+
+        This is useful for changing the [query] part of the URL according to
+        user input, e.g. [?search=hats]. If [push_url] was used in this case,
+        {{!Command.back}navigating back} would undo a single keystroke whereas
+        users would rather expect to go to the previous page.
+
+        NOTE: For security reasons browsers don't allow setting an invalid URL
+        or a URL with a different origin (protocol, hostname and port) than the
+        current URL. Browsers may also enforce a rate limit for changing the
+        URL. This means that if [url] is not a valid URL of the same origin or
+        if we try to change the URL too frequently, an exception is thrown.
+    *)
+
+    val back: 'm nav_key -> int -> 'm t
+    (** [back navigation_key count]
+
+        Navigate back [count] entries in the browser history. This requires a
+        [navigation_key] which is only available in
+        {{!application}full web applications}. See {!Navigation.key} for
+        details.
+    *)
+
+    val forward: 'm nav_key -> int -> 'm t
+    (** [forward navigation_key count]
+
+        Navigate forward [count] entries in the browser history. This requires a
+        [navigation_key] which is only available in
+        {{!application}full web applications}. See {!Navigation.key} for
+        details.
+    *)
+
+    val load: string -> 'm t
+    (** [load url]
+
+        Load the given [url]. This causes a traditional page load. For
+        navigating to a different page within a
+        {{!application}single-page application}, use {!push_url} instead.
+    *)
+
+    val reload: unit -> 'm t
+    (** [reload ()]
+
+        Reload the current page.
+    *)
+
 
 
 

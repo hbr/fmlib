@@ -2,7 +2,7 @@
 
 {{!page-doc_overview} Overview}
 {{!page-doc} Up}
-{{!page-doc_event_handler} Event Handler}
+{{!page-doc_single_page_application} Writing a single-page application}
 
 
 
@@ -167,8 +167,8 @@ type contains the needed information.
 
 {[
     type msg =
-        | Time of Time.t            (* message for the current time   *)
-        | Zone of Time.Zone.t       (* message for the current time zone *)
+        | Got_time of Time.t            (* message for the current time   *)
+        | Got_time_zone of Time.Zone.t  (* message for the current time zone *)
 ]}
 
 
@@ -177,16 +177,17 @@ We use a minimal view function to render the current time in a browser window.
 {[
     let view (state: state): msg Html.t * string =
         let open Html in
-        h2
-            []
-            [text (
-                Printf.sprintf "%02d:%02d:%02d"
-                    (Time.hour   state.zone state.time)
-                    (Time.minute state.zone state.time)
-                    (Time.second state.zone state.time))
-            ]
-        ,
-        "Digital clock"
+        let html =
+            h2
+                []
+                [text (
+                    Printf.sprintf "%02d:%02d:%02d"
+                        (Time.hour   state.time state.zone)
+                        (Time.minute state.time state.zone)
+                        (Time.second state.time state.zone))
+                ]
+        in
+        (html, "Digital clock")
 ]}
 
 For a full blown application the view function returns the virtual dom and the
@@ -198,10 +199,10 @@ The update function is quite straightforward.
 {[
     let update (state: state): msg -> state * msg Command.t =
     function
-        | Time time ->
-            {state with time}, Command.none
-        | Zone zone ->
-            {state with zone}, Command.none
+        | Got_time time ->
+            ({state with time}, Command.none)
+        | Got_time_zone zone ->
+            ({state with zone}, Command.none)
 
 ]}
 
@@ -211,10 +212,10 @@ We need a subscription function to get each second a notification of the new
 time.
 {[
     let subscription (_: state): msg Subscription.t =
-        Subscription.every 1000 (fun time -> Time time)
+        Subscription.every 1000 (fun time -> Got_time time)
 ]}
-We need a message [Time time] each second independently from the system state.
-The time for repeating timers is expressed in milliseconds.
+We need a message [Got_time time] each second independently from the system
+state. The time for repeating timers is expressed in milliseconds.
 
 
 In order to start the application we need an initial state and an initial
@@ -226,9 +227,9 @@ command.
 
     initial_command: msg Command =
         Command.batch [
-             Command.perform Task.(map (fun time -> Time time) now)
+             Command.perform Task.(map (fun time -> Got_time time) now)
              ;
-             Command.perform Task.(map (fun zone -> Zone zone) time_zone)
+             Command.perform Task.(map (fun zone -> Got_time_zone zone) time_zone)
         ]
 ]}
 

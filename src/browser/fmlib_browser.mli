@@ -37,6 +37,14 @@ module Url: Url_intf.URL
 
 
 
+(** {1 Navigation} *)
+
+module Navigation: Navigation_intf.NAV
+    with type url := Url.t
+
+
+
+
 (** {1 Encode and Decode Javascript Values} *)
 
 
@@ -87,6 +95,7 @@ module Task: Task_intf.S
      and type time           := Time.t
      and type time_zone      := Time.Zone.t
      and type file           := File.t
+     and type 'm nav_key     := 'm Navigation.key
      and type value          := Value.t
      and type 'a decoder     := 'a Decoder.t
      and type http_error     := Http.error
@@ -102,6 +111,7 @@ module Command: Command_intf.S
      and type 'a random  := 'a Random.t
      and type value      := Value.t
      and type file       := File.t
+     and type 'm nav_key := 'm Navigation.key
      and type 'm html    := 'm Html.t
      and type empty          := Task.empty
      and type read_failed    := Task.read_failed
@@ -208,18 +218,21 @@ val sandbox_plus:
 
 (**
     A full web application has full user interaction, can execute arbitrary
-    commands and subscribe to all possible global events.
-
+    commands and subscribe to all possible global events. It allows controlling
+    the browser's title bar (through the return value of the [update] function)
+    and the browser's address bar (see module {!Navigation} for more details).
 *)
 
 val application:
     string
-    -> ('state * 'msg Command.t) Decoder.t
+    -> (Url.t -> 'msg Navigation.key -> ('state * 'msg Command.t) Decoder.t)
     -> ('state -> 'msg Html.t * string)
     -> ('state -> 'msg Subscription.t)
     -> ('state -> 'msg -> 'state * 'msg Command.t)
+    -> (Navigation.url_request -> 'msg)
+    -> (Url.t -> 'msg)
     -> unit
-(** [application my_app init view subs update]
+(** [application my_app init view subs update on_url_request on_url_change]
 
     Browser application named [my_app] on the javascript side. The
     application creates the global object named [my_app] which contains the two
@@ -244,6 +257,7 @@ val application:
 
 
 
+(** {1 Basic Web Application} *)
 
 val basic_application:
     'state
@@ -254,9 +268,14 @@ val basic_application:
     -> unit
 (** [basic_application state command view subs update]
 
-    A [basic_application] is like an [application] which cannot interact with
-    the surrounding javascript. I.e. it cannot receive initialization date, it
-    cannot receive messages and cannot send messages from the javscript world.
+    A {!basic_application} is like an {!application} with the following
+    differences:
+
+    - it cannot interact with the surrounding javascript. I.e. it cannot receive
+      initialization data, it cannot receive or send messages to/from the
+      javscript world
+    - it cannot use navigation commands such as {{!Command.push_url}push_url} or
+      {{!Command.back}back}
  *)
 
 

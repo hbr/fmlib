@@ -6,6 +6,7 @@ sig
     type time
     type time_zone
     type file
+    type _ nav_key
     type value
     type _ decoder
     type http_error
@@ -206,6 +207,20 @@ sig
     val random: 'a random -> ('a, 'e) t
     (** [random ran] Execute the random generator [rand] and return the
         generated random value. *)
+
+
+
+
+    (** {1 Navigation} *)
+
+    val load: string -> (unit, empty) t
+    (** [load url]
+
+        Load the given [url].
+    *)
+
+    val reload: (unit, empty) t
+    (** Reload the current page. *)
 
 
 

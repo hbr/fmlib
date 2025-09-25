@@ -10,16 +10,16 @@
             }
         </style>
 
-        <script type="text/javascript" src="webapp.js">
+        <script type="text/javascript" src="frontend.js">
         </script>
         <script>
             function receive (v) {
                 console.log ("message received in javascript");
                 console.log (v)
                 console.log ("echo back")
-                webapp.post(v)
+                single_page_app.post(v)
             }
-            webapp.init ({
+            single_page_app.init ({
                 data: null,
                 onMessage: receive
             })

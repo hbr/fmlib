@@ -5,6 +5,7 @@ module Value      = Value
 module Event_flag = Event_flag
 module Url        = Url
 module File       = File
+module Navigation = Navigation
 module Decoder    = Decoder
 module Http       = Http
 module Command    = Command

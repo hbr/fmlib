@@ -65,6 +65,39 @@ let of_string (s: string): t option =
         None
 
 
+let to_string (url: t): string =
+    let protocol =
+        match url.protocol with
+        | Http ->
+            "http://"
+        | Https ->
+            "https://"
+    in
+    let port =
+        match url.port with
+        | None ->
+            ""
+        | Some p ->
+            ":" ^ string_of_int p
+    in
+    let path = if url.path = "/" then "" else url.path in
+    let query =
+        match url.query with
+        | None ->
+            ""
+        | Some q ->
+            "?" ^ q
+    in
+    let fragment =
+        match url.fragment with
+        | None ->
+            ""
+        | Some f ->
+            "#" ^ f
+    in
+    protocol ^ url.host ^ port ^ path ^ query ^ fragment
+
+
 let percent_encode_part (s: string): string =
     Fmlib_js.Url.percent_encode_component s
 
@@ -471,6 +504,15 @@ end
 
 
 (* TESTS *)
+
+let%test "round trip" =
+    [
+        "http://example";
+        "http://example:8000/a?search=hat#chapter1";
+    ]
+    |> List.for_all
+        (fun input -> input |> of_string |> Option.get |> to_string = input)
+
 
 let%test "protocol" =
     [

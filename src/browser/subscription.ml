@@ -1,12 +1,14 @@
 module Base = Fmlib_js.Base
 
+
 type 'm t =
     | None
     | Window of string * 'm Handler.Virtual.t
     | Interval_timer  of int * (Time.t -> 'm)
     | Animation of (Time.t -> 'm)
     | Message of 'm Base.Decode.t
-    | Url_request of (Url.t -> 'm)
+    | Url_request of (Navigation.url_request -> 'm)
+    | Url_change of (Url.t -> 'm)
     | Batch  of 'm t list
 
 
@@ -39,8 +41,12 @@ let on_message (decode: 'm Base.Decode.t): 'm t =
     Message decode
 
 
-let on_url_request (f: Url.t -> 'm): 'm t =
+let on_url_request (f: Navigation.url_request -> 'm): 'm t =
     Url_request f
+
+
+let on_url_change (f: Url.t -> 'm): 'm t =
+    Url_change f
 
 
 
@@ -66,7 +72,10 @@ let map (f: 'a -> 'b) (sub:'a t): 'b t =
             Message Base.Decode.(map f decode)
 
         | Url_request g ->
-            Url_request (fun url -> f (g url))
+            Url_request (fun target -> f (g target))
+
+        | Url_change g ->
+            Url_change (fun target -> f (g target))
     in
     map sub
 

@@ -13,6 +13,7 @@
     doc
     doc_overview
     doc_getting_started
+    doc_single_page_application
     doc_event_handler
   )
   (package fmlib_browser)

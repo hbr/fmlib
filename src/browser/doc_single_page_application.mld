@@ -1,0 +1,421 @@
+{0 Writing a single-page application}
+
+{{!page-doc_getting_started} Getting Started}
+{{!page-doc} Up}
+{{!page-doc_event_handler} Event Handler}
+
+
+
+{1 Single-page applications}
+
+On classical websites, changing to a different page means that a new HTML
+document is requested from the server. This is called a page load and can cause
+a noticeable delay and flickering as the new document is rendering.
+
+In single-page applications, there is only a single page load (hence the name):
+the inital one. Instead of downloading one HTML document per page, the frontend
+code is responsible for implementing a "virtual page" concept. When changing
+pages, a virtual DOM algorithm replaces only parts of the DOM which can speed up
+rendering and reduce flickering. Such a virtual page consists of the following
+components:
+
+{ol
+  {- the HTML snippet (virtual DOM) that defines what will be visible on the page}
+  {- the page title}
+  {-the state (a.k.a. model) of the page}
+  {-the application logic that defines the behaviour of the page}
+  {- optionally, some subscriptions the page depends on}}
+
+In addition, we need to define a "routing" mechanism. A route is a URL
+identifying a page. For example, the route ["/about"] might belong to the about
+page of our application. The routing mechanism has to make sure that for a valid
+route, the corresponding page contents are shown. It is also responsible for
+updating the browser's address bar, when changing to a different route.
+
+
+
+{1 Defining the pages}
+
+For this simple example, we will reuse the {{!page-doc_overview} counter} and
+the {{!page-doc_getting_started} digital clock} examples from before and turn
+them into pages. In addition, we will define a "not found" page, that acts as a
+fallback for the case an invalid route was requested.
+
+We define the "counter" page and the "digital clock" page as modules. Both
+modules define the following functions:
+
+- [init] returns the initial state and command
+- [update] takes the state and a message and returns an updated state and a
+  command
+- [view] takes the state and returns an HTML snippet and the page title
+- [subscriptions] takes the state and returns a set of subscriptions
+  ("digital clock" page only)
+
+These functions should seem very familiar. They are the same functions that we
+previously passed to [basic_application], now we just define them separately for
+each page. Each page defines a separate [msg] and [state] type, too.
+
+{[
+    module Counter_page =
+    struct
+        type state = int
+
+        type msg = Increment | Decrement
+
+        let init: state * msg Command.t =
+            (0, Command.none)
+
+        let update (state: state) (msg: msg): state * msg Command.t =
+            match msg with
+            | Increment ->
+                (state + 1, Command.none)
+            | Decrement ->
+                (state - 1, Command.none)
+
+        let view (state: state): msg Html.t * string =
+            let open Html in
+            let open Attribute in
+            let html =
+                div []
+                    [
+                        button [on_click Increment] [text "^"];
+                        div [style "font-size" "2em"]
+                            [text (" " ^ string_of_int state ^ " ")];
+                        button [on_click Decrement] [text "v"];
+                    ]
+            in
+            (html, "Counter")
+    end
+
+
+    module Digital_clock_page =
+    struct
+        type state =
+            {
+                time: Time.t;
+                zone: Time.Zone.t;
+            }
+
+        type msg = Got_time of Time.t | Got_time_zone of Time.Zone.t
+
+        let init: state * msg Command.t =
+            let command =
+                let open Command in
+                batch
+                    [
+                        now (fun t -> Got_time t);
+                        time_zone (fun z -> Got_time_zone z)
+                    ]
+            in
+            ({time = Time.zero; zone = Time.Zone.utc}, command)
+
+        let update (state: state) (msg: msg): state * msg Command.t =
+            match msg with
+            | Got_time time ->
+                ({state with time}, Command.none)
+            | Got_time_zone zone ->
+                ({state with zone}, Command.none)
+
+        let subscriptions (_state: state): msg Subscription.t =
+            Subscription.every 1000 (fun t -> Got_time t)
+
+        let view (state: state): msg Html.t * string =
+            let open Html in
+            let html =
+                h2
+                    []
+                    [text (
+                        Printf.sprintf "%02d:%02d:%02d"
+                            (Time.hour   state.time state.zone)
+                            (Time.minute state.time state.zone)
+                            (Time.second state.time state.zone))
+                    ]
+            in
+            (html, "Digital clock")
+    end
+]}
+
+The "not found" page only has static contents, that's why it only needs a [view]
+function:
+
+{[
+    module Not_found_page =
+    struct
+        let view (): 'msg Html.t * string =
+            let open Html in
+            let html = div [] [text "Not found"] in
+            (html, "Page not found")
+    end
+]}
+
+
+
+{1 Defining routes}
+
+We add a module [Route] that defines the three different routes in a variant
+type. [of_url] parses the route from a [Url.t] and [href] produces a link
+attribute for use in anchor tags.
+
+{[
+    module Route =
+    struct
+        type t =
+            | Not_found
+            | Counter
+            | Digital_clock
+
+        let of_url (url: Url.t): t =
+            let parser =
+                let open Url.Parser in
+                one_of
+                    [
+                        map Counter (s "counter");
+                        map Digital_clock (s "digital_clock");
+                    ]
+            in
+            url
+            |> Url.Parser.parse parser
+            |> Option.value ~default:Not_found
+
+        let href (route: t): 'msg Attribute.t =
+            let path =
+                match route with
+                | Not_found ->
+                    "/not_found"
+                | Counter ->
+                    "/counter"
+                | Digital_clock ->
+                    "/digital_clock"
+            in
+            Attribute.href path
+    end
+]}
+
+[of_url] uses the functions [one_of], [map] and [s] from the
+{{!Fmlib_browser.Url.Parser} Url.Parser} module. Each of these functions returns
+a path parser (for parsing the [path] of a [Url.t]):
+
+- [s "counter"] tries to consume the path segment "counter"
+- [map Counter p] produces the value [Counter] of type [Route.t] if
+  the parser [p] is successful
+- [one_of] combines multiple path parsers and yields the result of the first
+  successful one
+
+This kind of parsing is based on  {{:
+https://people.cs.nott.ac.uk/pszgmh/monparsing.pdf} monadic parser combinators}
+and might seem very unfamiliar to developers who are new to functional
+programming. For now it is sufficient to understand, that it allows us to
+combine several "sub-parsers", each parsing a specific route, into a bigger
+parser. This parser is then passed to [Url.Parser.parse], which either returns
+[Some route] or [None].
+
+
+
+{1 Glueing it all together}
+
+The goal is to call {{!Fmlib_browser.application} application} which produces
+the most fully-featured kind of application of this library:
+
+{[
+    let _ =
+        application
+            "single_page_app"
+            init
+            view
+            subscriptions
+            update
+            (fun req -> Clicked_link req) (* on_url_request *)
+            (fun url -> Changed_url url) (* on_url_change *)
+]}
+
+The first argument is an application identifier which allows referencing the
+application from Javascript. The last two arguments are for URL management:
+
+- [on_url_request] is called when the user clicks a link. It takes a
+  {{!Fmlib_browser.Navigation.url_request} url_request} and produces a
+  message called [Clicked_link]
+- [on_url_change] is called when the URL in the browser's address bar has
+  actually changed. It takes a [Url.t] and produces a message called
+  [Changed_url]
+
+See module {{!Fmlib_browser.Navigation} Navigation} for more information about
+URL management.
+
+The only missing parts are [init], [update], [view] and [subscriptions]. One
+issue we have is that all these functions operate on a single [state] type and
+a single [msg] type, but for our pages, we defined multiple "sub state" types
+and "sub message" types.
+
+We resolve this by defining a new [msg] type, that combines the "sub message"
+types (also including [Clicked_link] and [Changed_url] mentioned above), and a
+new [page] type that combines the "sub state" types:
+
+{[
+    type msg =
+        | Clicked_link of Navigation.url_request
+        | Changed_url of Url.t
+        | Got_counter_msg of Counter_page.msg
+        | Got_digital_clock_msg of Digital_clock_page.msg
+
+    type page =
+        | Not_found
+        | Counter of Counter_page.state
+        | Digital_clock of Digital_clock_page.state
+]}
+
+The [page] type is called [page] and not [state] because we need one more
+building block for defining a [state] type: a {{!Fmlib_browser.Navigation.key}
+navigation key}. This is a token that is required for performing navigation
+commands such as  {{!Fmlib_browser.Command.push_url}push_url} (for updating the
+browser's address bar). The navigation key is passed to us through the [init]
+function and we need to store it in addition to the page state. Thus our [state]
+type can now be defined:
+
+{[
+    type state =
+    {
+        key: msg Navigation.key;
+        page: page;
+    }
+]}
+
+Implementing [init], [update], [view] and [subscriptions] is now mostly a matter
+of calling their counterparts from the page modules and mapping the resulting
+"sub states" and "sub messages" to the application's [state] and [msg] types.
+
+{[
+    (* helper function used by both init and update *)
+    let change_page_to (url: Url.t) (key: msg Navigation.key): state * msg Command.t =
+        let map_state_and_msg to_page to_msg (page_state, page_cmd) =
+            ({page = to_page page_state; key}, Command.map to_msg page_cmd)
+        in
+        match Route.of_url url with
+        | Not_found ->
+            ({page = Not_found; key}, Command.none)
+        | Counter ->
+            Counter_page.init
+            |> map_state_and_msg
+                (fun s -> Counter s)
+                (fun m -> Got_counter_msg m)
+        | Digital_clock ->
+            Digital_clock_page.init
+            |> map_state_and_msg
+                (fun s -> Digital_clock s)
+                (fun m -> Got_digital_clock_msg m)
+
+    let init (url: Url.t) (key: msg Navigation.key): (state * msg Command.t) Decoder.t =
+        Decoder.(return (change_page_to url key))
+
+    let update (state: state) (msg: msg): state * msg Command.t =
+        let map_state_and_msg to_page to_msg (page_state, page_cmd) =
+            ({state with page = to_page page_state}, Command.map to_msg page_cmd)
+        in
+        match (msg, state.page) with
+        | (Clicked_link req, _) ->
+            let cmd =
+                match req with
+                | External e ->
+                    Command.load e
+                | Internal i ->
+                    Command.push_url state.key (Url.to_string i)
+            in
+            (state, cmd)
+        | (Changed_url url, _) ->
+            change_page_to url state.key
+        | (Got_counter_msg page_msg, Counter page_state) ->
+            Counter_page.update page_state page_msg
+            |> map_state_and_msg
+                (fun s -> Counter s)
+                (fun m -> Got_counter_msg m)
+        | (Got_digital_clock_msg page_msg, Digital_clock page_state) ->
+            Digital_clock_page.update page_state page_msg
+            |> map_state_and_msg
+                (fun s -> Digital_clock s)
+                (fun m -> Got_digital_clock_msg m)
+        | (_, _) ->
+            (* Disregard messages that arrived for the wrong page *)
+            (state, Command.none)
+
+    let view (state: state): msg Html.t * string =
+        let open Html in
+        let map_msg to_msg (html, title) = (Html.map to_msg html, title) in
+        let (page_html, title) =
+            match state.page with
+            | Not_found ->
+                Not_found_page.view ()
+            | Counter page_state ->
+                Counter_page.view page_state
+                |> map_msg (fun m -> Got_counter_msg m)
+            | Digital_clock page_state ->
+                Digital_clock_page.view page_state
+                |> map_msg (fun m -> Got_digital_clock_msg m)
+        in
+        let html =
+            div []
+                [
+                    ul []
+                        [
+                            li [] [ node "a" [Route.href Counter] [text "Counter"] ];
+                            li [] [ node "a" [Route.href Digital_clock] [text "Digital clock"] ];
+                        ];
+                    h2 [] [text title];
+                    page_html;
+                ];
+        in
+        (html, title)
+
+    let subscriptions (state: state): msg Subscription.t =
+        let map_msg to_msg subs = Subscription.map to_msg subs in
+        match state.page with
+        | Not_found ->
+            Subscription.none
+        | Counter _ ->
+            Subscription.none
+            |> map_msg (fun m -> Got_counter_msg m)
+        | Digital_clock page_state ->
+            Digital_clock_page.subscriptions page_state
+            |> map_msg (fun m -> Got_digital_clock_msg m)
+
+]}
+
+
+
+{1 Instantiating the application from HTML}
+
+Compilation works the same as in the {{!page-doc_getting_started} previous example}
+but the instantiation from HTML works slightly differently:
+
+{@html[
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script type="text/javascript" src="main.js">
+            </script>
+            <script>
+                single_page_app.init ({
+                    data: null,
+                    onMessage: () => {},
+                })
+            </script>
+        </head>
+        <body>
+        </body>
+    </html>
+]}
+
+We call [init] on the [single_page_app] subject. This function takes a
+dictionary with two fields:
+
+- [data] allows allows passing data to our application from Javascript
+- [onMessage] allows sending messages from our application to Javascript
+
+Here, we simply pass [null] and an empty function.
+
+Note, that to run this example, we need a webserver, that serves this HTML
+document. Simply storing it into an [index.html] file and open it in the browser
+will not work, because that gives us a [file] URL, but only [http] or [https]
+URL are supported by this library.
+
+We can run [python3 -m http.server] or write a webserver in OCaml (see
+[examples/browser/single_page_backend.ml] for an example).
