@@ -83,6 +83,16 @@ sig
     *)
 
 
+    val to_string: t -> string
+    (** [to_string url] serializes the given [url] into a string.
+
+        This is useful, when we have a {{!t}Url.t} and need to pass it on as string
+        to {!Command.push_url} or {!debug}. For constructing URL strings from
+        scratch, it is more convenient to use functions from the {!Builder}
+        module, e.g {!Builder.absolute} or {!Builder.custom}.
+    *)
+
+
     (** {1 Percent-encoding} *)
 
     val percent_encode_part: string -> string

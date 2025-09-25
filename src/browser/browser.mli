@@ -25,7 +25,6 @@ val element:
 
 
 
-
 val basic_application:
     'state
     -> 'msg Command.t
@@ -39,8 +38,10 @@ val basic_application:
 
 val application:
     string
-    -> ('state * 'msg Command.t) Fmlib_js.Base.Decode.t
+    -> (Url.t -> 'msg Navigation.key -> ('state * 'msg Command.t) Fmlib_js.Base.Decode.t)
     -> ('state -> 'msg Vdom.t * string)
     -> ('state -> 'msg Subscription.t)
     -> ('state -> 'msg -> 'state * 'msg Command.t)
+    -> (Navigation.url_request -> 'msg)
+    -> (Url.t -> 'msg)
     -> unit

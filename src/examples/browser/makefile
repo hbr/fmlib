@@ -1,10 +1,10 @@
-.PHONY: all temperature timer flight circles
+.PHONY: all single_page_backend temperature timer flight circles spreadsheet reference file_select
 
-all: webapp temperature timer flight circles spreadsheet reference file_select
+all: single_page_backend temperature timer flight circles spreadsheet reference file_select
 
 
-webapp:
-	dune build ./webapp.js
+single_page_backend:
+	dune build ./single_page_backend.exe
 
 
 temperature:

@@ -1,12 +1,17 @@
+
 (* This module handles all calls to javascript
 
 *)
 
-open Fmlib_js
-open Fmlib_js.Dom
-
-
-module Option = Fmlib_std.Option
+module Base = Fmlib_js.Base
+module Event_target = Fmlib_js.Event_target
+module Timer = Fmlib_js.Timer
+module Element = Fmlib_js.Dom.Element
+module Dom = Fmlib_js.Dom
+module Node = Dom.Node
+module Style = Dom.Style
+module Document = Dom.Document
+module Window = Dom.Window
 module Result = Fmlib_std.Result
 
 
@@ -39,18 +44,23 @@ let document (): Document.t = Window.(get () |> document)
     ============================================================
 *)
 
+type ('state, 'msg) init   = unit -> ('state * 'msg Command.t) Base.Decode.t
 
 type ('state, 'msg) view   = 'state -> 'msg Vdom.t * (unit -> unit)
 
 type ('state, 'msg) update = 'state -> 'msg -> 'state * 'msg Command.t
 
+type ('state, 'msg) subscriptions = 'state -> 'msg Subscription.t
 
 
+
+
+let make_init1 (s: 'state) (c: 'msg Command.t): ('state, 'msg) init =
+    fun () -> (Base.Decode.return (s, c))
 
 
 let make_view1 (v: 'state -> 'msg Vdom.t): ('state, 'msg) view =
     fun s -> v s, (fun () -> ())
-
 
 
 let make_view2 (v: 'state -> 'msg Vdom.t * string): ('state, 'msg) view =
@@ -95,7 +105,7 @@ sig
         -> Element.t
         -> ('s, 'm) view
         -> ('s, 'm) update
-        -> ('s -> 'm Subscription.t)
+        -> ('s, 'm) subscriptions
         -> (Base.Value.t -> unit)
         -> ('s, 'm) data
 
@@ -123,7 +133,7 @@ struct
             root:          Element.t;
             view:          ('state, 'msg) view;
             update:        ('state, 'msg) update;
-            subscriptions: 'state -> 'msg Subscription.t;
+            subscriptions: ('state, 'msg) subscriptions;
             post_js:       Base.Value.t -> unit;
         }
 
@@ -199,7 +209,7 @@ struct
             (root: Element.t)
             (view: ('state, 'msg) view)
             (update: ('state, 'msg) update)
-            (subscriptions: 'state -> 'msg Subscription.t)
+            (subscriptions: ('state, 'msg) subscriptions)
             (post_js: Base.Value.t -> unit)
         : ('state, 'msg) data
         =
@@ -469,8 +479,35 @@ end (* State *)
 *)
 
 
+module Application:
+sig
+    type ('s, 'm) def = {
+        name: string;
+        is_element: bool;
+        can_send_to_js: bool;
+        js_init: bool;
+        init: ('s, 'm) init;
+        view: ('s, 'm) view;
+        update: ('s, 'm) update;
+        subscription: ('s, 'm) subscriptions;
+    }
 
-module Application =
+    val make_def:
+        string
+        -> bool
+        -> bool
+        -> bool
+        -> ('s, 'm) init
+        -> ('s, 'm) view
+        -> ('s, 'm) update
+        -> ('s, 'm) subscriptions
+        -> ('s, 'm) def
+
+    val main_js: ('s, 'm) def -> unit
+
+    val main_onload: ('s, 'm) def -> unit
+end
+=
 struct
     type  'a res = ('a, string) result
 
@@ -484,10 +521,10 @@ struct
         is_element: bool;
         can_send_to_js: bool;
         js_init: bool;
-        decode: ('s * 'm Command.t) Base.Decode.t;
+        init: ('s, 'm) init;
         view: ('s, 'm) view;
         update: ('s, 'm) update;
-        subscription: 's -> 'm Subscription.t
+        subscription: ('s, 'm) subscriptions;
     }
 
 
@@ -527,7 +564,7 @@ struct
             is_element
             can_send_to_js
             js_init
-            decode
+            init
             view
             update
             subscription
@@ -536,7 +573,7 @@ struct
              is_element;
              can_send_to_js;
              js_init;
-             decode;
+             init;
              view;
              update;
              subscription }
@@ -586,10 +623,11 @@ struct
             let* id =
                 js_init
                 |> Base.Decode.(field "element_id" string)
-                |> Option.to_result "No element_id found"
+                |> Option.to_result ~none:"No element_id found"
             in
             Dom.Document.find id (document ())
-            |> Option.to_result (Printf.sprintf "Cannot find element <%s>" id)
+            |> Option.to_result
+                ~none:(Printf.sprintf "Cannot find element <%s>" id)
 
         else
             Ok (Document.body (document ()))
@@ -607,7 +645,7 @@ struct
                 Base.Decode.(field "data" decode)
             else
                 decode)
-        |> Option.to_result "Cannot decode initialisation data"
+        |> Option.to_result ~none:"Cannot decode initialisation data"
 
 
     let get_send_to_js
@@ -622,7 +660,7 @@ struct
                     (fun f v -> ignore (f [|v|]))
                     (field "onMessage" _function)
             )
-            |> Option.to_result "Cannot decode onMessage function"
+            |> Option.to_result ~none:"Cannot decode onMessage function"
         else
             Ok (fun _ -> ())
 
@@ -636,7 +674,7 @@ struct
         match
             let open Result in
             let* root       = get_root def.is_element js_init in
-            let* state, cmd = get_data def.js_init def.decode js_init   in
+            let* state, cmd = get_data def.js_init (def.init ()) js_init in
             let* post_js    = get_send_to_js def.can_send_to_js js_init in
             let* _          = set_initialized ()
             in
@@ -727,7 +765,7 @@ let sandbox_plus
             false
             false
             false
-            (Base.Decode.return (state, Command.none))
+            (make_init1 state Command.none)
             (make_view1 view)
             (make_update1 update)
             sub)
@@ -774,7 +812,7 @@ let element
             true
             true
             true
-            decode
+            (fun () -> decode)
             (make_view1 view)
             update
             sub)
@@ -793,12 +831,30 @@ let element
 
 let application
         (name: string)
-        (decode: ('s * 'm Command.t) Base.Decode.t)
+        (init: Url.t -> 'm Navigation.key -> ('s * 'm Command.t) Base.Decode.t)
         (view:   's -> 'm Vdom.t * string)
         (sub:   's -> 'm Subscription.t)
         (update: ('s, 'm) update)
+        (on_url_request: Navigation.url_request -> 'm)
+        (on_url_change: Url.t -> 'm)
     : unit
     =
+    let init () =
+        let url =
+            Fmlib_js.Url.current ()
+            |> Url.of_string
+            |> Option.get (* assume the browser handed us a valid URL *)
+        in
+        init url on_url_change
+    in
+    let sub s =
+        Subscription.batch
+            [
+                Subscription.on_url_request on_url_request;
+                Subscription.on_url_change on_url_change;
+                sub s
+            ]
+    in
     let open Application in
     main_js
         (make_def
@@ -806,7 +862,7 @@ let application
             false
             true
             true
-            decode
+            init
             (make_view2 view)
             update
             sub
@@ -832,7 +888,7 @@ let basic_application
             false
             false
             false
-            (Base.Decode.return (state, command))
+            (make_init1 state command)
             (make_view2 view)
             update
             sub)

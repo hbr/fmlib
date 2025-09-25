@@ -1,4 +1,5 @@
-open Fmlib_js
+module Base = Fmlib_js.Base
+
 
 type 'm t =
     | None
@@ -132,6 +133,46 @@ let file_text (file: File.t) (f: (string, Task.read_failed) result -> 'm): 'm t 
 
 let send_to_javascript (v: Base.Value.t): 'm t =
     just_do Task.(send_to_javascript v)
+
+
+let push_url (key: 'm Navigation.key) (url: string): 'm t =
+    let cont () =
+        let url = Fmlib_js.Url.current () |> Url.of_string |> Option.get in
+        key url
+    in
+    perform Task.(map cont (push_url url))
+
+
+let replace_url (key: 'm Navigation.key) (url: string): 'm t =
+    let cont () =
+        let url = Fmlib_js.Url.current () |> Url.of_string |> Option.get in
+        key url
+    in
+    perform Task.(map cont (replace_url url))
+
+
+let back (key: 'm Navigation.key) (count: int): 'm t =
+    let cont () =
+        let url = Fmlib_js.Url.current () |> Url.of_string |> Option.get in
+        key url
+    in
+    perform Task.(map cont (back count))
+
+
+let forward (key: 'm Navigation.key) (count: int): 'm t =
+    let cont () =
+        let url = Fmlib_js.Url.current () |> Url.of_string |> Option.get in
+        key url
+    in
+    perform Task.(map cont (forward count))
+
+
+let load (url: string): 'm t =
+    just_do Task.(load url)
+
+
+let reload (): 'm t =
+    just_do Task.reload
 
 
 let set_reference (name: string) (vd: 'm Vdom.t): 'm t =

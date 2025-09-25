@@ -19,7 +19,9 @@ struct
 
         message: 'm Base.Decode.t option;
 
-        url_request: (Url.t -> 'm) option
+        url_request: (Navigation.url_request -> 'm) option;
+
+        url_change: (Url.t -> 'm) option;
     }
 
 
@@ -29,6 +31,7 @@ struct
         animation   = None;
         message     = None;
         url_request = None;
+        url_change  = None;
     }
 
 
@@ -92,6 +95,15 @@ struct
                          Some f
                      | Some _ ->
                          subs.url_request}
+
+            | Url_change f ->
+                {subs with
+                 url_change =
+                     match subs.url_change with
+                     | None ->
+                         Some f
+                     | Some _ ->
+                         subs.url_change}
         in
         make empty sub
 end
@@ -107,7 +119,8 @@ type 'm t = {
     subs:   'm Subs.t;
     window: Handler.EventHs.t;
     timers: Handler.Timers.t;
-    url_request: Handler.Url_request.t
+    url_request: Handler.Url_request.t;
+    url_change: Handler.Url_change.t;
 }
 
 
@@ -119,6 +132,7 @@ let empty (): 'm t =
       window      = EventHs.empty ();
       timers      = Timers.empty ();
       url_request = Url_request.empty ();
+      url_change  = Url_change.empty ();
     }
 
 
@@ -140,6 +154,11 @@ let update (dispatch: 'm -> unit) (sub: 'm Subscription.t) (s: 'm t): 'm t =
         subs.url_request
         s.subs.url_request
         s.url_request;
+    Url_change.update
+        dispatch
+        subs.url_change
+        s.subs.url_change
+        s.url_change;
     { s with subs }
 
 

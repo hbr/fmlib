@@ -1,21 +1,4 @@
 (executable
-  (name webapp)
-  (modules webapp)
-  (modes js)
-  (libraries fmlib_browser)
-)
-
-(rule
-    (targets webapp.js)
-    (deps    webapp.bc.js)
-    (mode   (promote (until-clean)))
-    (action (copy %{deps} %{targets}))
-)
-
-
-
-
-(executable
   (name temperature)
   (modules temperature)
   (modes js)
@@ -122,4 +105,45 @@
   (targets file_select.js) (deps file_select.bc.js)
   (mode (promote (until-clean)))
   (action (copy file_select.bc.js file_select.js))
+)
+
+
+
+
+
+(executable
+   (name single_page)
+   (modules single_page)
+   (modes js)
+   (libraries fmlib_browser)
+)
+
+(rule
+   (targets single_page.js)
+   (deps single_page.bc.js)
+   (mode (promote (until-clean)))
+   (action (copy %{deps} %{targets}))
+)
+
+(rule
+   (deps (file single_page.js))
+   (action
+   (with-stdout-to
+     assets.ml
+     (progn
+       (echo "let js = {|")
+       (cat single_page.js)
+       (echo "|}\n")
+       (echo "let html = {|")
+       (cat single_page.html)
+       (echo "|}\n"))
+      )
+   )
+)
+
+(executable
+  (name single_page_backend)
+  (modules single_page_backend assets)
+  (libraries fmlib_std unix)
+  (promote (until-clean))
 )

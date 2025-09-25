@@ -185,6 +185,54 @@ let time_zone: (Time.Zone.t, 'e) t =
 
 
 
+let push_url (url: string): (unit, empty) t =
+    fun _ k ->
+    let open Dom in
+    let history = Dom.Window.history (Window.get()) in
+    History.push_state Base.Value.null "" url history;
+    continue k (Ok ())
+
+
+let replace_url (url: string): (unit, empty) t =
+    fun _ k ->
+    let open Dom in
+    let history = Dom.Window.history (Window.get()) in
+    History.replace_state Base.Value.null "" url history;
+    continue k (Ok ())
+
+
+let back (count: int): (unit, empty) t =
+    fun _ k ->
+    let open Dom in
+    let history = Dom.Window.history (Window.get()) in
+    History.go (- count) history;
+    continue k (Ok ())
+
+
+let forward (count: int): (unit, empty) t =
+    fun _ k ->
+    let open Dom in
+    let history = Dom.Window.history (Window.get()) in
+    History.go count history;
+    continue k (Ok ())
+
+
+let load (url: string): (unit, empty) t =
+    fun _ k ->
+    let open Dom in
+    let location = Window.location (Window.get ()) in
+    Location.assign url location;
+    continue k (Ok ())
+
+
+let reload: (unit, empty) t =
+    fun _ k ->
+    let open Dom in
+    let location = Window.location (Window.get ()) in
+    Location.reload location;
+    continue k (Ok ())
+
+
 let open_file_dialog
         (media_types: string list)
         (multiple: bool)
