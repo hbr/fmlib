@@ -44,6 +44,9 @@ gh-pages-odoc: doc
 .PHONY: gh-pages-webapp
 gh-pages-webapp:
 	dune build --profile release ./src/examples/browser/webapp.js; \
+	dune build --profile release ./src/examples/browser/circles.js; \
+	dune build --profile release ./src/examples/browser/flight.js; \
+	dune build --profile release ./src/examples/browser/temperature.js; \
 	dune build --profile release ./src/examples/browser/timer.js; \
 	(cd gh-pages; git rm -r -f webapp); \
 	mkdir  gh-pages/webapp; \
