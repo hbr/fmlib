@@ -9,7 +9,7 @@ let handle_request request =
             None
     in
     match path with
-    | Some "/frontend.js" ->
+    | Some "/single_page.js" ->
         Printf.sprintf
             "HTTP/1.1 200 OK\r\nContent-Type: text/javascript\r\nContent-Length: %i\r\n\r\n%s"
             (String.length Assets.js)

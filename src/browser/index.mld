@@ -14,7 +14,7 @@
 {1 Examples}
 
 
-- {{: https://hbr.github.io/fmlib/webapp/index.html} Single Page Application}
+- {{: https://hbr.github.io/fmlib/webapp/single_page.html} Single Page Application}
 
 - 7 GUIs {{: https://eugenkiss.github.io/7guis/tasks} (requirements)}
     {ul
@@ -27,6 +27,8 @@
       {- {{: https://hbr.github.io/fmlib/webapp/flight.html} Flight Booking}
       }
       {- {{: https://hbr.github.io/fmlib/webapp/circles.html} Draw Circles}
+      }
+      {- {{: https://hbr.github.io/fmlib/webapp/spreadsheet.html} Spreadsheet}
       }
     }
 
