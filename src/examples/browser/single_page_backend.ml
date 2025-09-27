@@ -8,17 +8,26 @@ let handle_request request =
         else
             None
     in
+    let print =
+        Printf.sprintf
+            "HTTP/1.1 %i OK\r\nContent-Type: text/%s\r\nContent-Length: %i\r\n\r\n%s"
+    in
     match path with
-    | Some "/single_page.js" ->
-        Printf.sprintf
-            "HTTP/1.1 200 OK\r\nContent-Type: text/javascript\r\nContent-Length: %i\r\n\r\n%s"
-            (String.length Assets.js)
-            Assets.js
-    | Some _ ->
-        Printf.sprintf
-            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %i\r\n\r\n%s"
-            (String.length Assets.html)
-            Assets.html
+    | Some path ->
+        if path = "/fmlib/webapp/single_page.js" then
+            print 200 "javascript" (String.length Assets.js) Assets.js
+        else if
+            path = "/fmlib/webapp/"
+            ||
+            path = "/fmlib/webapp/single_page.html"
+        then
+            print 200 "html" (String.length Assets.html) Assets.html
+        else if
+            path = "/favicon.ico"
+        then
+            print 200 "plain" 0 ""
+        else
+            "HTTP/1.1 404 Not found\r\nContent-Length: 10\r\n\r\nNot found!"
     | None ->
         "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request!"
 
@@ -34,9 +43,11 @@ let () =
     Unix.listen server 5;
 
     Printf.printf
-        "Server is listening at http://%s:%d\n%!"
+        "Server is listening at http://%s:%d\nUse path: <%s>\n%!"
         (Unix.string_of_inet_addr address)
-        port;
+        port
+        "/fmlib/webapp/single_page.html"
+    ;
 
     while true do
         let (client_socket, _) = Unix.accept server in

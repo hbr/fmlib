@@ -23,8 +23,11 @@ struct
     let of_url (url: Url.t): t =
         let parser =
             let open Url.Parser in
-            one_of
+            s "fmlib"
+            </> s "webapp"
+            </> one_of
                 [
+                    map Home (s "single_page.html");
                     map Home top;
                     map Counter (s "counter");
                     map Digital_clock (s "digital_clock");
@@ -41,28 +44,26 @@ struct
 
 
     let href (route: t): 'msg Attribute.t =
-        let path =
-            match route with
-            | Not_found ->
-                "/not_found"
-            | Home ->
-                "/"
-            | Counter ->
-                "/counter"
-            | Digital_clock ->
-                "/digital_clock"
-            | Rolling_die ->
-                "/rolling_die"
-            | Send_message ->
-                "/send_message"
-            | Global_events ->
-                "/global_events"
-            | Input ->
-                "/input"
-            | Http_request ->
-                "/http_request"
-        in
-        Attribute.href path
+            (match route with
+             | Not_found ->
+                 "not_found"
+             | Home ->
+                 "single_page.html"
+             | Counter ->
+                 "counter"
+             | Digital_clock ->
+                 "digital_clock"
+             | Rolling_die ->
+                 "rolling_die"
+             | Send_message ->
+                 "send_message"
+             | Global_events ->
+                 "global_events"
+             | Input ->
+                 "input"
+             | Http_request ->
+                 "http_request")
+        |> Attribute.href
 
 end
 
