@@ -9,7 +9,6 @@ module Route =
 struct
 
     type t =
-        | Not_found
         | Home
         | Counter
         | Digital_clock
@@ -40,13 +39,11 @@ struct
         in
         url
         |> Url.Parser.parse parser
-        |> Option.value ~default:Not_found
+        |> Option.get
 
 
     let href (route: t): 'msg Attribute.t =
             (match route with
-             | Not_found ->
-                 "not_found"
              | Home ->
                  "single_page.html"
              | Counter ->
@@ -73,17 +70,6 @@ end
 (* Pages
  * ======================================================================
  *)
-
-module Not_found_page =
-struct
-
-    let view (): 'msg Html.t * string =
-        let open Html in
-        let html = div [] [text "Not found"] in
-        (html, "Page not found")
-
-end
-
 
 module Home_page =
 struct
@@ -678,7 +664,6 @@ type msg =
     | Got_http_request_msg of Http_request_page.msg
 
 type page =
-    | Not_found
     | Home
     | Counter of Counter_page.state
     | Digital_clock of Digital_clock_page.state
@@ -706,8 +691,6 @@ let change_page_to (url: Url.t) (key: msg Navigation.key): state * msg Command.t
         ({page = to_page page_state; key}, Command.map to_msg page_cmd)
     in
     match Route.of_url url with
-    | Not_found ->
-        ({page = Not_found; key}, Command.none)
     | Home ->
         ({page = Home; key}, Command.none)
     | Counter ->
@@ -825,8 +808,6 @@ let view (state: state): msg Html.t * string =
     let map_msg to_msg (html, title) = (Html.map to_msg html, title) in
     let (page_html, title) =
         match state.page with
-        | Not_found ->
-            Not_found_page.view ()
         | Home ->
             Home_page.view ()
         | Counter page_state ->
@@ -890,8 +871,6 @@ let view (state: state): msg Html.t * string =
 let subscriptions (state: state): msg Subscription.t =
     let map_msg to_msg subs = Subscription.map to_msg subs in
     match state.page with
-    | Not_found ->
-        Subscription.none
     | Home ->
         Subscription.none
     | Counter _ ->
