@@ -346,86 +346,15 @@ struct
             f (p dict)
 
 
-        let map2 (f: 'a -> 'b -> 'c) (p1: 'a t) (p2: 'b t): 'c t =
+        let return (a: 'a): 'a t =
+            fun _ -> a
+
+
+        let (<*>) (f: ('a -> 'b) t) (a: 'a t): 'b t =
             fun dict ->
-            f (p1 dict) (p2 dict)
-
-
-        let map3
-                (f: 'a -> 'b -> 'c -> 'd)
-                (p1: 'a t)
-                (p2: 'b t)
-                (p3: 'c t)
-            : 'd t =
-            fun dict ->
-            f (p1 dict) (p2 dict) (p3 dict)
-
-
-        let map4
-                (f: 'a -> 'b -> 'c -> 'd -> 'e)
-                (p1: 'a t)
-                (p2: 'b t)
-                (p3: 'c t)
-                (p4: 'd t)
-            : 'e t =
-            fun dict ->
-            f (p1 dict) (p2 dict) (p3 dict) (p4 dict)
-
-
-        let map5
-                (f: 'a -> 'b -> 'c -> 'd -> 'e -> 'f)
-                (p1: 'a t)
-                (p2: 'b t)
-                (p3: 'c t)
-                (p4: 'd t)
-                (p5: 'e t)
-            : 'f t =
-            fun dict ->
-            f (p1 dict) (p2 dict) (p3 dict) (p4 dict) (p5 dict)
-
-
-        let map6
-                (f: 'a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g)
-                (p1: 'a t)
-                (p2: 'b t)
-                (p3: 'c t)
-                (p4: 'd t)
-                (p5: 'e t)
-                (p6: 'f t)
-            : 'g t =
-            fun dict ->
-            f (p1 dict) (p2 dict) (p3 dict) (p4 dict) (p5 dict) (p6 dict)
-
-
-        let map7
-                (f: 'a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g -> 'h)
-                (p1: 'a t)
-                (p2: 'b t)
-                (p3: 'c t)
-                (p4: 'd t)
-                (p5: 'e t)
-                (p6: 'f t)
-                (p7: 'g t)
-            : 'h t =
-            fun dict ->
-            f (p1 dict) (p2 dict) (p3 dict) (p4 dict) (p5 dict) (p6 dict) (p7 dict)
-
-
-        let map8
-                (f: 'a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g -> 'h -> 'i)
-                (p1: 'a t)
-                (p2: 'b t)
-                (p3: 'c t)
-                (p4: 'd t)
-                (p5: 'e t)
-                (p6: 'f t)
-                (p7: 'g t)
-                (p8: 'h t)
-            : 'i t =
-            fun dict ->
-            f (p1 dict) (p2 dict) (p3 dict) (p4 dict) (p5 dict) (p6 dict) (p7 dict) (p8 dict)
-
+            (f dict) (a dict)
     end
+
 
 
     let query (query_parser: 'a Query.t): (('a -> 'b), 'b) t =
@@ -818,11 +747,23 @@ let%test "query parsing" =
             Some (`String None)
         );
         (
-            top <?> Query.map2 (fun s n -> `String_and_number (s, n)) (Query.string "a") (Query.int "b"),
+            top
+            <?>
+            Query.(
+                return (fun s n -> `String_and_number (s, n))
+                <*> string "a"
+                <*> int "b"
+            ),
             Some (`String_and_number (Some "test", Some 123))
         );
         (
-            top <?> Query.map2 (fun n s -> `String_and_number (s, n)) (Query.int "b") (Query.string "a"),
+            top
+            <?>
+            Query.(
+                return (fun n s -> `String_and_number (s, n))
+                <*> int "b"
+                <*> string "a"
+            ),
             Some (`String_and_number (Some "test", Some 123))
         );
     ]
