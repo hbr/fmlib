@@ -8,6 +8,9 @@ sig
     include Interfaces.SET with type item = Key.t
 
 
+    val of_list: Key.t list -> t
+
+
     (** {1 Stream of elements} *)
 
     module Source:
@@ -32,6 +35,8 @@ sig
     (** {1 Map API} *)
 
     include Interfaces.MAP with type key = Key.t
+
+    val of_list: (Key.t * 'a) list -> 'a t
 
 
 

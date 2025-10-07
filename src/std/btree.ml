@@ -405,6 +405,13 @@ struct
             Node ([|pair|], [|left; right|])
 
 
+    let of_list (lst: (Key.t * 'a) list):  'a t =
+        List.fold_left
+            (fun map (k, v) -> add k v map)
+            empty
+            lst
+
+
 
 
     (* Deletion
@@ -928,6 +935,13 @@ module Set0 (Order: ORDER) (Key: Interfaces.SORTABLE) = struct
 
     let elements (set: t): Key.t list =
         Map.keys set
+
+
+    let of_list (lst: Key.t list): t =
+        List.fold_left
+            (fun set k -> add k set)
+            empty
+            lst
 
 
 

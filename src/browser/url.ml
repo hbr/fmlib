@@ -1,3 +1,5 @@
+module Dictionary = Fmlib_std.Btree.Map (String)
+
 type protocol = Http | Https
 
 
@@ -398,9 +400,11 @@ struct
                     begin
                         match percent_decode_part raw_key with
                         | Some key ->
-                            Dictionary.set
+                            Dictionary.update
                                 key
-                                (fun v -> value :: Option.value ~default:[] v)
+                                (function
+                                    | None -> Some [value]
+                                    | Some lst -> Some (value :: lst))
                                 dict
                         | None ->
                             dict
