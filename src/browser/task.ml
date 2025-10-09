@@ -245,7 +245,7 @@ let open_file_dialog
     in
     Dom.Element.set_attribute "type" "file" input;
     Dom.Element.set_attribute "accept" (String.concat "," media_types) input;
-    Dom.Element.set_attribute "multiple" (string_of_bool multiple) input;
+    Dom.Element.set_property "multiple" (Value.bool multiple) input;
     let handler event =
         let files =
             event
