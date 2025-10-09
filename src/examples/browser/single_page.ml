@@ -94,13 +94,13 @@ struct
             ul
                 []
                 [
-                    li [] [node "a" [Route.href Counter] [text "Counter"]];
-                    li [] [node "a" [Route.href Digital_clock] [text "Digital clock"]];
-                    li [] [node "a" [Route.href Rolling_die] [text "Rolling die"]];
-                    li [] [node "a" [Route.href Send_message] [text "Send message to Javascript"]];
-                    li [] [node "a" [Route.href Global_events] [text "Global events"]];
-                    li [] [node "a" [Route.href Input] [text "Input"]];
-                    li [] [node "a" [Route.href Http_request] [text "Http request"]];
+                    li [] [a [Route.href Counter] [text "Counter"]];
+                    li [] [a [Route.href Digital_clock] [text "Digital clock"]];
+                    li [] [a [Route.href Rolling_die] [text "Rolling die"]];
+                    li [] [a [Route.href Send_message] [text "Send message to Javascript"]];
+                    li [] [a [Route.href Global_events] [text "Global events"]];
+                    li [] [a [Route.href Input] [text "Input"]];
+                    li [] [a [Route.href Http_request] [text "Http request"]];
                 ]
         in
         (html, "Home")
@@ -507,7 +507,7 @@ struct
                     h3 [] [text "Text input"];
                     input
                         [
-                            attribute "type" "text";
+                            type_ "text";
                             placeholder "Text to reverse";
                             value state.text_input;
                             on_input (fun i -> Got_text_input i);
@@ -520,10 +520,10 @@ struct
                     h3 [] [text "Slider"];
                     input
                         [
-                            attribute "type" "range";
-                            attribute "min" "0";
-                            attribute "max" "10";
-                            attribute "step" "0.5";
+                            type_ "range";
+                            min "0";
+                            max "10";
+                            step 0.5;
                             value state.slider_value;
                             on_input (fun i -> Got_slider_value i);
                         ] [];
@@ -531,21 +531,21 @@ struct
                     h3 [] [text "Password check"];
                     input
                         [
-                            attribute "type" "text";
+                            type_ "text";
                             placeholder "user name";
                             value state.username;
                             on_input (fun i -> Got_username i);
                         ] [];
                     input
                         [
-                            attribute "type" "password";
+                            type_ "password";
                             placeholder "password";
                             value state.password1;
                             on_input (fun i -> Got_password1 i);
                         ] [];
                     input
                         [
-                            attribute "type" "password";
+                            type_ "password";
                             placeholder "re enter password";
                             value state.password2;
                             on_input (fun i -> Got_password2 i);
@@ -854,10 +854,10 @@ let view (state: state): msg Html.t * string =
     let html =
         div []
             [
-                node "nav" [margin "20px"]
+                nav [margin "20px"]
                     [
-                        node "a" [Route.href Home] [text "Home"];
-                        node "a"
+                        a [Route.href Home] [text "Home"];
+                        a
                             [
                                 href "https://hbr.github.io/fmlib/odoc/fmlib_browser/index.html";
                                 style "float" "right"

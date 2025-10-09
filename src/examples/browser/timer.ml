@@ -38,26 +38,25 @@ let view (state: state): msg Html.t =
     and duration_string = sprintf "%.1f" state.duration
     in
     let elapsed =
-        label [] [
+        Html.label [] [
             text "Elapsed time: "
-          ; node
-                "progress"
-                [ attribute "value" elapsed_string
-                ; attribute "max"   duration_string
-                ]
-                []
+          ; progress
+              [ value elapsed_string
+              ; max   duration_string
+              ]
+              []
           ; text elapsed_string2
           ; text "s"
         ]
     and duration =
-        label
+        Html.label
             []
             [ text "Duration: "
-            ; input [ attribute "type" "range"
-                    ; attribute "min" "0.5"
-                    ; attribute "max" "30"
-                    ; attribute "step" "0.5"
-                    ; attribute "value" duration_string
+            ; input [ type_ "range"
+                    ; min "0.5"
+                    ; max "30.0"
+                    ; step 0.5
+                    ; value duration_string
                     ; on_input duration_value
                     ] []
             ; text duration_string

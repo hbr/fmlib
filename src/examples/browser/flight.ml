@@ -145,7 +145,7 @@ let view_date_opt
     let open Html in
     let open Attribute in
     p [] [
-        label [] [
+        Html.label [] [
             input [
                 attribute "type" "date"
               ; value (string_of_date_opt date)
@@ -157,7 +157,7 @@ let view_date_opt
 
 
 let view_booking
-        (kind: kind)
+        (booking_kind: kind)
         (flight: date option)
         (return: date option)
     : msg Html.t
@@ -172,14 +172,14 @@ let view_booking
         Decoder.map (fun date -> Return_date date) decode_date
     in
     let dates =
-        match kind with
+        match booking_kind with
         | Oneway ->
             [date flight "" decode_flight]
         | Return ->
             [date flight " flight" decode_flight
             ; date return " return flight" decode_return]
     and book_button =
-        match kind, flight, return with
+        match booking_kind, flight, return with
         | Oneway, Some _, _ ->
             [p [] [button [on_click Book] [text "Book"]]]
         | Return, Some d1, Some d2 ->
@@ -193,7 +193,7 @@ let view_booking
         | _ ->
             []
     and one_way =
-        match kind with  Oneway -> true | Return -> false
+        match booking_kind with  Oneway -> true | Return -> false
     in
     div []
         (
@@ -201,14 +201,12 @@ let view_booking
             ::
             select
                 [on "change" decode_selection]
-                [  node
-                       "option"
-                       [property "selected" Value.(bool one_way)]
-                       [text "One way"]
-                ; node
-                        "option"
-                        [property "selected" Value.(bool (not one_way))]
-                        [text "Return"]
+                [ option
+                    [property "selected" Value.(bool one_way)]
+                    [text "One way"]
+                ; option
+                    [property "selected" Value.(bool (not one_way))]
+                    [text "Return"]
                 ]
             ::
             (dates @ book_button)
@@ -225,9 +223,9 @@ let view_booked
     let open Attribute in
     let date_element txt date =
         p [] [
-            label [] [
-                input [ attribute "type" "date"
-                      ; attribute "readOnly" ""
+            Html.label [] [
+                input [ type_ "date"
+                      ; readonly true
                       ; value (string_of_date date)
                       ][]
               ; text txt
