@@ -18,6 +18,17 @@ let property (key: string) (value: Value.t): 'a t =
 let attribute (key: string) (value: string): 'a t =
     Attribute (key, value)
 
+
+let class_ (value: string): 'm t =
+    attribute "class" value
+
+let class_list (classes: (string * bool) list): 'm t =
+    classes
+    |> List.filter_map (fun (c, cond) -> if cond then Some c else None)
+    |> String.concat " "
+    |> class_
+
+
 let handler
         (key: string)
         (stop: Event_flag.stop)
@@ -124,9 +135,6 @@ let checked (value: bool): 'm t =
 
 let cite (value: string): 'm t =
     attribute "cite" value
-
-let class_ (value: string): 'm t =
-    attribute "class" value
 
 let colorspace (value: string): 'm t =
     attribute "colorspace" value

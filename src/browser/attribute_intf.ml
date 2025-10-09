@@ -47,6 +47,45 @@ sig
         ]}
      *)
 
+
+    val class_: string -> 'msg t
+    (** [class_ value] specifies CSS classes as a space-separated list.
+
+        NOTE: Currently this should not be used in combination with
+        {!class_list}. If both attributes are used, they overwrite each other.
+    *)
+
+
+    val class_list: (string * bool) list -> 'msg t
+    (** [class_list classes]
+
+        Allows conveniently specifying multiple classes. Each class comes with a
+        condition and is only added to the element if that condition is [true].
+
+        Example:
+        {[
+            let view_contact (c: contact): msg Html.t =
+                div
+                    [
+                        class_list
+                            [
+                                ("contact", true);
+                                ("contact-favourite", c.is_favourite);
+                                ("contact-online", c.status = Online);
+                                ("contact-offline", c.status = Offline);
+                                ("contact-busy", c.status = Busy);
+                            ]
+                    ]
+                    [
+                        text c.full_name
+                    ]
+        ]}
+
+        NOTE: Currently this should not be used in combination with {!class_}.
+        If both attributes are used, they overwrite each other.
+    *)
+
+
     val property: string -> value -> 'msg t
     (** [property key value] Add a javascript property to the html element. *)
 
@@ -247,14 +286,6 @@ sig
 
         Elements: {{!Html.blockquote}<blockquote>}, {{!Html.del}<del>},
         {{!Html.ins}<ins>}, {{!Html.q}<q>}
-    *)
-
-    val class_: string -> 'msg t
-    (** [class_ value]
-
-        Specifies CSS classes.
-
-        Elements: all
     *)
 
     val colorspace: string -> 'msg t
