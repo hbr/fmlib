@@ -82,8 +82,8 @@ let view (state: state): 'msg Html.t =
             Fahrenheit v
     and temperature_field txt v f =
         div [] [
-            label [] [
-                input [ attribute "type" "text"
+            Html.label [] [
+                input [ type_ "text"
                       ; value v
                       ; on_input f]
                     []

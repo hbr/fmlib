@@ -63,34 +63,6 @@ let row_name (y: int): string =
 
 (*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                              Html
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*)
-
-
-module Html =
-struct
-    include Html
-
-    let td attrs kids =
-        node "td" attrs kids
-
-    let th attrs kids =
-        node "th" attrs kids
-
-    let tr attrs kids =
-        node "tr" attrs kids
-
-    let table attrs kids =
-        node "table" attrs kids
-end
-
-
-
-
-
-(*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                               Cell Id
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 *)
@@ -249,8 +221,8 @@ struct
         let open Attribute in
         div
             [ on_click (Goto c.id)
-            ; height "1.2em"
-            ; width cell_width
+            ; style "height" "1.2em"
+            ; style "width" cell_width
             ; background_color (if c.selected then "yellow" else "white");
             ]
             [display c |> text]
@@ -751,15 +723,15 @@ let is_valid_cell (id: Id.t) (s: model): bool =
 *)
 
 
-let view_flex (dir: string) (lst: msg Html.t list): msg Html.t =
+let view_flex (direction: string) (lst: msg Html.t list): msg Html.t =
     let open Html in
     let open Attribute in
     div
-        [style "display" "flex"; style "flex-direction" dir]
+        [style "display" "flex"; style "flex-direction" direction]
         lst
 
 
-let view (s: model): msg Html.t =
+let view (sheet: model): msg Html.t =
     let open Html in
     let open Attribute in
     let open Printf in
@@ -770,11 +742,11 @@ let view (s: model): msg Html.t =
                 style "flex-direction" "row";
             ]
             [
-                sprintf "cell: %s  content: " (s.select |> Id.name) |> text;
+                sprintf "cell: %s  content: " (sheet.select |> Id.name) |> text;
                 input
-                    [ attribute "id" "input";
-                      attribute "type" "text";
-                      value s.input;
+                    [ id "input";
+                      type_ "text";
+                      value sheet.input;
                       on_input input_msg;
                       handler "keydown"
                           Event_flag.stop
@@ -792,7 +764,7 @@ let view (s: model): msg Html.t =
                           )
                     ]
                     [];
-                if s.error = "" then
+                if sheet.error = "" then
                     div [] []
                 else
                     div [color "red";
@@ -801,7 +773,7 @@ let view (s: model): msg Html.t =
                          on_mouseleave Explain]
                         (text "Error: see details here"
                          ::
-                         (if not s.explain then
+                         (if not sheet.explain then
                               []
                           else
                               [pre
@@ -812,7 +784,7 @@ let view (s: model): msg Html.t =
                                     padding "20px";
                                     background_color "white";
                                     style "border" "1px solid black"]
-                                   [text s.error]]
+                                   [text sheet.error]]
                          ))
             ]
         ;

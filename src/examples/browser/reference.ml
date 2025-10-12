@@ -39,7 +39,7 @@ let view_input state =
         [ cell
               "Normal"
               (
-                  input [ attribute "type" "text"
+                  input [ type_ "text"
                         ; placeholder "Enter text"
                         ; value state.normal_value
                         ; on_input normal_input
@@ -75,7 +75,7 @@ let view state =
 let remote_dom str =
     let open Html in
     let open Attribute in
-    input [ attribute "type" "text"
+    input [ type_ "text"
           ; placeholder "Enter text"
           ; value str
           ; on_input remote_input
