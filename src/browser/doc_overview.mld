@@ -43,7 +43,8 @@ If we just want to display a static page with a grocery list the functions are q
 simple.
 
 {[
-    type message    (* no constructor, i.e. no message can be created. *)
+    type message = |   (* no constructor,
+                          i.e. no message can be created. *)
 
     let view (): unit Html.t =
         let open Html in
@@ -54,9 +55,10 @@ simple.
             li [] [text "Meet"]
         ]
 
-    let update () (_: message): unit =
-        assert false (* [update] can never be called because [message] has no
-                        constructor *)
+    let update (): message -> unit =
+        function
+        | _ -> .     (* Function can never be called because [message] has
+                        no constructor *)
 ]}
 
 The system state is [unit], the [message] type has no constructors, and the

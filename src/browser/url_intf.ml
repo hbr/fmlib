@@ -571,11 +571,17 @@ sig
 
 
 
-            (** {1 Parsers } *)
+            (** {1 Type} *)
 
             type 'a t
-            (** The query parser type *)
+            (** The query parser type.
 
+                An query parser of type ['a t] parses the query part of a url
+                and returns an object of type ['a].
+            *)
+
+
+            (** {1 Elementary Query Parsers} *)
 
             val string: string -> (string option) t
             (** [string key] will parse the query parameter named [key] as string.
@@ -624,7 +630,9 @@ sig
                 Example:
 
                 {[
-                    let lang_parser: ([`Haskell | `OCaml | `Rust] option -> 'a, 'a) Parser.t =
+                    let lang_parser:
+                        ([`Haskell | `OCaml | `Rust] option -> 'a, 'a) Parser.t
+                        =
                         let open Parser in
                         top <?>
                             Query.enum
@@ -658,7 +666,7 @@ sig
                 {[
                     let posts: int list option Parser.t =
                         let open Parser in
-                        top <?> custom "post" (List.filter_map int_of_string)
+                        top <?> Query.custom "post" (List.filter_map int_of_string)
                 ]}
 
                 The example parser produces the following results:
@@ -672,7 +680,50 @@ sig
             *)
 
 
-            (** {1 Mapping} *)
+
+
+
+            (** {1 Combining Query Parsers} *)
+
+
+            val return: 'a -> 'a t
+            (** Make a query parser which parses nothing an returns a result. *)
+
+
+            val (<*>): ('a -> 'b) t -> 'a t -> 'b t
+            (** This function can be used to transform more than one query
+                parser into a compound query parser.
+
+                Example:
+
+                {[
+                    type user = {fname: string option; lname: string option}
+
+                    let user_parser: (user -> 'a, 'a) Parser.t =
+                        let open Parser in
+                        top <?>
+                        Query.(
+                            return (fun fname lname -> {fname; lname})
+                            <*> string "fname"
+                            <*> string "lname"
+                        )
+                ]}
+
+                The example parser produces the following results:
+
+                {t | input                                    | parse result                                           |
+                   |------------------------------------------|--------------------------------------------------------|
+                   | ["http://host?fname=Xavier&lname=Leroy"] | [Some ({fname = Some "Xavier"; lname = Some "Leroy"))] |
+                   | ["http://host?fname=Xavier"]             | [Some ({fname = Some "Xavier"; lname = None})]         |
+                   | ["http://host?"]                         | [Some ({fname = None; lname = None})]                                            |
+                   | ["http://host"]                          | [Some ({fname = None; lname = None})]                                            |}
+            *)
+
+
+
+
+
+            (** {1 Mapping Query Parsers} *)
 
             val map: ('a -> 'b) -> 'a t -> 'b t
             (** [map f query_parser] transforms the [query_parser] which parses
@@ -698,110 +749,6 @@ sig
                    | ["http://host?search"]       | [Some (`Search "")]      |
                    | ["http://host"]              | [Some (`Search "")]      |}
             *)
-
-            val map2: ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                two query parameters via [f].
-
-                Example:
-
-                {[
-                    type user = {fname: string option; lname: string option}
-
-                    let user_parser: (user -> 'a, 'a) Parser.t =
-                        let open Parser in
-                        top <?>
-                            Query.map2
-                                (fun fname lname -> {fname; lname})
-                                (Query.string "fname")
-                                (Query.string "lname")
-                ]}
-
-                The example parser produces the following results:
-
-                {t | input                                    | parse result                                           |
-                   |------------------------------------------|--------------------------------------------------------|
-                   | ["http://host?fname=Xavier&lname=Leroy"] | [Some ({fname = Some "Xavier"; lname = Some "Leroy"))] |
-                   | ["http://host?fname=Xavier"]             | [Some ({fname = Some "Xavier"; lname = None})]         |
-                   | ["http://host?"]                         | [Some ({fname = None; lname = None})]                                            |
-                   | ["http://host"]                          | [Some ({fname = None; lname = None})]                                            |}
-            *)
-
-            val map3: ('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                three query parameters via [f].
-            *)
-
-
-            val map4:
-                ('a -> 'b -> 'c -> 'd -> 'e) ->
-                'a t ->
-                'b t ->
-                'c t ->
-                'd t ->
-                'e t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                four query parameters via [f].
-            *)
-
-
-            val map5:
-                ('a -> 'b -> 'c -> 'd -> 'e -> 'f) ->
-                'a t ->
-                'b t ->
-                'c t ->
-                'd t ->
-                'e t ->
-                'f t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                five query parameters via [f].
-            *)
-
-
-            val map6:
-                ('a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g) ->
-                'a t ->
-                'b t ->
-                'c t ->
-                'd t ->
-                'e t ->
-                'f t ->
-                'g t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                six query parameters via [f].
-            *)
-
-
-            val map7:
-                ('a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g -> 'h) ->
-                'a t ->
-                'b t ->
-                'c t ->
-                'd t ->
-                'e t ->
-                'f t ->
-                'g t ->
-                'h t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                seven query parameters via [f].
-            *)
-
-
-            val map8:
-                ('a -> 'b -> 'c -> 'd -> 'e -> 'f -> 'g -> 'h -> 'i) ->
-                'a t ->
-                'b t ->
-                'c t ->
-                'd t ->
-                'e t ->
-                'f t ->
-                'g t ->
-                'h t ->
-                'i t
-            (** [map f query_parser] transforms the [query_parser] which parses
-                eight query parameters via [f].
-            *)
-
         end
 
 

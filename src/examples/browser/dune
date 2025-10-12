@@ -113,7 +113,16 @@
 
 (executable
    (name single_page)
-   (modules single_page)
+   (modules
+     single_page
+     single_page_counter
+     single_page_clock
+     single_page_die
+     single_page_message
+     single_page_events
+     single_page_input
+     single_page_http
+   )
    (modes js)
    (libraries fmlib_browser)
 )

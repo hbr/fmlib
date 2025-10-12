@@ -20,6 +20,8 @@ changed but not the semantic interface.
     - Local and session storage implemented.
     - Added module 'Url' to parse and generate urls.
     - Added support for single page applications with access to the browser history.
+    - Modules 'Html' and 'Attribute' have now a complete set of nodes and
+      attributes.
 
 
 - `Fmlib_pretty`:

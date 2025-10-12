@@ -2,7 +2,7 @@
 
 {{!page-doc_overview} Overview}
 {{!page-doc} Up}
-{{!page-doc_single_page_application} Writing a single-page application}
+{{!page-doc_single_page_application} Single Page Application}
 
 
 
@@ -26,9 +26,9 @@ source file which implements the application.
     (* file: bin/counter.ml *)
     open Fmlib_browser
 
-    (* Strictly speaking, we could omit that [state] type and replace it with [int]
-      in the code for a smaller, cleaner example. We use it to demonstrate how
-      to define and use the state type in larger applications. *)
+    (* Strictly speaking, we could omit that [state] type and replace it with
+    [int] in the code for a smaller, cleaner example. We use it to demonstrate
+    how to define and use the state type in larger applications. *)
     type state = {
       counter: int
     }
@@ -61,7 +61,8 @@ source file which implements the application.
             {counter = counter + 1}
 
     let _ =
-        sandbox            (* very simple applications are sandbox applications *)
+        sandbox            (* very simple applications are
+                              sandbox applications *)
             {counter = 0}  (* initial state *)
             view           (* view function *)
             update         (* update function *)
@@ -108,7 +109,7 @@ diagnostic information.
 
 {1 Html file}
 
-Furthermore we need a html file.
+Furthermore we need an html file.
 
 {v
     <!-- file: index.html -->
@@ -190,7 +191,7 @@ We use a minimal view function to render the current time in a browser window.
         (html, "Digital clock")
 ]}
 
-For a full blown application the view function returns the virtual dom and the
+For an application the view function returns the virtual dom and the
 title of the page.
 
 
@@ -217,6 +218,9 @@ time.
 We need a message [Got_time time] each second independently from the system
 state. The time for repeating timers is expressed in milliseconds.
 
+For more subscriptions see
+module {{!module:Fmlib_browser.Subscription} Subscription}.
+
 
 In order to start the application we need an initial state and an initial
 command.
@@ -227,20 +231,21 @@ command.
 
     initial_command: msg Command =
         Command.batch [
-             Command.perform Task.(map (fun time -> Got_time time) now)
-             ;
-             Command.perform Task.(map (fun zone -> Got_time_zone zone) time_zone)
+            now (fun t -> Got_time t);
+            time_zone (fun z -> Got_time_zone z)
         ]
 ]}
 
-The task [now] returns the current posix time and the task [time_zone] returns
-the current time zone. However the application needs messages which can be fed
-into the update function. Therefore the results have to be mapped to messages.
-Unfortunately ocaml does not allow constructors to be used like functions,
-therefore two small anonymous function are needed to do the mapping.
+The command [now] returns the current time and the command  [time_zone] returns
+the current time zone. The commands need functions to map the time and the time
+zone into a message which can be fed into the update function.  Unfortunately
+ocaml does not allow constructors to be used like functions, therefore a small
+anonymous function is needed to do the mapping.
+
+For more commands see module {{!module:Fmlib_browser.Command} Command}.
 
 Initially we set the time to zero and the time zone to utc. This is evidently
-not correct. Therefore we immediately start commands which get the current
+not correct. Therefore we immediately start commands to get the current
 time and the current time zone.
 
 The application is started by
@@ -255,3 +260,10 @@ The application is started by
 ]}
 
 The corresponding dune and html files are the same as for the counter example.
+
+
+
+
+{{!page-doc_overview} Overview}
+{{!page-doc} Up}
+{{!page-doc_single_page_application} Single Page Application}

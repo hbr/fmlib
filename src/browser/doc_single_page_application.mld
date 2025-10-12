@@ -8,195 +8,427 @@
 
 {1 Single-page applications}
 
+{2 Motivation}
+
 On classical websites, changing to a different page means that a new HTML
 document is requested from the server. This is called a page load and can cause
 a noticeable delay and flickering as the new document is rendering.
+
+E.g. for online banking there might be several pages on the server
+{v
+    https://mybank.com/accounts/login.html
+    https://mybank.com/accounts/main.html
+    https://mybank.com/accounts/transfer.html
+    https://mybank.com/accounts/order.html
+    https://mybank.com/accounts/postbox.html
+    ...
+v}
+
+After the login sequence a main page is displayed which provides e.g. the
+financial status of your account. Next you might click on a link to make a
+money transfer to another account. Or might click on a link to buy some assets in
+your portfolio etc. From each specific page there is usually a link to the main
+page.
+
+A clickable link on the different pages has the form
+{v
+    <a href=transfer.html>Money transfer</a>
+v}
+
+Usually relative links are used to request specific page of the account
+management. The browser resolves the relative link to the absolute link
+{v
+    https://mybank.com/accounts/transfer.html
+v}
+
+Each different activity on the account requires a separate page load. For the
+web browser all pages are completely independent. The web server has to manage
+state and session data which have to be transferred back and forth on each page
+load.
+
 
 In single-page applications, there is only a single page load (hence the name):
 the inital one. Instead of downloading one HTML document per page, the frontend
 code is responsible for implementing a "virtual page" concept. When changing
 pages, a virtual DOM algorithm replaces only parts of the DOM which can speed up
-rendering and reduce flickering. Such a virtual page consists of the following
-components:
+rendering and reduce flickering. Furthermore the browser can manage all state
+data.
+
+
+
+{2 Basic Mechanism}
+
+In single page applications the default action of a link (i.e. load a new page
+into the browser) is suppressed. All clicks on anchors are intercepted. A click
+on an anchor element is fed into a function [on_url_request] (see
+{!val:Fmlib_browser.application}) which gets the resolved (i.e. absolute) url,
+analyzes it and generates a message which is fed into the update function of the
+application.
+
+The update function decides what to do. If the update function ignores the
+message, then nothing happens. Usually the update function gets with the message
+enough information to decide if the clicked link belongs to the application or
+requires a page load. If the link does not point to the application then the
+update function can isssue a command to trigger a page load. If the link belongs
+to the application the update function usually issues a command to push the new url
+into the browser history.
+
+The command {{!val:Fmlib_browser.Command.push_url}[push_url]} enters the new url
+to the browser history and generates an event which is fed into a function
+[on_url_change] (see {!val:Fmlib_browser.application}). This function gets the
+new url, analyzes it and generates a message which is fed into the update
+function. By receiving this message the application switches to the new page.
+
+Alternatively the command {{!val:Fmlib_browser.Command.push_url}[replace_url]}
+can be used to replace the current entry in the browser history with the new
+url. Then the new url generates via [on_url_change] a message which is fed into
+the update function and trigger the switching to the new page.
+
+Switching to an external page by triggering a page load is a one step process.
+The link is clicked, it goes through the [on_url_request] function and then the
+page load is triggered.
+
+Switching to an internal page is a two stage process. The link is clicked, it
+goes through the [on_url_request] and generates a [push_url] or [replace_url]
+command. This generates an event where the new url is fed into the
+[on_url_change] function which generates a message to change to the new virtual
+page.
+
+Summary:
+{ol
+    {- User clicks on an anchor element with an href attribute}
+    {- Resolved url generates via [on_url_request] a message which is fed into
+    the update function}
+    {- Update function decides what to do:
+        {ul
+            {- Load an external page}
+            {- Generate an new entry in the browser history
+               via {{!val:Fmlib_browser.Command.push_url}[push_url]} or replace
+               the current entry in the browser history via
+                {{!val:Fmlib_browser.Command.push_url}[replace_url]}}
+        }}
+    {- In case a new url is pushed into the browser history or the current url
+    in the browser history is replaced: The new url generates via
+    [on_url_change] a message which is fed into the update function.}
+    {- The update function changes the state such that it represents the new
+    url}
+}
+
+
+{2 Using the Browser History}
+
+A switch to a different internal page of the application creates a new entry
+into the browser history. The user might press the back button (maybe several
+times) or the forward button. As long as the url in the corresponding entry of
+the browser history belongs to the single page application, the browser does not
+trigger a page load. It just creates an event which is fed into the
+[on_url_change] function which creates a message which is then fed into the
+update function.
+
+I.e. moving through the browser history of the single page application by
+pressing the forward or backward button of the browser is a one stage process.
+The button is clicked, the new url is fed into the [on_url_change] function to
+generate a message which is sent to the update function. The update function
+switches to the new internal page.
+
+The user can move through the browser history by pressing the back or forward
+button of the browser. Alternatively moving through the browser history can be
+triggered by the commands {!val:Fmlib_browser.Command.back} and
+{!val:Fmlib_browser.Command.forward}.
+
+It is an important decision whether to switch to a new virtual page via the
+[push_url] or the [replace_url] command. The [push_url] command enables the user
+to switch arbitrarily between the virtual pages of the single page application
+by pressing the back and forward button of the browser. If the [replace_url]
+command is used, no new entry is entered into the browser history. Therefore the
+user can use only the interfaces of the single page application to switch
+between the virtual pages. Usually the [push_url] commands is used to switch
+between relatively independent virtual pages of the single page application. If
+the virtual pages are tightly coupled like e.g. in a banking application the
+command [replace_url] might be the better choice.
+
+Summary:
 
 {ol
-  {- the HTML snippet (virtual DOM) that defines what will be visible on the page}
-  {- the page title}
-  {-the state (a.k.a. model) of the page}
-  {-the application logic that defines the behaviour of the page}
-  {- optionally, some subscriptions the page depends on}}
-
-In addition, we need to define a "routing" mechanism. A route is a URL
-identifying a page. For example, the route ["/about"] might belong to the about
-page of our application. The routing mechanism has to make sure that for a valid
-route, the corresponding page contents are shown. It is also responsible for
-updating the browser's address bar, when changing to a different route.
+    {- The user presses the back or forward button or the command [Command.back]
+    or [Command.forward] is issued.}
+    {- The new url generates via the [on_url_change] a message which is fed into
+    the update function.}
+    {- The update function switches to a state representing the new url.}
+}
 
 
 
-{1 Defining the pages}
+{1 Example}
 
-For this simple example, we will reuse the {{!page-doc_overview} counter} and
-the {{!page-doc_getting_started} digital clock} examples from before and turn
-them into pages. In addition, we will define a "not found" page, that acts as a
-fallback for the case an invalid route was requested.
 
-We define the "counter" page and the "digital clock" page as modules. Both
-modules define the following functions:
+{2 Counter and Digital Clock}
 
-- [init] returns the initial state and command
-- [update] takes the state and a message and returns an updated state and a
-  command
-- [view] takes the state and returns an HTML snippet and the page title
-- [subscriptions] takes the state and returns a set of subscriptions
-  ("digital clock" page only)
+In order to demonstrate the implementation of a single page application we merge
+the counter and the digital clock applications shown in the chapter
+{{!page-doc_getting_started} Getting Started}
+into a single page application.
 
-These functions should seem very familiar. They are the same functions that we
-previously passed to [basic_application], now we just define them separately for
-each page. Each page defines a separate [msg] and [state] type, too.
+A single page application with more subapplications can be found at
+{: https://github.com/hbr/fmlib/tree/master/src/examples/browser} with the files
+[single_page.ml], [single_page_counter.ml], ...
+
+The counter page and the digital clock page are completely independent,
+therefore we use the command [push_url] to switch between the virtual pages and
+the user can arbitrarily push the back and forward button of the browser.
+
+We assume that the single page application is on a webserver at
+{v
+    /fmlib/webapp
+v}
+i.e. on the webserver there are the files
+{v
+    /fmlib/webapp/single_page.html
+    /fmlib/webapp/single_page.js
+v}
+i.e. the single page application is loaded by letting the browser load the url
+{v
+    https:/hbr.github.io/fmlib/webapp/single_page.html
+v}
+with a single load (i.e. it loads the html file and the javascript file).
+
+
+
+{2 Defining the pages}
+
+Our example has 3 virtual pages:
+{ol
+    {- A home page offering a menu to switch between the pages.}
+    {- A page representing the counter.}
+    {- A page representing the digital clock.}
+}
+
+In this simple example it makes sense to run the different pages in parallel
+i.e. the clock application maintains its state and gets each second an update of
+the current time even if it is not the current page and the counter page
+maintains its state even if it is not the current page.
+
+In a more complex single page application the structure might be completely
+different.
+
+It is convenient to put the logic of each page into an ocaml module. Each module
+in our example satisfies the signature
+{[
+    module type PAGE =
+    sig
+        type msg
+        type state
+        val init:   state * msg Command.t
+        val view:   state -> msg Html.t * string (* Virtual dom and
+                                                    a title string *)
+        val update: state -> msg -> state * msg Command.t
+        val subscriptions: state -> msg Subscription.t
+    end
+]}
+
+First we define the home page which has no internal logic and just displays a
+menu to switch the counter or the digital clock.
+
+{[
+    module Home_page =
+    struct
+        type msg = |        (* The home page does not receive messages. *)
+        type state = unit   (* No interesting state. *)
+        let init: state * msg Command.t = (), Command.none
+        let view (_: state): 'a Html.t =
+            (* There are no messages, therefore ['a Html.t] is possible. *)
+            let open Html in
+            let open Attribute in
+            ( ul [] [
+                    li [] [href "counter"];
+                    li [] [href "digital clock"];
+              ]
+            )
+        let update (): msg -> state * msg Command.t =
+            function
+            | _ -> .       (* No messages, therefore no call to the update
+                              function possible. *)
+        let subscriptions (_: state): msg Subscription.t =
+            assert false (* Illegal call *)
+    end
+]}
+
+The modules [Counter_page] and [Digital_clock_page] can be defined easily by
+using the implementations shown in the chapter
+{{!page-doc_getting_started} Getting Started}.
 
 {[
     module Counter_page =
     struct
-        type state = int
-
         type msg = Increment | Decrement
-
-        let init: state * msg Command.t =
-            (0, Command.none)
-
-        let update (state: state) (msg: msg): state * msg Command.t =
-            match msg with
-            | Increment ->
-                (state + 1, Command.none)
-            | Decrement ->
-                (state - 1, Command.none)
-
-        let view (state: state): msg Html.t * string =
-            let open Html in
-            let open Attribute in
-            let html =
-                div []
-                    [
-                        button [on_click Increment] [text "^"];
-                        div [style "font-size" "2em"]
-                            [text (" " ^ string_of_int state ^ " ")];
-                        button [on_click Decrement] [text "v"];
-                    ]
-            in
-            (html, "Counter")
+        type state = {counter: int}
+        let init: state * msg Command.t = {counter = 0}, Command.none
+        let view (s: state): msg Html.t  =
+            ...
+        let update = ...
+        let subscriptions = fun _ _ = assert false (* Illegal call *)
     end
 
-
-    module Digital_clock_page =
+    module Clock_page =
     struct
-        type state =
-            {
-                time: Time.t;
-                zone: Time.Zone.t;
-            }
+        type msg = | Got_time of Time.t | Got_time_zone of Time.Zone.t
+        type state = {time: Time.t; zone: Time.Zone.t}
 
-        type msg = Got_time of Time.t | Got_time_zone of Time.Zone.t
-
-        let init: state * msg Command.t =
-            let command =
-                let open Command in
-                batch
-                    [
-                        now (fun t -> Got_time t);
-                        time_zone (fun z -> Got_time_zone z)
-                    ]
-            in
-            ({time = Time.zero; zone = Time.Zone.utc}, command)
-
-        let update (state: state) (msg: msg): state * msg Command.t =
-            match msg with
-            | Got_time time ->
-                ({state with time}, Command.none)
-            | Got_time_zone zone ->
-                ({state with zone}, Command.none)
-
-        let subscriptions (_state: state): msg Subscription.t =
-            Subscription.every 1000 (fun t -> Got_time t)
-
-        let view (state: state): msg Html.t * string =
-            let open Html in
-            let html =
-                h2
-                    []
-                    [text (
-                        Printf.sprintf "%02d:%02d:%02d"
-                            (Time.hour   state.time state.zone)
-                            (Time.minute state.time state.zone)
-                            (Time.second state.time state.zone))
-                    ]
-            in
-            (html, "Digital clock")
+        let init = ...
+        let view = ...
+        let subscription = ...
     end
 ]}
 
-The "not found" page only has static contents, that's why it only needs a [view]
-function:
+
+
+
+{2 Messages and State}
+
+In the single page application we need global messages and a global state and an
+indicator for the current page.
 
 {[
-    module Not_found_page =
-    struct
-        let view (): 'msg Html.t * string =
-            let open Html in
-            let html = div [] [text "Not found"] in
-            (html, "Page not found")
-    end
+    type msg =
+        | Clicked_link of Navigation.url_request
+        | Changed_url of Url.t
+        | Got_counter_msg of Counter_page.msg
+        | Got_clock_msg   of Clock_page.msg
+
+    type page = Home | Counter | Clock (* The current page *)
+
+    type state = {
+        key: msg Navigation.key; (* The navigation key is needed
+                                    for [push_url] *)
+        counter: Counter_page.state;
+        clock:   Clock_page.state;
+        page:    page;
+    }
+
+    (* Ocaml does not allow to use constructors as functions, therefore the
+       following functions are convenient. *)
+
+    let counter_msg m = Got_counter_msg m
+    let clock_msg m   = Got_clock_msg   m
+]}
+
+Note that the states of the counter page and the clock page are present in the global
+state even if they are not the current pages. No state of the home page is
+needed in this simple example, because the state of the home page is trivial.
+
+
+
+
+
+
+
+{2 View}
+
+We present all virtual pages in a common format
+{v
+    Home button                             link to documentation
+
+    Headline for the virtual page
+
+    Virtual page
+v}
+
+The function [view_frame] displays a specific page in a common format.
+{[
+    let view_page
+        (page: msg Html.t) (headline: string)
+        : msg Html.t * string
+        =
+        let open Html in
+        let open Attribute in
+        div [] [
+            nav [margin "20px"] [
+                a [href "single_page.html"] [text "Home"];
+                a [href "... link to documentation ...";
+                   style "float" "right"]
+                  [text "documentation"]
+            ];
+            div [margin "20px";
+                 border_style "solid";
+                 padding "0px 20px 20px 20px"]
+                [ h2 [] [text headline];
+                  page
+                ]
+        ]
 ]}
 
 
 
-{1 Defining routes}
+We get the virtual dom of the pages by calling the [view] function of the
+corresponding page. In order to get a virtual dom for the single page app the
+virtual dom of the specific page (except the home pages which has no messages)
+has to be mapped to a part of the virtual dom of the whole app.
+{[
+    let page_html (state: state): msg Html.t * string =
+        match state.page with
+        | Home ->
+            Home_page.view (), (* trivial state, no mapping needed *)
+            "Home"
+        | Counter ->
+            Counter_page.view state.counter |> Html.map counter_msg,
+            "Counter"
+        | Clock ->
+            Clock_page.view state.clock |> Html.map clock_msg,
+            "Clock"
+]}
 
-We add a module [Route] that defines the three different routes in a variant
-type. [of_url] parses the route from a [Url.t] and [href] produces a link
-attribute for use in anchor tags.
+With these functions it is easy to write the view function for the single page
+application.
 
 {[
-    module Route =
-    struct
-        type t =
-            | Not_found
-            | Counter
-            | Digital_clock
-
-        let of_url (url: Url.t): t =
-            let parser =
-                let open Url.Parser in
-                one_of
-                    [
-                        map Counter (s "counter");
-                        map Digital_clock (s "digital_clock");
-                    ]
+    let view (state: state): msg Html.t * string =
+            let page, title = page_html state
             in
-            url
-            |> Url.Parser.parse parser
-            |> Option.value ~default:Not_found
-
-        let href (route: t): 'msg Attribute.t =
-            let path =
-                match route with
-                | Not_found ->
-                    "/not_found"
-                | Counter ->
-                    "/counter"
-                | Digital_clock ->
-                    "/digital_clock"
-            in
-            Attribute.href path
-    end
+            view_page page title, title
 ]}
 
-[of_url] uses the functions [one_of], [map] and [s] from the
+
+
+
+
+
+
+{2 Update}
+
+
+In order to route to the correct virtual page we need a function which parses
+the internal url and returns the correct page.
+
+{[
+
+    let route (url: Url.t): page =
+        (* Find the new page by parsing the internal url. *)
+        let open Url.Parser in
+        match
+            parse
+                ( s "fmlib" </>
+                  s "webapp" </>
+                  one_of [
+                    map Home    (s "single_page.html")
+                    map Counter (s "counter");
+                    map Clock   (s "clock");
+                  ])
+                url
+        with
+        | None ->
+            assert false (* Cannot happen, one path must match. *)
+        | Some page ->
+            page
+]}
+
+[route] uses the functions [one_of], [map] and [s] from the
 {{!Fmlib_browser.Url.Parser} Url.Parser} module. Each of these functions returns
 a path parser (for parsing the [path] of a [Url.t]):
 
+- [s "fmlib"] tries to consume the path segment "fmlib"
+- [s "webapp"] tries to consume the path segment "webapp"
 - [s "counter"] tries to consume the path segment "counter"
-- [map Counter p] produces the value [Counter] of type [Route.t] if
+- [map Counter p] produces the value [Counter] of type [page] if
   the parser [p] is successful
 - [one_of] combines multiple path parsers and yields the result of the first
   successful one
@@ -207,11 +439,67 @@ and might seem very unfamiliar to developers who are new to functional
 programming. For now it is sufficient to understand, that it allows us to
 combine several "sub-parsers", each parsing a specific route, into a bigger
 parser. This parser is then passed to [Url.Parser.parse], which either returns
-[Some route] or [None].
+[Some page] or [None].
+
+
+With the help of the [route] function it is easy to write the update function.
+Note that an {{!type:Fmlib_browser.Navigation.url_request} url request} is
+external only if it has a different origin than the web application, but a url
+on the same origin might point to a different application. Therefore we have to
+analyze an internal url as well.
+
+A message arriving for a specific page is forwarded to the correct module with
+the appropriate mapping of the messages.
+
+{[
+    let update (state: state): msg -> state * msg Command.t =
+        function
+        | Clicked_link (External e) ->
+            state, Command.load e
+
+        | Clicked_link (Internal i) ->
+            let url = Url.to_string i
+            in
+            state,
+            if String.starts_with ~prefix:"/fmlib_webapp" i.path then
+                Command.push_url state.key url
+            else
+                (* Link to the documentation might be on the same server *)
+                Command.load url *)
+
+        | Changed_url url ->
+            {state with page = route url},
+            Command.none
+
+        | Got_counter_msg msg ->
+            let counter, cmd = Counter_page.update state.counter msg in
+            {state with counter}, Command.map counter_msg cmd
+
+        | Got_clock_msg msg ->
+            let counter, cmd = Clock_page.update state.clock msg in
+            {state with clock}, Command.map clock_msg cmd
+
+]}
 
 
 
-{1 Glueing it all together}
+
+{2 Subscriptions}
+
+Only the digital clock page has subscriptions to timer events.
+
+{[
+    let subscriptions (state: state): msg Command.t =
+        Single_page.subscriptions state.clock
+        |> Command.map clock_msg
+]}
+
+
+
+
+
+
+{2 Glueing it all together}
 
 The goal is to call {{!Fmlib_browser.application} application} which produces
 the most fully-featured kind of application of this library:
@@ -241,146 +529,12 @@ application from Javascript. The last two arguments are for URL management:
 See module {{!Fmlib_browser.Navigation} Navigation} for more information about
 URL management.
 
-The only missing parts are [init], [update], [view] and [subscriptions]. One
-issue we have is that all these functions operate on a single [state] type and
-a single [msg] type, but for our pages, we defined multiple "sub state" types
-and "sub message" types.
-
-We resolve this by defining a new [msg] type, that combines the "sub message"
-types (also including [Clicked_link] and [Changed_url] mentioned above), and a
-new [page] type that combines the "sub state" types:
-
-{[
-    type msg =
-        | Clicked_link of Navigation.url_request
-        | Changed_url of Url.t
-        | Got_counter_msg of Counter_page.msg
-        | Got_digital_clock_msg of Digital_clock_page.msg
-
-    type page =
-        | Not_found
-        | Counter of Counter_page.state
-        | Digital_clock of Digital_clock_page.state
-]}
-
-The [page] type is called [page] and not [state] because we need one more
-building block for defining a [state] type: a {{!Fmlib_browser.Navigation.key}
-navigation key}. This is a token that is required for performing navigation
-commands such as  {{!Fmlib_browser.Command.push_url}push_url} (for updating the
-browser's address bar). The navigation key is passed to us through the [init]
-function and we need to store it in addition to the page state. Thus our [state]
-type can now be defined:
-
-{[
-    type state =
-    {
-        key: msg Navigation.key;
-        page: page;
-    }
-]}
-
-Implementing [init], [update], [view] and [subscriptions] is now mostly a matter
-of calling their counterparts from the page modules and mapping the resulting
-"sub states" and "sub messages" to the application's [state] and [msg] types.
-
-{[
-    (* helper function used by both init and update *)
-    let change_page_to (url: Url.t) (key: msg Navigation.key): state * msg Command.t =
-        let map_state_and_msg to_page to_msg (page_state, page_cmd) =
-            ({page = to_page page_state; key}, Command.map to_msg page_cmd)
-        in
-        match Route.of_url url with
-        | Not_found ->
-            ({page = Not_found; key}, Command.none)
-        | Counter ->
-            Counter_page.init
-            |> map_state_and_msg
-                (fun s -> Counter s)
-                (fun m -> Got_counter_msg m)
-        | Digital_clock ->
-            Digital_clock_page.init
-            |> map_state_and_msg
-                (fun s -> Digital_clock s)
-                (fun m -> Got_digital_clock_msg m)
-
-    let init (url: Url.t) (key: msg Navigation.key): (state * msg Command.t) Decoder.t =
-        Decoder.(return (change_page_to url key))
-
-    let update (state: state) (msg: msg): state * msg Command.t =
-        let map_state_and_msg to_page to_msg (page_state, page_cmd) =
-            ({state with page = to_page page_state}, Command.map to_msg page_cmd)
-        in
-        match (msg, state.page) with
-        | (Clicked_link req, _) ->
-            let cmd =
-                match req with
-                | External e ->
-                    Command.load e
-                | Internal i ->
-                    Command.push_url state.key (Url.to_string i)
-            in
-            (state, cmd)
-        | (Changed_url url, _) ->
-            change_page_to url state.key
-        | (Got_counter_msg page_msg, Counter page_state) ->
-            Counter_page.update page_state page_msg
-            |> map_state_and_msg
-                (fun s -> Counter s)
-                (fun m -> Got_counter_msg m)
-        | (Got_digital_clock_msg page_msg, Digital_clock page_state) ->
-            Digital_clock_page.update page_state page_msg
-            |> map_state_and_msg
-                (fun s -> Digital_clock s)
-                (fun m -> Got_digital_clock_msg m)
-        | (_, _) ->
-            (* Disregard messages that arrived for the wrong page *)
-            (state, Command.none)
-
-    let view (state: state): msg Html.t * string =
-        let open Html in
-        let map_msg to_msg (html, title) = (Html.map to_msg html, title) in
-        let (page_html, title) =
-            match state.page with
-            | Not_found ->
-                Not_found_page.view ()
-            | Counter page_state ->
-                Counter_page.view page_state
-                |> map_msg (fun m -> Got_counter_msg m)
-            | Digital_clock page_state ->
-                Digital_clock_page.view page_state
-                |> map_msg (fun m -> Got_digital_clock_msg m)
-        in
-        let html =
-            div []
-                [
-                    ul []
-                        [
-                            li [] [ node "a" [Route.href Counter] [text "Counter"] ];
-                            li [] [ node "a" [Route.href Digital_clock] [text "Digital clock"] ];
-                        ];
-                    h2 [] [text title];
-                    page_html;
-                ];
-        in
-        (html, title)
-
-    let subscriptions (state: state): msg Subscription.t =
-        let map_msg to_msg subs = Subscription.map to_msg subs in
-        match state.page with
-        | Not_found ->
-            Subscription.none
-        | Counter _ ->
-            Subscription.none
-            |> map_msg (fun m -> Got_counter_msg m)
-        | Digital_clock page_state ->
-            Digital_clock_page.subscriptions page_state
-            |> map_msg (fun m -> Got_digital_clock_msg m)
-
-]}
 
 
 
-{1 Instantiating the application from HTML}
+
+
+{2 Instantiating the application from HTML}
 
 Compilation works the same as in the {{!page-doc_getting_started} previous example}
 but the instantiation from HTML works slightly differently:
@@ -415,7 +569,7 @@ Here, we simply pass [null] and an empty function.
 Note, that to run this example, we need a webserver, that serves this HTML
 document. Simply storing it into an [index.html] file and open it in the browser
 will not work, because that gives us a [file] URL, but only [http] or [https]
-URL are supported by this library.
+URLs are supported by this library.
 
 We can run [python3 -m http.server] or write a webserver in OCaml (see
 [examples/browser/single_page_backend.ml] for an example).
