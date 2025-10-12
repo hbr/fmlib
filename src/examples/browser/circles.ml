@@ -166,7 +166,7 @@ let update (state: state): msg -> state =
 
 
 
-let view_circle (i: int) (circle: circle): msg Html.t =
+let view_circle (index: int) (circle: circle): msg Html.t =
     let open Html in
     let open Attribute in
     let int_attr key i =
@@ -177,14 +177,14 @@ let view_circle (i: int) (circle: circle): msg Html.t =
         [ int_attr "cx" circle.center_x
         ; int_attr "cy" circle.center_y
         ; int_attr "r"  circle.radius
-        ; on "mouseenter" Decoder.(return (Enter i))
-        ; on "mouseleave" Decoder.(return (Leave i))
+        ; on "mouseenter" Decoder.(return (Enter index))
+        ; on "mouseleave" Decoder.(return (Leave index))
         ; handler
                 "click"
                 Event_flag.stop (* stop, otherwise bubbles to svg which makes a
                                    new circle *)
                 Event_flag.no_prevent
-                Decoder.(return (Resizing (i, circle.radius)))
+                Decoder.(return (Resizing (index, circle.radius)))
         ; style "stroke" "black"
         ; style "stroke-width" "2"
         ; style
@@ -212,11 +212,11 @@ let view_resize (state: state): msg Html.t list =
     | Some (i, _) ->
         let circle = state.circles.(i) in
         [ input [
-              attribute "type" "range"
-            ; attribute "min" "10"
-            ; attribute "max" "100"
-            ; attribute "step" "1"
-            ; attribute "display" "block"
+              type_ "range"
+            ; min "10"
+            ; max "100"
+            ; step 1.0
+            ; style "display" "block"
             ; on_input
                   (fun value ->
                        match int_of_string_opt value with
@@ -250,9 +250,9 @@ let view (state: state): msg Html.t =
         ]
         :: svg_node
             "svg"
-            [ attribute "width" "600"
-            ; attribute "height" "400"
-            ; attribute "display" "block"
+            [ width 600
+            ; height 400
+            ; style "display" "block"
             ; border_style "solid"
             ; on "click" (
                   let open Decoder in
