@@ -1,8 +1,52 @@
 module type S =
 sig
-    type _ attr
-
     (** Virtual Dom *)
+
+    (**
+        A node of the virtual dom represents a node in the dom of the
+        browser. Basically there are text nodes and element nodes.
+    *)
+
+
+    (** {1 Possible Name Shadowing}
+
+        Note that there are many, many, many specific elements and many, many
+        specific attributes . I.e. if you write a function like
+        {[
+            let view ... =
+                let open Html in
+                let open Attribute in
+                div [] [
+                    h1 [] [text "Chapter 1"];
+                    p  [] [text "...."];
+                    ...
+                ]
+        ]}
+        some of the attribute names and html node names might shadow function
+        arguments or other local names in your module. Furthermore there are
+        nodes with the same name as an attribute (e.g. [label]). The name clash
+        might not be immediately visible because the OCaml compiler complains
+        about some type error.
+
+        In order to avoid a lot of typing by not opening the namespaces it might
+        be recommendable to write the above function in the following style
+        {[
+            let view ... =
+                let module H = Html in
+                let module A = Attribute in
+                H.div [] [
+                    H.h1 [] [text "Chapter 1"];
+                    H.p  [] [text "...."];
+                    ...
+                ]
+        ]}
+    *)
+
+
+
+    (** {1 Basic Interface} *)
+
+    type _ attr
 
 
     type 'msg t (** Type of a virtual dom node potentially generating a message
@@ -59,7 +103,45 @@ sig
 
 
 
-    (** {1 Content sectioning} *)
+    (** {1 Reference Nodes}
+
+        Reference nodes are nodes whose content is not controlled by the virtual
+        dom. In the virtual dom the reference nodes are inserted by their name.
+
+        The contents of reference nodes is controlled via
+        {!val:Command.set_reference}.
+
+        Reference nodes are persistent. Once referenced by {!val:reference} or
+        initialized or updated by {!val:Command.set_reference} they exist. Once
+        existing they can be modidfied by {!val:Command.set_reference}.
+
+        The virtual dom can use them or not. They remain in existence.
+
+        Reference nodes are a means to improve performance. In the following
+        examples reference nodes might be useful:
+
+        - Having an editor window in browser (e.g. CodeMirror): It does not make
+        sense and is quite difficult to control an editor window by the virtual
+        dome. It is better to create a reference node and let the internal state
+        of the editor handled by some other meanss (e.g. CodeMirror code)
+
+        - Spreadsheet with many cells: In a spreadsheet usully one cell is
+        updated and some cells whose content depends on the edited cell have to
+        be updated as well. Having a reference node for each cell makes it
+        possible to update only the edited its dependent cells. Having all
+        spreadsheet cells managed by the virtual dom requires a diffing of all
+        cells. This can become quite slow if the spreadsheet is large.
+     *)
+
+    val reference: string -> 'msg t
+    (**
+        Insert a reference element into the dom.
+    *)
+
+
+    (** {1 Specific elements} *)
+
+    (** {2 Content sectioning} *)
 
     val address: 'msg attr list -> 'msg t list -> 'msg t
     (** [address attrs children]
@@ -210,7 +292,7 @@ sig
 
 
 
-    (** {1 Text content} *)
+    (** {2 Text content} *)
 
     val blockquote: 'msg attr list -> 'msg t list -> 'msg t
     (** [blockquote attrs children]
@@ -336,7 +418,7 @@ sig
 
 
 
-    (** {1 Inline text semantics} *)
+    (** {2 Inline text semantics} *)
 
     val a: 'msg attr list -> 'msg t list -> 'msg t
     (** [a attrs children]
@@ -597,7 +679,7 @@ sig
 
 
 
-    (** {1 Image and multimedia} *)
+    (** {2 Image and multimedia} *)
 
     val area: 'msg attr list -> 'msg t list -> 'msg t
     (** [area attrs children]
@@ -653,7 +735,7 @@ sig
 
 
 
-    (** {1 Embedded content} *)
+    (** {2 Embedded content} *)
 
     val embed: 'msg attr list -> 'msg t list -> 'msg t
     (** [embed attrs children]
@@ -712,7 +794,7 @@ sig
 
 
 
-    (** {1 Canvas} *)
+    (** {2 Canvas} *)
 
     val canvas: 'msg attr list -> 'msg t list -> 'msg t
     (** [canvas attrs children]
@@ -726,7 +808,7 @@ sig
 
 
 
-    (** {1 Demarcating edits} *)
+    (** {2 Demarcating edits} *)
 
     val del: 'msg attr list -> 'msg t list -> 'msg t
     (** [del attrs children]
@@ -747,7 +829,7 @@ sig
 
 
 
-    (** {1 Table content} *)
+    (** {2 Table content} *)
 
     val caption: 'msg attr list -> 'msg t list -> 'msg t
     (** [caption attrs children]
@@ -834,7 +916,7 @@ sig
 
 
 
-    (** {1 Forms} *)
+    (** {2 Forms} *)
 
     val button: 'msg attr list -> 'msg t list -> 'msg t
     (** [button attrs children]
@@ -965,7 +1047,7 @@ sig
 
 
 
-    (** {1 Interactive elements} *)
+    (** {2 Interactive elements} *)
 
     val details: 'msg attr list -> 'msg t list -> 'msg t
     (** [details attrs children]
@@ -996,41 +1078,4 @@ sig
         https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/summary
     *)
 
-
-
-
-    (** {1 Reference Nodes}
-
-        Reference nodes are nodes whose content is not controlled by the virtual
-        dom. In the virtual dom the reference nodes are inserted by their name.
-
-        The contents of reference nodes is controlled via
-        {!val:Command.set_reference}.
-
-        Reference nodes are persistent. Once referenced by {!val:reference} or
-        initialized or updated by {!val:Command.set_reference} they exist. Once
-        existing they can be modidfied by {!val:Command.set_reference}.
-
-        The virtual dom can use them or not. They remain in existence.
-
-        Reference nodes are a means to improve performance. In the following
-        examples reference nodes might be useful:
-
-        - Having an editor window in browser (e.g. CodeMirror): It does not make
-        sense and is quite difficult to control an editor window by the virtual
-        dome. It is better to create a reference node and let the internal state
-        of the editor handled by some other meanss (e.g. CodeMirror code)
-
-        - Spreadsheet with many cells: In a spreadsheet usully one cell is
-        updated and some cells whose content depends on the edited cell have to
-        be updated as well. Having a reference node for each cell makes it
-        possible to update only the edited its dependent cells. Having all
-        spreadsheet cells managed by the virtual dom requires a diffing of all
-        cells. This can become quite slow if the spreadsheet is large.
-     *)
-
-    val reference: string -> 'msg t
-    (**
-        Insert a reference element into the dom.
-    *)
 end

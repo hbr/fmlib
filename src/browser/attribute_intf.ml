@@ -30,6 +30,12 @@ sig
      *)
 
 
+    (** {1 Possible Name Shadowing}
+
+        There are many specific attributes which can shadow names. See the
+        corresponding chapter in {!module:Html}.
+    *)
+
     (** {1 Generic Interface}
      *)
 
@@ -118,12 +124,14 @@ sig
         ['msg].
 
         Starting from the event object information from the whole dom tree up to
-        the root can be decode. Each event object has a target (which is the
+        the root can be decoded. Each event object has a target (which is the
         element on which it is fired). The target element has a tag name, can
         have various properties etc. For more details on event objects see the
         {{: https://developer.mozilla.org/en-US/docs/Web/API/Event} event api}.
 
-        More information on {{!page-doc_event_handler} event handlers}.
+        The function [handler] is the most generic function to add an event
+        handler to a dom element. All specific handler below are implemented
+        using this generic function.
      *)
 
 
@@ -133,7 +141,12 @@ sig
     *)
 
 
-    (** {1 Handler} *)
+
+    (** {1 Common Handlers}
+
+        Some often used handlers. More complex handler can be implemented by
+        using {!val:handler}.
+    *)
 
     val on: string -> 'msg decoder -> 'msg t
     (** [on event_type decoder]
