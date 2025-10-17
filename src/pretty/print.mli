@@ -108,7 +108,10 @@ val char: char -> doc
 
 
 val fill: int -> char -> doc
-(** [fill n c] A document with [n] repetitions of the character [c]. *)
+(** [fill n c] A document with [n] repetitions of the character [c].
+
+    Precondition: 0 <= n
+*)
 
 
 val break: string -> doc
