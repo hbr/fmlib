@@ -13,8 +13,9 @@ end
 
 module Make (Parser: FAILED_PARSER) =
 struct
-    open Fmlib_pretty.Print
+    open Fmlib_pretty
 
+    type doc = Pretty.t
 
     type semantic = Parser.semantic
 
@@ -67,8 +68,8 @@ struct
         }
 
     let document (r: t): doc =
-        let open Parser
-        in
+        let open Pretty in
+        let open Parser in
         Source_extractor.document r.extractor
         <+> cut <+>
         (
@@ -81,13 +82,13 @@ struct
         )
 
 
-    let run_on_string (str: string) (r: t): Fmlib_pretty.Print.doc =
+    let run_on_string (str: string) (r: t): doc =
         {r with extractor =
                     Source_extractor.run_on_string str r.extractor}
         |> document
 
 
-    let run_on_channel (ic: in_channel) (r: t): Fmlib_pretty.Print.doc =
+    let run_on_channel (ic: in_channel) (r: t): doc =
         {r with extractor =
                     Source_extractor.run_on_channel ic r.extractor}
         |> document
@@ -100,7 +101,7 @@ struct
         : unit
         =
         assert (0 < width);
-        let open Fmlib_pretty.Print
+        let open Fmlib_pretty.Pretty
         in
         run_on_channel ic r
         |> layout width

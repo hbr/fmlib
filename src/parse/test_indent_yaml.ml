@@ -1,5 +1,7 @@
 module Yaml =
 struct
+    open Fmlib_pretty
+
     type t =
         | Scalar of string
         | List   of t list
@@ -12,9 +14,7 @@ struct
 
     let record lst = Record lst
 
-    module Pretty = Fmlib_pretty.Print
-
-    let rec to_doc: t -> Pretty.doc = function
+    let rec to_doc: t -> Pretty.t = function
         | Scalar str ->
             Pretty.text str
         | List lst ->
@@ -193,7 +193,7 @@ let parse: Parser.t =
         )
 
 
-module Pretty = Fmlib_pretty.Print
+open Fmlib_pretty
 
 
 

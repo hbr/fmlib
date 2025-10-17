@@ -1,6 +1,6 @@
 {0 Pretty Printing Overview}
 
-{{!page-index} Up} {{!Fmlib_pretty.Print} API}
+{{!page-index} Up} {{!Fmlib_pretty.Pretty} API}
 
 
 {1 Basics}
@@ -15,8 +15,10 @@ are
 - [break str] Break hint with alternative text [str].
 - [doc2 <+> doc2] Concatenation of the documents [doc1] and [doc2]
 - [nest indent doc] Indented document.
-- [group doc] Treat all top level break hints of [doc] consistently i.e.
-either print all break hints with their alternative text or as a newline.
+- [group doc] Treat all top level break hints of [doc] consistently i.e.  either
+  print all break hints with their alternative text or as a newline. If a group
+  is flattened (i.e. break hints printed with their alternative text) when all
+  inner groups are flattened as well.
 
 With these primitives a surprisingly rich set of formattings can be made.
 
@@ -24,12 +26,12 @@ The user generates documents not only by using the primitives. There are a
 lot of convenience functions to make document generation easy.
 
 Document creation is done lazily. Only very few resources are consumed in
-producing a document. The work starts with the layout function. The layout
-function does the layout and never buffers more than one line.
+producing a document. The work starts with the layout function. The
+{!val:Fmlib_pretty.Pretty.layout}
+function does the layout and never processes more than one line.
 
-Layout is done lazily as well. The layout generates a stream of characters.
-Lines are formatted only if the characters of the line are pulled out of the
-stream.
+The layout generates a stream of characters.  Lines are formatted only if the
+characters of the line are pulled out of the stream.
 
 If you just create a document and layout it but you never use the stream,
 then no work is done.
@@ -71,9 +73,17 @@ The command
 
 {[let stream = layout 5 doc ]}
 
-creates a stream of characters which is nicely formatted using a desired
-line width of 5 characters. Since 5 characters are not enough to put any of
-the subterms completely on a line, the output is
+creates a stream of characters
+(i.e. an element of type {!type:Fmlib_pretty.Pretty.Stream.t})
+which is nicely formatted using a desired line width of 5 characters.
+
+Character streams of type {!type:Fmlib_pretty.Pretty.Stream.t} can be read
+character by character (see {!module:Fmlib_pretty.Pretty.Stream}) or written to an
+ouput channel by {!val:Fmlib_pretty.Pretty.write_to_channel} or converted to a
+plain string by {!val:Fmlib_pretty.Pretty.to_string}.
+
+Since 5 characters are not enough to put any of the subterms completely on a
+line, the output is
 
 {[
 123456789012345
@@ -140,18 +150,13 @@ because the pretty printer cannot pack [(g c d)] and [d] on a single line.
 
 {1 Character Stream}
 
-The basic type [t] of the pretty printer is a lazy character stream. I.e.
-characters are only generated if needed. The pretty printer implements the
-interface {!Fmlib_std.Interfaces.SOURCE} to represent a character stream.
-You can ask the stream [has_more r] whether there are more characters in the
-stream and [peek r] to get the next character. The instruction [advance r]
-returns the stream [r] advanced by one character position.
+The type {!type:Fmlib_pretty.Pretty.Stream.t} of the pretty printer is a lazy
+character stream. I.e.  characters are only generated if needed. The pretty
+printer implements the interface {!Fmlib_std.Interfaces.SOURCE} to represent a
+character stream.  You can ask the stream [has_more r] whether there are more
+characters in the stream and [peek r] to get the next character. The instruction
+[advance r] returns the stream [r] advanced by one character position.
 
-The pretty printer has a function [string_of r] to return a string
-representation of the character stream.
-
-However you very rarely need a string representation of a character stream.
-All functions in [Fmlib] are able to handle character streams.
 
 
 
@@ -241,7 +246,7 @@ let doc_of_tree (tree: tree): doc =
             doc false last
         | head :: tail ->
             doc false head <+> space
-            >> children tail    (* Lazy concatenation!! *)
+            +|  children tail    (* Lazy concatenation!! *)
         | [] ->
             assert false (* 'lst' is never empty *)
     in
@@ -272,12 +277,12 @@ f
 ]}
 
 
-Note the usage of the lazy concatentation operator [>>] in the recursive
+Note the usage of the lazy concatentation operator [+|] in the recursive
 part of the function handling the children. This makes sure that even if the
-tree structure is hugh, the iteration over it is done only on demand. I.e.
+tree structure is very big, the iteration over it is done only on demand. I.e.
 recursive calls are made only if the corresponding characters are needed
 when processing the character stream.
 
 
 
-{{!page-index} Up} {{!Fmlib_pretty.Print} API}
+{{!page-index} Up} {{!Fmlib_pretty.Pretty} API}

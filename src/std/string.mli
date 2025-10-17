@@ -116,7 +116,7 @@ end
 
 
 (** Conversion of a source of characters to a string. *)
-module From_source (S: Interfaces.SOURCE with type item = char):
+module From_source (S: Interfaces.SOURCE with type item := char):
 sig
     val make: S.t -> t
     (** [make s] Convert the stream [s] of characters to a string. *)

@@ -1,3 +1,215 @@
+(*  Note [Basic Definitions]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    The document structure is represented by a sequence of
+
+    - T:    Text block (not empty)
+    - B:    Break hint
+    - '['   Start group
+    - ']'   End group
+    - '<'   Start of indentation
+    _ '>'   End of indentation
+
+    which is properly nested.
+
+    Example:
+
+        T T B [T B < T > B < [ T T T B] > ]
+
+    Break hints directly belonging to a group are either all effective or all
+    flattened. If the break hints of a group are flattened then all break hints
+    in the inner groups are flattened as well. The reverse is not true. In inner
+    group can be flattened and an outer group can be effective.
+
+    An indentation becomes effective after the next effective break. A text
+    block immediately following an effective break must be indented before
+    printing.
+
+    Indentation are best represented by a cumulated indentation i.e. for each
+    text block it has to be clear to which indentation level it belongs.
+
+    Having a decision for each group (effective or flattened) the layout is
+    fixed and can be printed.
+*)
+
+(*  Note [Transformation]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    In the following we assume that for each text block the cumulated
+    indentation level is known and therefore ignore the indentations.
+
+    The following transformations do not change the layout:
+
+    - A text block after the beginning of a group can be put before the group
+    and a text block after the end of the group can be moved inside the group
+
+        [ T ... ]           ~>      T [ ... ]
+        [ ... ] T           ~>      [ ... T ]
+
+        Reason: All break remain in the same group, flattening decisions are not
+        affected.
+
+    The document
+
+        T T B [T [B]  T  B  [ T T T B]  ]
+
+    can be transformed to
+
+        T T B T [[B T] B T T T [B] ]
+
+    After the transformation each group starts with a break or a complete group.
+*)
+
+
+(*  Note [Normalized Document]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    A document is a string of zero or more
+
+        - B:   break hint
+        - T:   text block
+        - '[‘: start group
+        - ']‘: end group
+
+    where all groups are properly nested and for each text block the indentation
+    level is known.
+
+    We put the whole document in a group i.e. doc = [ ... ].
+
+    We get the normalized document by applying the above transformation as often
+    as possible (pull out a text block from after the start of a group, push a
+    text block immediately follwing a group into the group).
+
+    The normalized document has the structure:
+
+        doc     ::=     T* group
+        group   ::=     [ content ]
+        content ::=     group* chunk*
+        chunk   ::=     B T* group*
+
+    Reason:
+
+        - A sequence of text blocks can be pulled out and put in front of the
+          the outermost group.
+
+        - Each group starts either with an inner group or a break hint.
+
+        - A chunk is a break hint followed by zero or more text blocks and zero
+          or more groups. The text blocks of a chunk are pulled out from the
+          first group of the chunk.
+
+    Each normalized document has an outermost group (possibly empty).
+    The outermost group is always effective.
+*)
+
+
+
+(*  Note [Break Decisions]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Basics
+    ======================================================================
+    Pretty printing is scanning the document from left to right and decide for
+    each group if its direct break hints are effective or flattened. A
+    flattening decision is applied also to all inner groups.
+
+    We separate the document into 3 parts:
+
+        doc = head; buf; rest
+
+    where  all break hints in head are decided, buf contains only undecided
+    break hints and rest is the remainder of the document.
+
+    Initially head and buf are empty and rest contains the complete document.
+
+    A buffer is a list of incomplete groups i.e. we have the following grammar
+
+        buf     ::=     ([ content)*
+        group   ::=     [ content ]
+        content ::=     group* chunk*
+        chunk   ::=     B T* group*
+        doc     ::=     T* group
+
+    The buffer has a certain character length. The buffer is either empty or its
+    length satisfies the invariants
+
+        pos + |buf] <= width
+        |buf|     <= ribbon
+
+    where pos is the position on the line after printing the head (including the
+    indentiation if the last item in the head is an effective break).
+
+    Scanning the document left to right triggers the following actions:
+
+    If the item is at the top level or belongs to an effective group, then the
+    buffer is empty and the item is appended to the head.
+
+    Filling the buffer
+    ======================================================================
+    If the item belongs to a not yet decided group, then it has to be added to
+    the buffer.
+
+    If the buffer is empty, then the item is a start of a group followed by another
+    group or a break hint. In this case item starts the first incomplete group
+    in the buffer.
+
+    Now we consider the cases for non empty buffers:
+
+    1. The item is the start of a group. A new incomplete inner group is added
+    to the buffer.
+
+    2. The item is a break hint. A new chunk is appended to the chunks of the
+    innermost incomplete group.
+
+    3. The item is an end of group. This event closes the innermost incomplete
+    group from "[ group* chunk*" to "[ group* chunk* ]" and the group is
+    therefore no longer incomplete (form "[ group* chunk*").
+
+        3.1 The buffer has only one incomplete group: Since the buffer satisfies
+        the invariant, the now complete group fits on the current line and can
+        be appended as flattened group to the head and the buffer becomes empty.
+
+        3.2 The buffer has at least two incomplete groups: The situation in the
+        buffer looks like
+
+            [ ... [ group* chunk* [ group* chunk*
+
+        The last incomplete group becomes closed and is appended as a complete
+        group either to group* if there are no chunks in the outer group or to
+        the last chunk in chunk*.
+
+    4. The item is a text block. This innermost group has the form
+
+        [ group* chunk*
+
+       where a chunk has the general form "B T* group*". However a complete
+       group cannot be followed by a text block because of normalisation
+       (pushing text blocks following a group into the group). Therefore there
+       is a least one chunk in the incomplete group and the chunk does not end
+       with a complete group.
+
+       The text block is appended to the last chunk of the incomplete group.
+
+
+    Decisions
+    ======================================================================
+    The adding of a text block or a break hint to the buffer might violate the
+    invariant (cases 2 and 4). This is fixed by pulling out incomplete groups
+    from the buffer until the invariant is satisfied or the buffer is empty.
+
+    All pulled out incomplete groups are decided to be effective and appended to
+    the head.
+
+    Note that appending incomplete groups to the head changes the position on
+    the current line.
+*)
+
+
+
+
+
+
+
 open Fmlib_std
 
 (* A Text Block
@@ -16,14 +228,16 @@ struct
 
     let substring (str: string) (start: int) (len: int): t =
         assert (0 <= start);
-        assert (0 < len);
+        assert (0 < len);   (* Must not be empty, otherwise [peek] is not
+                               possible. *)
         assert (start + len <= String.length str);
         String (str, start, len)
 
 
     let string (str: string): t =
         let len = String.length str in
-        assert (0 < len);
+        assert (0 < len);   (* Must not be empty, otherwise [peek] is not
+                               possible. *)
         substring str 0 len
 
 
@@ -128,6 +342,9 @@ end
 
 type
     chunk = {
+        (*
+            chunk ::= B T* group*
+         *)
         break_text:
             string;
 
@@ -142,7 +359,11 @@ type
 
 and
     group = {
-        glength: int;
+        (*
+            group :: group* chunk*
+         *)
+        glength: int;       (* Total number of chars in the group whare all
+                               breaks are flattened. *)
         complete_groups: group Deque.t;
         chunks: chunk Deque.t;
     }
@@ -154,7 +375,7 @@ module Chunk =
 struct
     type t = chunk
 
-    let make (break_text: string) (line: Line.t): t =
+    let make (break_text: string) (line: Line.t): chunk =
         {
             break_text;
             line;
@@ -162,7 +383,7 @@ struct
             chunk_groups = Deque.empty;
         }
 
-    let push_text (text: Text.t) (chunk: t): t =
+    let push_text (text: Text.t) (chunk: chunk): chunk =
         (* If the chunk has already groups, no more text can be added. *)
         assert (Deque.is_empty chunk.chunk_groups);
         {
@@ -175,7 +396,7 @@ struct
         }
 
 
-    let update_line (line: Line.t) (chunk: t): t=
+    let update_line (line: Line.t) (chunk: chunk): chunk=
         assert (Deque.is_empty chunk.chunk_groups);
 
         if Deque.is_empty chunk.texts then
@@ -184,7 +405,7 @@ struct
             chunk
 
 
-    let add_group (group: group) (chunk: t): t =
+    let add_group (group: group) (chunk: chunk): chunk =
         {
             chunk with
             chunk_groups =
@@ -194,19 +415,19 @@ struct
         }
 
 
-    let break_text (chunk: t): string =
+    let break_text (chunk: chunk): string =
         chunk.break_text
 
 
-    let line (chunk: t): Line.t =
+    let line (chunk: chunk): Line.t =
         chunk.line
 
 
-    let texts (chunk: t): Text.t Deque.t =
+    let texts (chunk: chunk): Text.t Deque.t =
         chunk.texts
 
 
-    let groups (chunk: t): group Deque.t =
+    let groups (chunk: chunk): group Deque.t =
         chunk.chunk_groups
 end
 
@@ -294,7 +515,7 @@ struct
         group.complete_groups
 
 
-    let chunks (group: t): Chunk.t Deque.t =
+    let chunks (group: t): chunk Deque.t =
         group.chunks
 end
 
@@ -313,8 +534,8 @@ module Buffer =
 struct
     type t = {
         ngroups: int;
-        length: int;
-        groups: group list;
+        length: int;        (* Number of characters in the buffer. *)
+        groups: group list; (* Reversed order, topmost is innermost. *)
     }
 
 
@@ -340,34 +561,38 @@ struct
 
     let push_text (text: Text.t) (buffer: t): t =
         assert (0 < count buffer);
-        let hd, tl =
-            List.split_head_tail buffer.groups
-        in
-        {
-            buffer with
+        match buffer.groups with
+        | [] ->
+            assert false (* illegal call! *)
 
-            groups =
-                (Group.push_text text hd) :: tl;
+        | hd :: tl ->
+            {
+                buffer with
 
-            length =
-                buffer.length + Text.length text;
-        }
+                groups =
+                    (Group.push_text text hd) :: tl;
+
+                length =
+                    buffer.length + Text.length text;
+            }
 
 
     let push_break (str: string) (line: Line.t) (b: t): t =
         assert (0 < count b);
-        let hd, tl =
-            List.split_head_tail b.groups
-        in
-        {
-            b with
+        match b.groups with
+        | [] ->
+            assert false (* illegal call! *)
 
-            groups =
-                (Group.push_break str line hd) :: tl;
+        | hd :: tl ->
+            {
+                b with
 
-            length =
-                b.length + String.length str
-        }
+                groups =
+                    (Group.push_break str line hd) :: tl;
+
+                length =
+                    b.length + String.length str
+            }
 
 
     let close_one (buffer: t): t =

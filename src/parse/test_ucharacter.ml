@@ -96,7 +96,7 @@ struct
     *)
     let write_error (flg: bool) (input: string) (p: Parser.t): unit =
         let module Reporter = Error_reporter.Make (Parser) in
-        let module Pretty   = Fmlib_pretty.Print in
+        let open Fmlib_pretty in
         if Parser.(flg && has_ended p && not (has_succeeded p)) then
             Reporter.(
                 make_syntax p

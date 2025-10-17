@@ -636,6 +636,74 @@ let wrap_words (s: string): doc =
 
 module From = String.From_source (Readable)
 
+let reformat (s: string): string =
+    (* Reformat a quoted string by removing a common blank prefix introduced in
+       the first list (the line zero must be empty) and remove the line zero and
+       the last line if it is a pure blank or empty line. The quoted string is
+       assumed to look like
+
+            {|
+          line1
+              line2
+          line3
+          line4
+              line5
+                 line6
+          ...
+            |}
+
+       i.e. all lines have a common prefix.
+    *)
+    let lst = String.split_on_char '\n' s in
+    let len = List.length lst in
+    let rec process (i: int) (indent: int) (lst: string list): string list -> string list = function
+        | [] ->
+            assert (i = len);
+            lst
+        | s :: rest ->
+            if i = 0 then
+                begin
+                    assert (s = "");
+                    process (i + 1) indent lst rest
+                end
+            else if i + 1 = len && Stdlib.String.trim s = "" then
+                lst
+            else
+                let indent =
+                    if i = 1 then
+                        Fmlib_std.String.find
+                            (fun c -> c <> ' ')
+                            0
+                            s
+                    else
+                        indent
+                and lens = String.length s
+                in
+                assert (indent <= lens);
+                process
+                    (i + 1)
+                    indent
+                    (String.sub s indent (lens - indent) :: lst)
+                    rest
+    in
+    String.concat "\n" (List.rev (process 0 0 [] lst))
+
+
+
+let%test _ =
+    let str = {|
+        f
+          a1
+          a2
+          a3
+        |}
+    and expect = "f\n  a1\n  a2\n  a3"
+    in
+    expect = reformat str
+
+
+
+
 
 let test0
         (width: int) (ribbon: int) (print: bool)
@@ -764,6 +832,9 @@ let%test _ =
 
 
 
+
+
+
 (* Unit Tests with Trees
  * ---------------------
  *)
@@ -789,8 +860,14 @@ let tree1 () =
          tree "gf" [leaf "b"; leaf "c"];
          leaf "d"]
 
-let _ = tree0
-let _ = tree1
+let tree2 () =
+    tree
+        "ff"
+        [tree "gf" [leaf "b"; leaf "c"];
+         tree "gf" [leaf "b"; leaf "c"];
+         tree "gf" [leaf "b"; leaf "c"];]
+
+let _ = tree0, tree1, tree2
 
 
 let doc_tree (tree: tree): doc =
@@ -837,8 +914,11 @@ let%test _ =
 let%test _ =
     let doc =
         doc_tree (tree0 ())
-    and expected =
-        "ff\n  a\n  b\n  c"
+    and expected = {|
+        ff
+          a
+          b
+          c|} |> reformat
     in
     test 3 false doc expected
 
@@ -846,8 +926,9 @@ let%test _ =
 let%test _ =
     let doc =
         doc_tree (tree0 ())
-    and expected =
-        "ff\n  a b c"
+    and expected = {|
+        ff
+          a b c|} |> reformat
     in
     test 7 false doc expected
 
@@ -855,8 +936,11 @@ let%test _ =
 let%test _ =
     let doc =
         doc_tree (tree1 ())
-    and expected =
-        "ff\n  a\n  (gf b c)\n  d"
+    and expected = {|
+        ff
+          a
+          (gf b c)
+          d|} |> reformat
     in
     test 10 false doc expected
 
@@ -864,12 +948,44 @@ let%test _ =
 let%test _ =
     let doc =
         doc_tree (tree1 ())
-    and expected =
-        "ff\n  a\n  (gf\n    b c)\n  d"
+    and expected = {|
+        ff
+          a
+          (gf
+            b c)
+          d|} |> reformat
     in
     test 8 false doc expected
 
 
+
+let%test _ =
+    let doc =
+        doc_tree (tree1 ())
+    and expected = {|
+        ff
+          a
+          (gf
+            b
+            c)
+          d|} |> reformat
+    in
+    test 4 false doc expected
+
+(*
+let%test _ =
+    let doc = doc_tree (tree2 ())
+    and expected =
+    (*  01234567890123456789 *)
+        {|
+        ff
+          (gf b c)
+          (gf b c)
+          (gf b c)
+        |} |> reformat
+    in
+    test 27 true doc expected
+*)
 
 (* Paragraphs
  * ----------
