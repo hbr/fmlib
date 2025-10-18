@@ -41,7 +41,7 @@ build: [
 
 
 depends: [
-    "ocaml" {>= "4.08.0"}
+    "ocaml" {>= "5.1"}
     "dune" {>= "3.0.0"}
     "odoc" {with-doc}
     "fmlib_std"    {=version}
