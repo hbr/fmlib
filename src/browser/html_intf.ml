@@ -120,15 +120,16 @@ sig
         Reference nodes are a means to improve performance. In the following
         examples reference nodes might be useful:
 
-        - Having an editor window in browser (e.g. CodeMirror): It does not make
-        sense and is quite difficult to control an editor window by the virtual
-        dome. It is better to create a reference node and let the internal state
-        of the editor handled by some other meanss (e.g. CodeMirror code)
+        - Having an editor window in the browser (e.g. CodeMirror): It does not
+        make sense and is quite difficult to control an editor window by the
+        virtual dom. It is better to create a reference node and let the
+        internal state of the editor handled by some other meanss (e.g.
+        CodeMirror code)
 
         - Spreadsheet with many cells: In a spreadsheet usully one cell is
         updated and some cells whose content depends on the edited cell have to
         be updated as well. Having a reference node for each cell makes it
-        possible to update only the edited its dependent cells. Having all
+        possible to update only the edited and its dependent cells. Having all
         spreadsheet cells managed by the virtual dom requires a diffing of all
         cells. This can become quite slow if the spreadsheet is large.
      *)

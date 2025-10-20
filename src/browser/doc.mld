@@ -9,4 +9,6 @@
 
 - {{!page-doc_single_page_application} Writing a single-page application}
 
-- {{!page-doc_event_handler} Event Handler}
+- {{!page-doc_detailed_overview} A More Detailed Overview}
+
+- {{!page-doc_reference_elements} Optimizing Big Applications with Reference Elements}

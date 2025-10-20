@@ -14,7 +14,8 @@
     doc_overview
     doc_getting_started
     doc_single_page_application
-    doc_event_handler
+    doc_detailed_overview
+    doc_reference_elements
   )
   (package fmlib_browser)
 )

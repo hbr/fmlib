@@ -1,0 +1,165 @@
+{0 Optimizing Big Applications with Reference Elements}
+
+
+{{!page-doc_detailed_overview} A More Detailed Overview} |
+{{!page-doc} Up}
+
+
+{1 Potential Dom Diffing Bottlenecks}
+
+The library {!module:Fmlib_browser} does already a lot to reduce dom accesses by
+using a virtual dom and virtual dom diffing as described in the chapter
+{!page:doc_detailed_overview}.
+
+The limits of this approach is reached when the dom on a browser screen
+(including the clipped parts) becomes really huge.
+
+Some examples where this might occur:
+
+
+{ul
+
+    {- A spreadsheet application with many thousand cells. Usually there is one
+    cell in focus which can be edited. A change in one cell affects all other
+    cells which use the edited cell in its formula either directly or
+    indirectly. I.e. only a small subset of all cells is affected and need to be
+    updated as a consequence of editing the cell in focus.
+
+    Diffing of the virtual doms before and after the modification detects all
+    cells which need to be updated. But the diffing algorithm has to traverse
+    the whole virtual dom to detect the changes. This might become a performance
+    bottleneck for the animation frame.
+    }
+
+    {- A trading platform which displays a table with the state of several
+    thousand assets of one or several stock exchanges. The table is sorted such
+    that the most important (according to value or whatever criterion) assets
+    come before the less important assets in the table.
+
+    Any state change is notified to the application and the application has to
+    display the updated state and possibly the ordering of the assets.
+
+    As in the spreadsheed example virtual dom diffing might become a performance
+    bottleneck.
+    }
+
+    {- An interactive code development environment has a source code editor and
+    highlights errors with error descriptions displayed at the location of the
+    error.
+
+    Firstly the source code editor has information which changes only in a very
+    limited region of the source code.
+
+    Secondly an error shall be marked visually and displayed in detail when the
+    user hovers with the mouse over the error.
+
+    Again a situation where virtual dom diffing is not very efficient.
+    }
+}
+
+It is common to all these examples that the dom is really big, the application
+{e knows} exactly what has changed and the virtual dom diffing can discover the
+changes only by traversing the whole dom. I.e. the application could easily
+trigger the change by issueing a command which makes the change of the display.
+
+
+
+
+{1 Basics of Reference Elements}
+
+The library {!module:Fmlib_browser} has reference elements to address the
+potential performance problem.
+
+Each reference element has a unique name. They can be inserted into the virtual
+dom by {!val:Fmlib_browser.Html.reference}. Reference elements can contain
+arbitrarily big subdoms. For the virtual dom it is only important if the
+reference element is in the dom or not.
+
+Reference elements can be used only in one location of the dom.
+
+There is the command {!val:Fmlib_browser.Command.set_reference} to fill content
+into the reference element. The content of the reference element is described by
+another virtual dom which might point to other reference elements.
+
+At the start the virtual dom of a reference element is empty. Each command
+{[
+    Command.set_reference name vdom
+]}
+updates the content of the reference element by dom diffing of the subdom.
+
+
+
+
+{1 Example Spreadsheet Application}
+
+An example of a simple spreadsheet application can be found at
+{: https://github.com/hbr/fmlib/tree/master/src/examples/browser}.
+
+
+Our simple spreadsheet example has one field which marks the current cell (e.g.
+[B2]) and editor field to edit the content of the current cell and a field which
+describes a potential error (e.g. cyclic reference or syntax error in the
+formula).
+
+Below these field there is a big element with all the cells.
+
+In the browser it looks like
+{v
+     +----------+     +----------+  +-----+
+     | cell: B2 |     |= A1 + A2 |  | OK  |
+     +----------+     +----------+  +-----+
+
+
+     +----------------------------------------------------+
+     |                                                    |
+     |     A       B       C       D       E       ...    |
+     |                                                    |
+     | 1   2               100                            |
+     |                                                    |
+     | 2   5       7               2000                   |
+     |                                                    |
+     | 3                                                  |
+     |                                                    |
+     | 4                                                  |
+     |                                                    |
+     | ...                                                |
+     |                                                    |
+     +----------------------------------------------------+
+v}
+
+
+The view function of the application returns a virtual dom containing basically
+the 3 fields in the header and the whole content of the spreadsheet as one
+reference element e.g. named "sheet".
+
+I.e. virtual dom diffing in the animation frame is practically no effort.
+
+The virtual dom of the content is the frame of the spreadsheet where the
+individual cells are again reference elements. I.e. the content is static and
+changes only of the size of the spreadheet changes.
+
+Whenever the user modifies the content of a cell by modifying the editor field
+the application computes the updated value, recomputes the content of all cells
+which depend on the modified cell and issue a command to update the
+corresponding reference cells.
+
+
+
+
+{1 Reference Elements and Mutable State}
+
+The content of reference elements is not controlled by the application state. It
+is controlled by the command [set_reference]. Therefore all data in the
+application state describing the contents of reference elements can be mutable
+data in the state.
+
+A change affecting only reference elements need not change the physical
+application state. If the physical application state is not change, no diffing
+of the virtual dom has to be done in the animation frame.
+
+
+
+
+
+{{!page-doc_detailed_overview} A More Detailed Overview} |
+{{!page-doc} Up}

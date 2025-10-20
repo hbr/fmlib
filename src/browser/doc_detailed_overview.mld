@@ -1,0 +1,348 @@
+{0 A More Detailed Overview}
+
+
+{{!page-doc_single_page_application} Writing a single-page application} |
+{{!page-doc} Up} |
+{{!page-doc_reference_elements} Optimizing Big Applications with Reference
+Elements}
+
+
+{1 Essential Parts}
+
+As seen in the previous chapters a webapplication written with the help of
+{!module:Fmlib_browser} has the following essential components.
+
+{[
+    type state
+    type msg
+
+    val view:         state -> msg Html.t
+    val subscription: state -> msg Subscription.t
+    val update:       state -> msg -> state -> msg Command.t
+]}
+
+
+The type [state] contains all data the application needs to operate. All changes
+are done via message passing by using object of type [msg].
+
+The [view] function maps the state of the application to a virtual dom of type
+[msg Html.t] (see {!module:Fmlib_browser.Html}). Each element in the virtual dom
+might contain interactive attributes which are clickable, can enter text, ...
+(see {!module:Fmlib_browser.Attribute}).
+Each interaction with an interactive element in the virtual dom creates an
+object of type [msg] which is dispatched to the application via its [update]
+function.
+
+The [view] function is called usually on each animation which is typically 60
+times per second. It is called at each animation only if the state has changed.
+
+A second way for the application to get messages is via subscriptions (see
+{!module:Fmlib_browser.Subscription}). Via the [subscription] function the
+application can depending on the state subscribe to global events like interval
+timers, windows resize, mouse clicks an keyboard activities which bubble up to
+the windows object of the browser, ...
+
+Each time the state changes the function [subscription] will be called to get
+all the subscriptions needed in the new state.
+
+All messages passed to the application go through the [update] function. The
+function receives the current state and a message and it produces a new state
+and a possibly empty set of commands.
+
+Commands can be used to send http requests, get the current time, generate a
+random number, focus an element, put something into or get something from the
+browser local or session storage (see {!module:Fmlib_browser.Command}). Very
+complex commands (e.g. get a random number, then make a http request, then get
+the system time and finally put all results into one message) can be structured
+via tasks (see {!module:Fmlib_browser.Task}) which are triggered via a command.
+
+
+
+
+
+{1 Rendering - Accessing the DOM}
+
+In many applications the most expensive part is accessing the DOM. In the
+library there are several mechanisms to make DOM changes cheap.
+
+{2 Event Loop with Animation}
+
+In the browser there is an event loop.
+
+{v
+
+                  +------------------------------>+-------->+
+                  ^                               |         |
+                  |                               |  rAF    |
+                  |                               |         |
+      +--+--+--+  |                               |  style  |
+      |  |  |  |  |        event loop             |         |
+      +--+--+--+  |                               |  layout |
+                  |                               |         |
+     Action Queue |                               |  render |
+                  |                               v         v
+                  +<------------------------------+<--------+
+
+v}
+
+The event loop runs very fast. The event loop pulls out the next atomic action from the
+action queue, runs it and then enters the next iteration.
+
+If a user interaction (e.g. a mouse click) happens on an element of the dom, the
+corresponding message is generated, the message is fed into the update function,
+the new state is recorded and the first action of the corresponding command is
+entered into the action queue. The actions are executed in the next iterations
+of the event loop.
+
+The same happens if message is generated from a subscription.
+
+The inner event loop iterates until the next animation frame happens.  Each
+animation frame the event loop runs the extended event loop before pulling out
+the next action from the action queue. Usually the browser has 60 animations per
+second i.e. the animation frame is executed every 16ms approximately.
+
+If your application has subscribed to the animation frame (see
+{!val:Fmlib_browser.Subscription.on_animation} [rAF] is run i.e. the message for
+this subscription is generated and fed into the update function.
+
+Even if your application is not subscribed to the animation frame, the
+{!module:Fmlib_browser} accesses during [rAF] the dom.
+{ol
+    {- Check if the state has changed. If it has not changed nothing is done
+    here. The changing of the state is computed by physical equality i.e.
+    [old_state == new_state].}
+
+    {- If the state has changed then the virtual dom is computed by calling the
+    [view] function.}
+
+    {- The new virtual dom is compared with the old virtual dom. The real dom is
+    accessed only if a dom element or one of its attributes have changed. If
+    the type of the element (i.e. its tag) has changed, then a new element is
+    created. If the type has not changed, the attributes are compared and
+    updated in the real dom element only if they have changed.
+    }
+}
+
+The {!module:Fmlib_browser} minimizes accesses to the dom and accesses
+the dom only during animation frames.
+
+
+
+
+{2 Is the State Immutable? - More Optimizations}
+
+In a previous chapter it has been stated that the state should be immutable.
+I.e. state changes happen by the expression
+{[
+    {state with field1 = ...; fieldn = ... ; ... }
+]}
+This means that the OCaml compiler generates a new state object which has the
+content of the old object with some modifications. If the state contains a
+mutable [field5] an update of the state could happen by the expression
+{[
+    state.field5 <- ...;
+]}
+In this case the compiler does no create a new object but modifies the object in
+place. If this is the only modification of the state, then
+{!module:Fmlib_browser} does not recognize the state as changed and does not
+update the dom in the next animation frame.
+
+Therefore the first recommendation in the introduction has been, {e Do not do
+that!}. However this rule is too strong. The library {!module:Fmlib_browser}
+holds only one reference to the state. Therefore in principle it could be
+modified in place as long as the modification does not affect the [view]
+function.
+
+Now the more precise rule:
+{ul
+    {- Every update of the state which affects the result of the [view]
+    function must have the form
+        {v
+            {state with field1 = ...; field2 = ...; ...}
+        v}
+    }
+    {- Modifications of the state which do {e not} change the result of the
+    [view] function can have the form
+       {v
+            state.field5 <- ...;
+        v}
+    }
+}
+
+This opens up the room for more optimizations. Your application might have
+messages which do not change the rendering of the page. For these cases it is
+possible to record the changes caused by these messages in mutable fields in the
+state. Then nothing is done in the next animation frame.
+
+Example: You have a complex computation to do in your application but you don't
+want to block the event loop for the whole computation. So you split the
+computation into small steps. Each step creates at the end a message which is
+fed into the [update] function. The [update] function just creates a command for
+the next step and records the intermediate state of the computation in some
+mutable fields of the application state. Then nothing is done in the next animation
+frame. Only the last step of the computation is recorded in the application
+state in immutables fields, a new object is created by the OCaml runtime system
+and the [view] function will be called in the next animation frame and the
+result is displayed.
+
+A word of caution: Such optimizations only make sense if your virtual dom is {e
+really} huge. For reasonably sized virtual doms the optimization effect is
+negligible.
+
+If the dom of an application is huge such that virtual dom diffing can have a
+significant impact on performance (i.e. blocking the event loop in the animation
+frame too long) consider the use of {{!page:doc_reference_elements} reference
+elements} where the part of the application state visible in reference elements
+can be stored in mutable fields.
+
+
+
+
+{1 Different Types of Applications}
+
+The library {!module:Fmlib_browser} offers different types of applications.
+
+{ol
+    {- Sandbox applications:
+        {{!val:Fmlib_browser.sandbox} [sandbox]}
+        and
+        {{!val:Fmlib_browser.sandbox_plus} [sandbox_plus]}
+
+        {ul
+
+            {- Sandbox applications only display a dom and have interactions via
+            attributes on dom elements (e.g. clickable elements). [sandbox_plus]
+            has the additional possibility to subscribe to events.
+            }
+
+            {- There is no possibility to initialize the application via
+            javascript code in the html file nor can it execute any commands nor
+            can it interact with the javascript world.
+            }
+
+            {- The whole body of the dom is controlled by the sandbox applications
+            }
+
+            {- The main purpose of sandbox applications is to try out the library and
+            get a feel on how it works.
+            }
+        }
+        []
+    }
+
+    {- Element applications:
+
+        The purpose of {{!val:Fmlib_browser.element} [element]} applications is
+        to introduce the library {!module:Fmlib_browser} smoothly into applications
+        already written in javascript.
+
+        {ul
+            {- An element application is integrated into the main application
+            below an element of the main application.}
+
+            {- It has full control over the dom element and the dom below the
+            element and it has no access to dom elements outside.}
+
+            {- It can be initialized from the javascript code of the main
+            application and can send messages to and receive messages from the
+            main javascript application.}
+
+            {- It has the possibility to subscribe to events and execute
+            commands.}
+
+            {- It cannot access the browser history via [push_url] etc.}
+        }
+        []
+
+
+    }
+    {- Web applications:
+        {{!val:Fmlib_browser.basic_application} [basic_application]}
+        and
+        {{!val:Fmlib_browser.application} [application]}
+
+        {ul
+            {- Web applications control the body of the dom and the title of the
+            browser window}
+
+            {- They have subscriptions and can execute commands.}
+
+            {- The [basic_application] cannot be initialized by javascript code,
+            cannot send and receive messages from and to javascript code and
+            cannot access the browser history.}
+
+            {- An [application] can be initialized by javascript code, it can
+            communicate with the javascript code and has access to the browser
+            history via {!val:Fmlib_browser.Command.push_url} etc.}
+
+            {- In an [application] all user clicks on anchor elements with
+            [href]s are intercepted and the application has full control on what
+            happens with these clicks (see
+            {!page:doc_single_page_application}).}
+        }
+        []
+    }
+}
+
+Full web applications can do everything what can be done with pure javascript
+code in the browser. Anything no directly supported by the library
+{!module:Fmlib_browser} can be done by writing javascript code in the browser
+and trigger the corresponding operations by sending messages to javascript and
+receive messages from javascript.
+
+There are commands to send a message to javascript and the application can
+subscribe to messages received from javascript.
+
+
+
+
+
+{1 Interoperation with Javascript}
+
+{{!val:Fmlib_browser.element} Element applications}
+and
+{{!val:Fmlib_browser.application} full web applications}
+can communicate with javascript code in the browser.
+
+{2 Initialisation}
+
+In order to receive initialisation data the web application is given unique name
+which is visible in the namespace of a browser window.
+
+This name refers to an object which has a method to receive javascript
+initialisation object.
+
+On the application side a {{!module:Fmlib_browser.Decoder} decoder object} is
+needed to transform the javascript object into the OCaml word.
+
+See {!val:Fmlib_browser.element} and {!val:Fmlib_browser.application} for
+details.
+
+
+{2 Send and Receive Messages}
+
+The can issue the command {{!val:Fmlib_browser.Command.send_to_javascript}
+[send_to_javascript]} which sends a javascript object made by
+{!module:Fmlib_browser.Value}.
+
+The javascript code can subscribe to the messages from the application via the
+unique name of the application. The name refers to an object which has a
+corresponding method.
+
+Furthermore object representing the application has a method to post a message
+on the javascript side to the application. The application can subscribe to the
+messages from the javascript side by providing a {{!module:Fmlib_browser.Decoder}
+decoder} to transform the javascript object to the OCaml world.
+
+See {!val:Fmlib_browser.element} and {!val:Fmlib_browser.application} for
+details.
+
+
+
+
+
+
+{{!page-doc_single_page_application} Writing a single-page application} |
+{{!page-doc} Up} |
+{{!page-doc_reference_elements} Optimizing Big Applications with Reference
+Elements}

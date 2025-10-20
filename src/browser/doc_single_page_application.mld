@@ -2,7 +2,7 @@
 
 {{!page-doc_getting_started} Getting Started}
 {{!page-doc} Up}
-{{!page-doc_event_handler} Event Handler}
+{{!page-doc_detailed_overview} A More Detailed Overview}}
 
 
 
@@ -573,3 +573,13 @@ URLs are supported by this library.
 
 We can run [python3 -m http.server] or write a webserver in OCaml (see
 [examples/browser/single_page_backend.ml] for an example).
+
+
+
+
+
+
+
+{{!page-doc_getting_started} Getting Started}
+{{!page-doc} Up}
+{{!page-doc_detailed_overview} A More Detailed Overview}}
