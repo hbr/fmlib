@@ -340,7 +340,7 @@ end
 module Parser =
 struct
     open Fmlib_parse
-    module Pretty = Fmlib_pretty.Print
+    module Pretty = Fmlib_pretty.Pretty
 
     module Final =
     struct
@@ -351,7 +351,7 @@ struct
     struct
         type t = {
             range: Position.range;
-            pretty: Pretty.doc;
+            pretty: Pretty.t;
         }
 
         let range s  = s.range
@@ -586,7 +586,7 @@ struct
                     input
                     (ER.make Semantic.range Semantic.pretty p)
                 |> Pretty.layout 60
-                |> Pretty.string_of
+                |> Pretty.to_string
             )
 end
 
