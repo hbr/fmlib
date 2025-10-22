@@ -1,7 +1,7 @@
 {0 Getting Started}
 
-{{!page-doc_overview} Overview}
-{{!page-doc} Up}
+{{!page-doc_overview} Overview} |
+{{!page-doc} Up} |
 {{!page-doc_single_page_application} Single Page Application}
 
 
@@ -264,6 +264,6 @@ The corresponding dune and html files are the same as for the counter example.
 
 
 
-{{!page-doc_overview} Overview}
-{{!page-doc} Up}
+{{!page-doc_overview} Overview} |
+{{!page-doc} Up} |
 {{!page-doc_single_page_application} Single Page Application}

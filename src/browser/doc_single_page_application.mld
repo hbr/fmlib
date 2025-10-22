@@ -1,8 +1,8 @@
-{0 Writing a single-page application}
+{0 Writing a Single Page Application}
 
-{{!page-doc_getting_started} Getting Started}
-{{!page-doc} Up}
-{{!page-doc_detailed_overview} A More Detailed Overview}}
+{{!page-doc_getting_started} Getting Started} |
+{{!page-doc} Up} |
+{{!page-doc_detailed_overview} A More Detailed Overview}
 
 
 
@@ -580,6 +580,6 @@ We can run [python3 -m http.server] or write a webserver in OCaml (see
 
 
 
-{{!page-doc_getting_started} Getting Started}
-{{!page-doc} Up}
-{{!page-doc_detailed_overview} A More Detailed Overview}}
+{{!page-doc_getting_started} Getting Started} |
+{{!page-doc} Up} |
+{{!page-doc_detailed_overview} A More Detailed Overview}
