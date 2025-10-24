@@ -10,26 +10,25 @@ type state =
 type msg = Roll | Got_die_face of string
 
 
-let roll_command =
-    let faces = ["⚀"; "⚁"; "⚂"; "⚃"; "⚄"; "⚅"] in
-    let rand = Random.choose faces
-    in
-    let task = Task.(
-        let* _    = sleep 1000 () in
-        let* face = random rand in
-        return (Got_die_face face))
-    in
-    Command.perform task
-
-
 let init: state * msg Command.t =
-    ({is_rolling = false; die_face = "?"}, roll_command)
+    ({is_rolling = false; die_face = "?"}, Command.none)
 
 
 let update (state: state) (msg: msg): state * msg Command.t =
     match msg with
     | Roll ->
-        ({state with is_rolling = true}, roll_command)
+        let command =
+            let faces = ["⚀"; "⚁"; "⚂"; "⚃"; "⚄"; "⚅"] in
+            let rand = Random.choose faces
+            in
+            let task = Task.(
+                let* _    = sleep 1000 () in
+                let* face = random rand in
+                return (Got_die_face face))
+            in
+            Command.perform task
+        in
+        ({state with is_rolling = true}, command)
     | Got_die_face die_face ->
         ({is_rolling = false; die_face}, Command.none)
 
