@@ -38,19 +38,19 @@ source file which implements the application.
     | Increment
 
     let view (s: state): msg Html.t =
-        let open Html in
-        let open Attribute in
+        let module H = Html in
+        let module A = Attribute in
         let counter = s.counter in
-        div []
-            [ button
-                [color "blue"; on_click Decrement]
-                [text "-"]
-            ; span
-                [background_color "silver"; font_size "20px"]
-                [text (string_of_int counter)]
-            ; button
-                [color "blue"; on_click Increment]
-                [text "+"]
+        H.div []
+            [ H.button
+                [A.color "blue"; A.on_click Decrement]
+                [H.text "-"]
+            ; H.span
+                [A.background_color "silver"; A.font_size "20px"]
+                [H.text (string_of_int counter)]
+            ; H.button
+                [A.color "blue"; A.on_click Increment]
+                [H.text "+"]
             ]
 
     let update (s: state): msg -> state =
