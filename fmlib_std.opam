@@ -22,6 +22,8 @@ Besides some wrapper around Stdlib modules it has the additional modules:
 
 maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
 
+x-maintenance-intent: ["(latest).(latest)"  "(latest).(latest-1)"]
+
 authors: [ "Helmut Brandl <helmut.brandl@gmx.net>" ]
 
 license: "BSD-3-Clause"

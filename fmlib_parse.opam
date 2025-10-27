@@ -16,6 +16,8 @@ Futhermore it is easy to generate user friendly error messages.
 
 maintainer: "Helmut Brandl <helmut.brandl@gmx.net>"
 
+x-maintenance-intent: ["(latest).(latest)"  "(latest).(latest-1)"]
+
 authors: [ "Helmut Brandl <helmut.brandl@gmx.net>" ]
 
 license: "BSD-3-Clause"
