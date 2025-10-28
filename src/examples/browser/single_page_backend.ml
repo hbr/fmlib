@@ -16,11 +16,7 @@ let handle_request request =
     | Some path ->
         if path = "/fmlib/webapp/single_page.js" then
             print 200 "javascript" (String.length Assets.js) Assets.js
-        else if
-            path = "/fmlib/webapp/"
-            ||
-            path = "/fmlib/webapp/single_page.html"
-        then
+        else if path = "/fmlib/webapp/single_page.html" then
             print 200 "html" (String.length Assets.html) Assets.html
         else if
             path = "/favicon.ico"
