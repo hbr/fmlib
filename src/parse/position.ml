@@ -45,6 +45,15 @@ let start: t = {
 
 
 
+let make (line: int) (column: int) (byte_bol: int) (byte_col: int): t =
+    { line;
+      byte_bol;
+      byte_col;
+      correction = byte_col - column;
+    }
+
+
+
 
 
 let advance (byte_width: int) (width: int) (p: t): t =

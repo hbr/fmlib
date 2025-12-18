@@ -60,6 +60,12 @@ val start: t
 
 
 
+val make: int -> int -> int -> int -> t
+(** [make line column byte_offset_bol byte_column]
+
+    Make a position object with the pointing to {!val:line}, {!val:column},
+    {!val:byte_offset_bol} and {!val:byte_column} within a file.
+*)
 
 
 
