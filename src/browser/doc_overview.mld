@@ -1,6 +1,6 @@
 {0 Overview}
 
-{{!page-doc} Up} {{!page-doc_getting_started} Getting Started}
+{{!page-doc} Up} | {{!page-doc_getting_started} Getting Started}
 
 
 
@@ -258,4 +258,4 @@ javascript event loop to avoid long blockings of the event loop.
 
 
 
-{{!page-doc} Up} {{!page-doc_getting_started} Getting Started}
+{{!page-doc} Up} | {{!page-doc_getting_started} Getting Started}

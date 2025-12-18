@@ -185,7 +185,7 @@ struct
 
 
     let cross_origin (pre_path: string) (path: t list) (query: Query.t list): string =
-        let path = if List.is_empty path then "" else "/" ^ encode_path path in
+        let path = if path = []  then "" else "/" ^ encode_path path in
         pre_path ^ path ^ encode_query query
 
     let custom (root: root) (path: t list) (query: Query.t list) (fragment: Fragment.t option): string =
