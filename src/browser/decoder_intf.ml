@@ -187,6 +187,14 @@ sig
     *)
 
 
+    val optional_field: string -> 'a t -> 'a option t
+    (** [optional_field name dec] If a field named [name] exists in the
+        javascript object, decode it with the decoder [dec] and return
+        the decoded value wrapped in [Some]. If the field does not exist,
+        return [None].
+    *)
+
+
     val array: 'a t -> 'a array t
     (** [array dec] Decode a javascript array into an ocaml array using [dec] to
         decode elements.
