@@ -208,6 +208,19 @@ struct
             )
 
 
+    let optional_field (name: string) (decode: 'a t): 'a option t =
+        let* v = map Option.return (field name value) </> return None in
+        match v with
+        | None ->
+            return None
+        | Some v -> (
+            match decode v with
+            | None ->
+                fail
+            | decoded ->
+                return decoded)
+
+
     let array (decode: 'a t): 'a array t =
         fun obj ->
         let open Js in
