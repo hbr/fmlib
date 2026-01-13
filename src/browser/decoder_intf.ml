@@ -138,6 +138,23 @@ sig
     *)
 
 
+    val value: value t
+    (** Return the javascript value without decoding it.
+
+        For example: We want to know if a field in a javascript object
+        exists, but don't want to decode it.
+
+        {[
+            let* avatar = optional_field "avatar" value in
+            match avatar with
+            | Some _ ->
+                print_endline "avatar exists"
+            | None ->
+                print_endline "avatar does not exist"
+        ]}
+    *)
+
+
     val int: int t
     (** Decode an integer value i.e. a number between [-2^31] and [2^31 - 1].
     *)
