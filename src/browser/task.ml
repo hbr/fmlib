@@ -322,7 +322,7 @@ let http_request
     let handler _ =
         assert (Http_request.ready_state req = 4);
         let status = Http_request.status req in
-        if status >= 300 then (* not ok *)
+        if status = 0 || status >= 300 then (* not ok *)
             continue k (Error (`Status status))
         else
             continue k (expect req)
