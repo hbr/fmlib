@@ -214,13 +214,14 @@ val sandbox_plus:
 
 
 
-(** {1 Full Web Application} *)
+(** {1 Single Page Application} *)
 
 (**
-    A full web application has full user interaction, can execute arbitrary
+    A single page application has full user interaction, can execute arbitrary
     commands and subscribe to all possible global events. It allows controlling
-    the browser's title bar (through the return value of the [update] function)
-    and the browser's address bar (see module {!Navigation} for more details).
+    the browser's title bar (through the return value of the [update] function),
+    the browser's address bar (see module {!Navigation} for more details) and
+    has access to the browsing history.
 *)
 
 val application:
@@ -278,6 +279,28 @@ val basic_application:
       {{!Command.back}back}
  *)
 
+
+
+
+(** {1 Advanced Web Application} *)
+
+val advanced_application:
+    string
+    -> (('state * 'msg Command.t) Decoder.t)
+    -> ('state -> 'msg Html.t * string)
+    -> ('state -> 'msg Subscription.t)
+    -> ('state -> 'msg -> 'state * 'msg Command.t)
+    -> unit
+(** An advanced web application works like a {{!application} single page
+    application} except that it has no access to the browsing history.
+
+    The advanced web application has been introduced because the single page
+    application works only with an actual server. Therefore it cannot be tested
+    locally without having at least some very primitive server.
+
+    The advanced web application can be tested in the browser by a url of the
+    form [file://.....html] i.e. a url which points to a local file.
+*)
 
 
 

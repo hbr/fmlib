@@ -493,10 +493,10 @@ sig
     }
 
     val make_def:
-        string
-        -> bool
-        -> bool
-        -> bool
+        name:string
+        -> is_element:bool
+        -> send_js: bool
+        -> js_init: bool
         -> ('s, 'm) init
         -> ('s, 'm) view
         -> ('s, 'm) update
@@ -560,10 +560,10 @@ struct
 
 
     let make_def
-            name
-            is_element
-            can_send_to_js
-            js_init
+            ~name: name
+            ~is_element: is_element
+            ~send_js: can_send_to_js
+            ~js_init: js_init
             init
             view
             update
@@ -761,10 +761,10 @@ let sandbox_plus
     let open Application in
     main_onload
         (make_def
-            "????"
-            false
-            false
-            false
+            ~name: "????"
+            ~is_element: false
+            ~send_js:   false
+            ~js_init:   false
             (make_init1 state Command.none)
             (make_view1 view)
             (make_update1 update)
@@ -808,10 +808,10 @@ let element
     let open Application in
     main_js
         (make_def
-            name
-            true
-            true
-            true
+            ~name: name
+            ~is_element: true
+            ~send_js: true
+            ~js_init: true
             (fun () -> decode)
             (make_view1 view)
             update
@@ -858,10 +858,10 @@ let application
     let open Application in
     main_js
         (make_def
-            name
-            false
-            true
-            true
+            ~name: name
+            ~is_element: false
+            ~send_js:    true
+            ~js_init:    true
             init
             (make_view2 view)
             update
@@ -869,6 +869,47 @@ let application
         )
 
 
+
+
+
+
+
+(* Full Application
+ * ============================================================
+ *)
+
+
+
+let advanced_application
+        (name: string)
+        (init: ('s * 'm Command.t) Base.Decode.t)
+        (view:   's -> 'm Vdom.t * string)
+        (sub:   's -> 'm Subscription.t)
+        (update: ('s, 'm) update)
+    : unit
+    =
+    let open Application in
+    main_js
+        (make_def
+            ~name: name
+            ~is_element: false
+            ~send_js:    true
+            ~js_init:    true
+            (fun () -> init)
+            (make_view2 view)
+            update
+            sub)
+
+
+
+
+
+
+
+
+(* Basic Application
+ * ============================================================
+ *)
 
 
 
@@ -884,10 +925,10 @@ let basic_application
     let open Application in
     main_onload
         (make_def
-            "????"
-            false
-            false
-            false
+            ~name: "????"
+            ~is_element: false
+            ~send_js:    false
+            ~js_init:    false
             (make_init1 state command)
             (make_view2 view)
             update
